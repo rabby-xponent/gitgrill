@@ -43,6 +43,7 @@ import {
 } from './stripe';
 
 import { mfsPaymentService, MfsProvider } from './mfs-payment.service';
+import { limitsService } from '../security/limits.service';
 
 const router = Router();
 
@@ -213,12 +214,7 @@ router.post('/mfs/admin/config', async (req: Request, res: Response) => {
   const providedKey = adminKey || req.headers['x-admin-key'];
 
   const expectedKey = process.env.ADMIN_SECRET_KEY;
-  const isAdminUser =
-    req.auth?.role === 'admin' ||
-    (req.auth?.email &&
-      ['admin@gitgrill.com', 'rabby.xponent@gmail.com', 'alter_ego@gitgrill.com'].includes(
-        req.auth.email.toLowerCase()
-      ));
+  const isAdminUser = limitsService.isSuperAdmin(req.auth);
 
   if (!isAdminUser && expectedKey && providedKey !== expectedKey) {
     res.status(403).json({ error: 'unauthorized', message: 'Invalid admin credentials.' });
@@ -294,12 +290,7 @@ router.get('/mfs/admin/list', async (req: Request, res: Response) => {
   try {
     const expectedKey = process.env.ADMIN_SECRET_KEY;
     const providedKey = req.headers['x-admin-key'] || req.query.adminKey;
-    const isAdminUser =
-      req.auth?.role === 'admin' ||
-      (req.auth?.email &&
-        ['admin@gitgrill.com', 'rabby.xponent@gmail.com', 'alter_ego@gitgrill.com'].includes(
-          req.auth.email.toLowerCase()
-        ));
+    const isAdminUser = limitsService.isSuperAdmin(req.auth);
 
     if (!isAdminUser && expectedKey && providedKey !== expectedKey) {
       res.status(403).json({ error: 'unauthorized', message: 'Invalid admin credentials.' });
@@ -318,12 +309,7 @@ router.post('/mfs/admin/verify', async (req: Request, res: Response) => {
   const { paymentId, action, notes, adminKey } = req.body || {};
   const providedKey = adminKey || req.headers['x-admin-key'];
   const expectedKey = process.env.ADMIN_SECRET_KEY;
-  const isAdminUser =
-    req.auth?.role === 'admin' ||
-    (req.auth?.email &&
-      ['admin@gitgrill.com', 'rabby.xponent@gmail.com', 'alter_ego@gitgrill.com'].includes(
-        req.auth.email.toLowerCase()
-      ));
+  const isAdminUser = limitsService.isSuperAdmin(req.auth);
 
   if (!isAdminUser && expectedKey && providedKey !== expectedKey) {
     res.status(403).json({ error: 'unauthorized', message: 'Invalid admin credentials.' });

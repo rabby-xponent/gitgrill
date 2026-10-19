@@ -56,13 +56,20 @@ interface SessionClaims {
 
 function verifySessionToken(token: string): AuthContext | null {
   try {
-    const claims = jwt.verify(token, getSessionSecret()) as SessionClaims;
+    const claims = jwt.verify(token, getSessionSecret()) as any;
     if (!claims || typeof claims.sub !== 'string') return null;
+
+    // Supabase places custom roles in app_metadata.role or user_metadata.role
+    const role =
+      claims.app_metadata?.role ||
+      claims.user_metadata?.role ||
+      (typeof claims.role === 'string' && claims.role !== 'authenticated' ? claims.role : null);
+
     return {
       userId: claims.sub,
       email: typeof claims.email === 'string' ? claims.email : null,
       handle: typeof claims.handle === 'string' ? claims.handle : null,
-      role: typeof claims.role === 'string' ? claims.role : null,
+      role: typeof role === 'string' ? role : null,
     };
   } catch {
     return null;

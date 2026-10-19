@@ -58,12 +58,6 @@ const LIMITS_FILE = path.join(CACHE_DIR, 'tier-limits.json');
 const OVERRIDES_FILE = path.join(CACHE_DIR, 'user-overrides.json');
 const INVITES_FILE = path.join(CACHE_DIR, 'user-invitations.json');
 
-const HARDCODED_ADMIN_EMAILS = [
-  'admin@gitgrill.com',
-  'rabby.xponent@gmail.com',
-  'alter_ego@gitgrill.com',
-];
-
 export class LimitsService {
   private tierLimits: PlatformTierLimits = {
     free: {
@@ -168,10 +162,12 @@ export class LimitsService {
    */
   public isSuperAdmin(auth?: AuthContext | null): boolean {
     if (!auth) return false;
+    // 1. Primary: Supabase-assigned admin role (app_metadata / user_metadata)
     if (auth.role === 'admin') return true;
+
+    // 2. Optional: Server environment override whitelist
     if (auth.email) {
       const email = auth.email.trim().toLowerCase();
-      if (HARDCODED_ADMIN_EMAILS.includes(email)) return true;
       const envAdmins = (process.env.ADMIN_EMAILS || process.env.PLATFORM_ADMIN_EMAILS || '')
         .split(',')
         .map((e) => e.trim().toLowerCase())
