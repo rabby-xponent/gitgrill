@@ -16,10 +16,12 @@ import { Icon } from '@/components/icons';
 import { useSession } from '@/components/SessionProvider';
 import { useEntitlements } from '@/hooks/useEntitlements';
 import { capabilityOf } from '@/lib/entitlements';
+import { isAdmin } from '@/lib/admin';
 
 export function QuotaMeter() {
   const { user, loading, openSignIn } = useSession();
   const { entitlements } = useEntitlements();
+  const isSuperAdmin = isAdmin(user);
 
   if (loading) {
     return <div className="h-[30px] w-40 animate-pulse rounded-xl border border-edge bg-well" />;
@@ -30,11 +32,28 @@ export function QuotaMeter() {
       <button
         type="button"
         onClick={openSignIn}
-        title="Sign in for 3 free audits per rolling 30 days"
+        title="Sign in for free audits per rolling 30 days"
         className="hidden items-center gap-1.5 rounded-xl border border-edge bg-card px-3 py-1.5 font-mono text-[11px] text-muted transition-colors hover:border-signal/50 hover:text-signal outline-none focus-visible:ring-2 focus-visible:ring-signal/40 lg:flex"
       >
         <Icon.Zap className="h-3.5 w-3.5" />
         <span>demo · 1 audit per profile</span>
+      </button>
+    );
+  }
+
+  if (isSuperAdmin) {
+    return (
+      <button
+        type="button"
+        onClick={() => {
+          const hud = document.getElementById('career-quota-hud');
+          if (hud) hud.scrollIntoView({ behavior: 'smooth' });
+        }}
+        title="Super Admin: Uncapped Access to All 7 Capabilities (Click to view HUD)"
+        className="hidden items-center gap-1.5 rounded-xl border border-purple-500/40 bg-purple-500/10 px-3 py-1.5 font-mono text-[11px] text-purple-300 transition-colors hover:border-purple-400 hover:bg-purple-500/20 lg:flex outline-none cursor-pointer"
+      >
+        <Icon.Shield className="h-3.5 w-3.5 text-purple-400" />
+        <span className="font-bold">Super Admin (∞ Quota)</span>
       </button>
     );
   }
@@ -51,15 +70,20 @@ export function QuotaMeter() {
     : null;
 
   return (
-    <div
-      className={`hidden flex-col justify-center rounded-xl border px-3 py-1 transition-colors lg:flex bg-card ${
+    <button
+      type="button"
+      onClick={() => {
+        const hud = document.getElementById('career-quota-hud');
+        if (hud) hud.scrollIntoView({ behavior: 'smooth' });
+      }}
+      className={`hidden cursor-pointer flex-col justify-center rounded-xl border px-3 py-1 transition-all lg:flex bg-card text-left hover:scale-[1.01] ${
         exhausted
           ? 'border-signal/50 bg-gradient-to-r from-signal/15 to-signal/5'
           : low
             ? 'border-signal/40 bg-gradient-to-r from-signal/10 to-signal/5'
-            : 'border-edge'
+            : 'border-edge hover:border-signal/40'
       }`}
-      title={exhausted ? audit.reason || undefined : `${audit.label} · Free plan`}
+      title={exhausted ? audit.reason || undefined : `${audit.label} · Click to view Quota HUD`}
     >
       <div className="flex items-center gap-1.5 font-mono text-[11px] leading-tight">
         <Icon.Zap className={`h-3 w-3 ${exhausted || low ? 'text-signal' : 'text-muted'}`} />
@@ -82,6 +106,6 @@ export function QuotaMeter() {
           />
         </div>
       )}
-    </div>
+    </button>
   );
 }

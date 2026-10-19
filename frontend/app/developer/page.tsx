@@ -20,6 +20,7 @@ import DefenseHub from '@/components/DefenseHub';
 import { ResumeVault } from '@/components/ResumeVault';
 import { ResumeTailorModal } from '@/components/ResumeTailorModal';
 import { JDResumeMatchmaker } from '@/components/JDResumeMatchmaker';
+import { CareerQuotaHUD } from '@/components/CareerQuotaHUD';
 import {
   TargetRole,
   ApplicationStatus,
@@ -253,6 +254,9 @@ function DeveloperCareerContent() {
             </button>
           </div>
         </div>
+
+        {/* Developer CareerOS Quota & Consumption HUD */}
+        <CareerQuotaHUD username={devProfile.githubUsername} />
 
         {/* Workspace Mode Switcher Tabs */}
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-edge pb-3">
