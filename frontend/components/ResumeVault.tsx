@@ -37,6 +37,9 @@ import {
   JDMatchReport,
 } from '@/lib/resumes';
 import { TargetRole, getTargetRoles } from '@/lib/target-roles';
+import { useEntitlements } from '@/hooks/useEntitlements';
+import { useSession } from '@/components/SessionProvider';
+import { isAdmin } from '@/lib/admin';
 
 type ViewMode = 'preview' | 'matchmaker' | 'diagnostics' | 'defense' | 'inmail';
 
@@ -106,6 +109,14 @@ export function ResumeVault() {
   const [targetRoles, setTargetRoles] = useState<TargetRole[]>([]);
   const [matchRoleId, setMatchRoleId] = useState<string>('');
   const [expandedMatchProbeIdx, setExpandedMatchProbeIdx] = useState<number | null>(0);
+
+  // Dynamic Quota & Entitlement Gating
+  const { entitlements } = useEntitlements();
+  const { user } = useSession();
+  const isSuperAdmin = isAdmin(user);
+  const vaultVerdict = entitlements.capabilities['resumes.vault'];
+  const vaultLimit = isSuperAdmin ? 'unlimited' : (typeof vaultVerdict?.limit === 'number' ? vaultVerdict.limit : 3);
+  const isVaultAtLimit = !isSuperAdmin && typeof vaultLimit === 'number' && resumes.length >= vaultLimit;
 
   const loadData = async () => {
     let list = getResumes();
@@ -181,6 +192,15 @@ export function ResumeVault() {
 
   // Ingestion from file: extracts clean text & preserves original binary DataURL
   const processUploadedFile = async (file: File) => {
+    if (isVaultAtLimit) {
+      setAlertModal({
+        isOpen: true,
+        title: 'Resume Vault Capacity Reached',
+        description: `You have reached your limit of ${vaultLimit} stored resumes in the vault. Upgrade to Pro for 20 resumes and role variants.`,
+        variant: 'warning',
+      });
+      return;
+    }
     setIsProcessing(true);
     try {
       const ext = file.name.split('.').pop()?.toLowerCase() || '';
@@ -265,6 +285,16 @@ export function ResumeVault() {
     e.preventDefault();
     if (!rawPasteText.trim()) return;
 
+    if (isVaultAtLimit) {
+      setAlertModal({
+        isOpen: true,
+        title: 'Resume Vault Capacity Reached',
+        description: `You have reached your limit of ${vaultLimit} stored resumes in the vault. Upgrade to Pro for 20 resumes and role variants.`,
+        variant: 'warning',
+      });
+      return;
+    }
+
     const parsed = parseUploadedResumeText(rawPasteText.trim());
     const cleanTitle = formTitle.trim() || parsed.title || 'Master Resume';
 
@@ -307,6 +337,15 @@ export function ResumeVault() {
   };
 
   const handleCreateNew = () => {
+    if (isVaultAtLimit) {
+      setAlertModal({
+        isOpen: true,
+        title: 'Resume Vault Capacity Reached',
+        description: `You have reached your limit of ${vaultLimit} stored resumes in the vault. Upgrade to Pro for 20 resumes and role variants.`,
+        variant: 'warning',
+      });
+      return;
+    }
     setFormTitle('Senior Software Engineer');
     setFormRoleType('Backend / Distributed Systems');
     setFormFullName('');
@@ -446,6 +485,16 @@ export function ResumeVault() {
 
   const handleApplyTailoredProposal = () => {
     if (!activeResume || !proposal) return;
+
+    if (isVaultAtLimit) {
+      setAlertModal({
+        isOpen: true,
+        title: 'Resume Vault Capacity Reached',
+        description: `You have reached your limit of ${vaultLimit} stored resumes in the vault. Upgrade to Pro for 20 resumes and role variants.`,
+        variant: 'warning',
+      });
+      return;
+    }
 
     // Apply enabled bullet proposals to experiences
     const updatedExperiences = activeResume.experience.map((exp) => {
@@ -627,8 +676,13 @@ export function ResumeVault() {
             <span className="rounded bg-signal/15 px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-signal">
               Multi-Resume Vault & Version Tree
             </span>
-            <span className="font-mono text-xs text-muted">
-              {resumes.length} profile{resumes.length === 1 ? '' : 's'} registered
+            <span className="font-mono text-xs text-muted flex items-center gap-1.5">
+              <span>{resumes.length} / {isSuperAdmin ? '∞' : vaultLimit} stored</span>
+              {isVaultAtLimit && (
+                <span className="rounded bg-amber-500/15 text-amber-500 px-1.5 py-0.2 text-[10px] font-bold uppercase">
+                  Vault Full
+                </span>
+              )}
             </span>
           </div>
           <h2 className="mt-1 font-mono text-base font-bold text-content">
@@ -954,12 +1008,12 @@ export function ResumeVault() {
 
             <form onSubmit={handleSaveBranch} className="space-y-4 font-mono text-xs">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <FormField label="Variant Title" hint="e.g. Stripe Backend Variant">
+                <FormField label="Variant Title" hint="e.g. Cefalo Backend Variant">
                   <TextInput
                     required
                     value={formTitle}
                     onChange={(e) => setFormTitle(e.target.value)}
-                    placeholder="e.g. Staff Backend Engineer — Stripe Tailored"
+                    placeholder="e.g. Staff Backend Engineer — Cefalo Tailored"
                     mono
                   />
                 </FormField>

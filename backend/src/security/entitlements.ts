@@ -17,6 +17,8 @@ import { getUsage } from './usage-ledger';
 import { listProofs } from '../proofs/proof-store';
 import { getPlanState } from '../billing/subscriptions';
 
+import { limitsService } from './limits.service';
+
 export interface EntitlementEntry extends Verdict {
   /** Rolling-window reset for `audit.run`; null when unknown. */
   resetAt?: string | null;
@@ -25,6 +27,35 @@ export interface EntitlementEntry extends Verdict {
 const router = Router();
 
 router.get('/', async (req: Request, res: Response) => {
+  const isSuperAdmin = limitsService.isSuperAdmin(req.auth);
+
+  if (isSuperAdmin) {
+    const capabilities: Record<Capability, EntitlementEntry> = {} as Record<
+      Capability,
+      EntitlementEntry
+    >;
+    for (const capability of ALL_CAPABILITIES) {
+      capabilities[capability] = {
+        tier: 'admin' as any,
+        capability,
+        allowed: true,
+        remaining: 999999,
+        limit: 'unlimited',
+        branded: false,
+        reason: null,
+        upgradeTo: null,
+        label: 'Super Admin — Uncapped',
+        resetAt: null,
+      };
+    }
+    res.json({
+      tier: 'admin',
+      capabilities,
+      plan: { tier: 'admin', status: 'active', label: 'Super Admin' },
+    });
+    return;
+  }
+
   // Tier comes from the local subscription mirror (M25B); the registry's
   // `tierForSession` is only the anonymous/free fallback.
   const plan = await getPlanState(req.auth?.userId ?? null, Boolean(req.auth));
@@ -45,8 +76,6 @@ router.get('/', async (req: Request, res: Response) => {
       auditsUsed = usage.used;
       auditResetAt = usage.resetAt;
     } catch (err: any) {
-      // Fail closed: a meter that claims quota while enforcement blocks runs
-      // would be a lie. The audit capability says so explicitly below.
       auditLookupFailed = true;
       console.error('[entitlements] usage lookup failed:', err?.message);
     }
@@ -61,9 +90,34 @@ router.get('/', async (req: Request, res: Response) => {
 
   for (const capability of ALL_CAPABILITIES) {
     const used = capability === 'audit.run' ? auditsUsed : capability === 'proof.publish' ? proofsUsed : 0;
-    const verdict = can(tier, capability, { used: used ?? 0 });
+    const baseVerdict = can(tier, capability, { used: used ?? 0 });
+
+    // Overlay dynamic limits and custom user overrides from limitsService
+    const dynamicLimit = limitsService.getEffectiveLimit(req.auth || null, tier, capability as any);
+    let effectiveVerdict = baseVerdict;
+
+    if (dynamicLimit === 'unlimited') {
+      effectiveVerdict = {
+        ...baseVerdict,
+        allowed: true,
+        remaining: null,
+        limit: 'unlimited',
+        reason: null,
+        upgradeTo: null,
+      };
+    } else if (typeof dynamicLimit === 'number' && dynamicLimit > 0) {
+      const rem = Math.max(0, dynamicLimit - (used ?? 0));
+      effectiveVerdict = {
+        ...baseVerdict,
+        limit: dynamicLimit,
+        remaining: rem,
+        allowed: rem > 0,
+        reason: rem > 0 ? null : baseVerdict.reason,
+      };
+    }
+
     capabilities[capability] =
-      capability === 'audit.run' ? { ...verdict, resetAt: auditResetAt } : verdict;
+      capability === 'audit.run' ? { ...effectiveVerdict, resetAt: auditResetAt } : effectiveVerdict;
   }
 
   if (auditLookupFailed && capabilities['audit.run'].allowed) {

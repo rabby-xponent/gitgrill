@@ -27,8 +27,12 @@ export interface Entitlements {
 
 const DEMO_CAPS: Capability[] = [
   'audit.run',
+  'audit.deep_code',
   'profile.read',
   'target_role.create',
+  'resumes.vault',
+  'resume.tailor',
+  'practice.defense',
   'proof.publish',
   'practice.full',
   'data.export',

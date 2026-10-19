@@ -9,6 +9,7 @@ import { usageRouter } from './security/usage-ledger';
 import { entitlementsRouter } from './security/entitlements';
 import workspaceRoutes from './workspace/routes';
 import billingRoutes, { stripeWebhookHandler } from './billing/billing.routes';
+import adminRoutes from './admin/admin.routes';
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -92,6 +93,7 @@ app.use('/api/usage', usageRouter);
 app.use('/api/entitlements', entitlementsRouter);
 app.use('/api/workspace', workspaceRoutes);
 app.use('/api/billing', billingRoutes);
+app.use('/api/admin', adminRoutes);
 
 app.listen(PORT, () => {
   console.log(`GitGrill backend running on port ${PORT}`);

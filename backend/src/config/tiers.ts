@@ -22,8 +22,12 @@ export type Tier = 'anonymous' | 'free' | 'pro' | 'team';
 
 export type Capability =
   | 'audit.run'
+  | 'audit.deep_code'
   | 'profile.read'
   | 'target_role.create'
+  | 'resumes.vault'
+  | 'resume.tailor'
+  | 'practice.defense'
   | 'proof.publish'
   | 'practice.full'
   | 'screen.simulated'
@@ -52,13 +56,17 @@ export type TierRules = Partial<Record<Capability, CapabilityRule>>;
 export const TIER_ORDER: Tier[] = ['anonymous', 'free', 'pro', 'team'];
 
 const PRO_RULES = {
-  'audit.run': { limit: 'unlimited', label: 'Unlimited audits on a priority queue' },
+  'audit.run': { limit: 100, label: '100 comprehensive profile & repo audits' },
+  'audit.deep_code': { limit: 25, label: '25 deep AST code quality & architecture audits' },
   'profile.read': { limit: 'unlimited', label: 'Unlimited re-reads of analyzed profiles' },
-  'target_role.create': { limit: 'unlimited', label: 'Unlimited active target roles' },
+  'target_role.create': { limit: 50, label: '50 target roles & job description profiles' },
+  'resumes.vault': { limit: 20, label: '20 resumes & customized role variants in vault' },
+  'resume.tailor': { limit: 150, label: '150 AI resume tailorings against job descriptions' },
+  'practice.defense': { limit: 50, label: '50 deep behavioral & system defense drills' },
   'proof.publish': {
-    limit: 'unlimited',
+    limit: 10,
     branded: false,
-    label: 'Unlimited proof pages, no GitGrill branding',
+    label: '10 unbranded verifiable proof pages',
   },
   'practice.full': { limit: 'unlimited', label: 'Full spaced-repetition practice with grading' },
   'screen.simulated': { limit: 'unlimited', label: 'Simulated phone screens' },
@@ -88,22 +96,45 @@ export const TIERS = {
   // Signed-in, unpaid (architecture §6 matrix + §11 decision 10).
   free: {
     'audit.run': {
+      limit: 10,
+      per: '30d',
+      label: '10 profile & repository audits per rolling 30 days',
+      lockedReason: 'Your 10 free audits are used. The meter refills when your oldest audit leaves the rolling 30-day window.',
+    },
+    'audit.deep_code': {
       limit: 3,
       per: '30d',
-      label: '3 audits per rolling 30 days',
-      lockedReason: 'Your 3 free audits are used. The meter refills when your oldest audit leaves the rolling 30-day window.',
+      label: '3 deep AST code quality & architecture audits',
+      lockedReason: 'Your 3 free deep code audits are used for this 30-day cycle.',
     },
     'profile.read': { limit: 'unlimited', label: 'Unlimited re-reads of analyzed profiles' },
     'target_role.create': {
-      limit: 1,
-      label: '1 active target role',
-      lockedReason: 'Free workspaces track 1 active target role. Upgrade for unlimited roles — your existing role stays put either way.',
+      limit: 5,
+      label: '5 active target roles & JD benchmarks',
+      lockedReason: 'Free workspaces track up to 5 active target roles. Upgrade to Pro for 50 roles.',
+    },
+    'resumes.vault': {
+      limit: 3,
+      label: '3 resumes and variants in vault',
+      lockedReason: 'Free tier includes 3 stored resumes and role variants. Upgrade to Pro for 20.',
+    },
+    'resume.tailor': {
+      limit: 10,
+      per: '30d',
+      label: '10 AI resume tailoring runs per 30 days',
+      lockedReason: 'You have utilized your 10 free AI resume tailoring runs for this period.',
+    },
+    'practice.defense': {
+      limit: 5,
+      per: '30d',
+      label: '5 defense & behavioral drills per 30 days',
+      lockedReason: 'Free tier includes 5 practice defense drills per month. Upgrade to Pro for 50.',
     },
     'proof.publish': {
       limit: 1,
       branded: true,
       label: '1 active proof page, branded',
-      lockedReason: 'Free workspaces keep 1 active proof page. Pro publishes unlimited pages with no GitGrill branding. Pages you already published stay live.',
+      lockedReason: 'Free workspaces keep 1 active proof page. Pro publishes 10 unbranded pages.',
     },
     'practice.full': {
       limit: 'view_only',
@@ -230,8 +261,12 @@ export function numericLimit(tier: Tier, capability: Capability): number | null 
 /** Every capability the v1 matrix knows about, in display order. */
 export const ALL_CAPABILITIES: Capability[] = [
   'audit.run',
+  'audit.deep_code',
   'profile.read',
   'target_role.create',
+  'resumes.vault',
+  'resume.tailor',
+  'practice.defense',
   'proof.publish',
   'practice.full',
   'screen.simulated',

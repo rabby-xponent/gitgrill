@@ -3,7 +3,7 @@
 /**
  * Post-checkout return notice (M25B — architecture §8).
  *
- * Stripe redirects back with `?checkout=success`, but the webhook that grants
+ * Checkout redirects back with `?checkout=success`, but the webhook that grants
  * the plan is a separate delivery — it can land a second or two later. So this
  * banner re-checks entitlements for a few seconds instead of claiming an upgrade
  * that has not happened yet, and disappears on its own once the tier lifts.

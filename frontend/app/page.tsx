@@ -419,7 +419,7 @@ export default function Home() {
                         </span>
                       </div>
                       <div className="flex items-center justify-between text-[11px]">
-                        <span className="text-slate-900 dark:text-[#ece9f0] font-medium">Postgres RLS / Stripe Auth</span>
+                        <span className="text-slate-900 dark:text-[#ece9f0] font-medium">Postgres RLS / JWT Auth</span>
                         <span className="inline-flex items-center gap-1 text-slate-700 dark:text-[#ece9f0]/80 font-semibold">
                           <Icon.Globe className="h-3 w-3" /> Live Shipped
                         </span>

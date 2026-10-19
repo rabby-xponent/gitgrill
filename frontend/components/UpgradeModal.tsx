@@ -71,7 +71,7 @@ export function UpgradeModal({
     setError(null);
     try {
       const { url } = await startCheckout(plan);
-      // Stripe hosts the payment step; our webhook decides the plan afterwards.
+      // Gateway hosts the payment step; our webhook decides the plan afterwards.
       window.location.href = url;
     } catch (err) {
       if (err instanceof BillingError && err.notConfigured) {

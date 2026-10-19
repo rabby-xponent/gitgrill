@@ -1,6 +1,6 @@
 /**
  * Bangladesh Mobile Financial Services (MFS) Payment Engine
- * Supports bKash, Nagad, and Rocket manual verification workflows.
+ * Supports bKash and Nagad manual verification workflows.
  * Zero-overhead bootstrapping payment architecture for Bangladeshi developers.
  */
 

@@ -328,6 +328,13 @@ export const Icon = {
       <path d="M21 12a9 9 0 1 1-6.219-8.56" />
     </svg>
   ),
+  Layers: (p: IconProps) => (
+    <svg {...base(p)}>
+      <path d="m12 2 10 5-10 5L2 7l10-5Z" />
+      <path d="m2 17 10 5 10-5" />
+      <path d="m2 12 10 5 10-5" />
+    </svg>
+  ),
 };
 
 export type IconName = keyof typeof Icon;
