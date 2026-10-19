@@ -116,12 +116,12 @@ export const DOSSIER_SYSTEM_MAP: SubsystemMap[] = [
     ],
   },
   {
-    title: 'Dual Monetization & Identity Security',
+    title: 'MFS Monetization & Identity Security',
     badge: 'Fintech & Zero-Leak RLS',
     description:
-      'Global card subscriptions via Stripe Webhooks paired with a bootstrapped Bangladesh MFS protocol (bKash/Nagad/Rocket) offering 24-hr provisional access. Protected by Supabase Postgres Row-Level Security ensuring strict candidate/recruiter isolation.',
+      'Zero-overhead Bangladesh MFS protocol (bKash and Nagad) offering 24-hr instant provisional access paired with an async verification ledger. Protected by Supabase Postgres Row-Level Security ensuring strict candidate/recruiter isolation.',
     components: [
-      'Stripe Webhook Mirror (No direct billing reads)',
+      'Dynamic MFS Accounts Engine (bKash & Nagad)',
       'MFS 24h Provisional Access Ledger',
       'Supabase JWT & Postgres Row-Level Security',
       'Zero-Knowledge Candidate Boundary',
@@ -185,7 +185,7 @@ export const DOSSIER_DECISIONS: DossierDecision[] = [
     icon: 'briefcase',
     title: 'Zero-Cost Bootstrapped Monetization: Bangladesh MFS Protocol',
     decision:
-      'Implemented a local Bangladeshi Mobile Financial Services flow (bKash, Nagad, Rocket) alongside Stripe, granting immediate 24-hour provisional Pro access upon TrxID submission, backed by an async admin verification ledger.',
+      'Implemented a local Bangladeshi Mobile Financial Services flow (bKash & Nagad), granting immediate 24-hour provisional Pro access upon TrxID submission, backed by an async admin verification ledger.',
     why:
       'Commercial merchant payment gateways in Bangladesh require ~৳30k upfront setup fees and formal trade licenses. The 24-hour provisional protocol achieves zero upfront overhead, zero user friction, and full monetization readiness with async admin oversight via /admin/billing.',
     verifiedBy: 'Race-tested and verified with cache/mfs-payments.json, /api/billing/mfs/submit, and /admin/billing console.',

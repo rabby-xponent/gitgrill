@@ -4,14 +4,23 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import { Icon } from '@/components/icons';
 import { ConfirmModal, AlertModal, TextArea } from '@/components/ui';
+import { useSession } from '@/components/SessionProvider';
+import { isAdmin } from '@/lib/admin';
 import {
   AdminMfsRecord,
   fetchAdminMfsPayments,
   verifyAdminMfsPayment,
+  fetchMfsConfig,
+  updateAdminMfsConfig,
+  MfsAccountConfig,
   PLANS,
 } from '@/lib/billing';
 
 export default function AdminBillingPage() {
+  const { user, loading: sessionLoading } = useSession();
+  const [activeTab, setActiveTab] = useState<'ledger' | 'accounts'>('ledger');
+
+  // Ledger state
   const [payments, setPayments] = useState<AdminMfsRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -26,11 +35,24 @@ export default function AdminBillingPage() {
   const [paymentToApprove, setPaymentToApprove] = useState<AdminMfsRecord | null>(null);
   const [alertInfo, setAlertInfo] = useState<{ title: string; description: string; variant?: 'error' | 'info' | 'warning' } | null>(null);
 
+  // Dynamic MFS accounts configuration state
+  const [mfsConfig, setMfsConfig] = useState<MfsAccountConfig>({
+    bkash: { number: '', type: 'personal', note: '', isActive: true },
+    nagad: { number: '', type: 'personal', note: '', isActive: true },
+    noticeMessage: '',
+  });
+  const [configLoading, setConfigLoading] = useState(false);
+  const [configSaving, setConfigSaving] = useState(false);
+  const [configSuccess, setConfigSuccess] = useState(false);
+
   // Load saved admin key from localStorage
   useEffect(() => {
     const saved = localStorage.getItem('gitgrill_admin_key') || localStorage.getItem('devscope_admin_key');
     if (saved) setAdminKey(saved);
   }, []);
+
+  const isSuperAdmin = isAdmin(user);
+  const isAuthorized = isSuperAdmin || Boolean(adminKey);
 
   const loadPayments = useCallback(async () => {
     setLoading(true);
@@ -48,13 +70,33 @@ export default function AdminBillingPage() {
     }
   }, [statusFilter, adminKey]);
 
+  const loadConfig = useCallback(async () => {
+    setConfigLoading(true);
+    try {
+      const cfg = await fetchMfsConfig();
+      if (cfg) setMfsConfig(cfg);
+    } catch {
+      // ignore
+    } finally {
+      setConfigLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
-    loadPayments();
-  }, [loadPayments]);
+    if (isAuthorized) {
+      loadPayments();
+      loadConfig();
+    }
+  }, [isAuthorized, loadPayments, loadConfig]);
 
   const handleSaveAdminKey = (newKey: string) => {
     setAdminKey(newKey);
-    localStorage.setItem('gitgrill_admin_key', newKey);
+    if (newKey) {
+      localStorage.setItem('gitgrill_admin_key', newKey);
+    } else {
+      localStorage.removeItem('gitgrill_admin_key');
+      localStorage.removeItem('devscope_admin_key');
+    }
     setShowKeyInput(false);
   };
 
@@ -103,6 +145,22 @@ export default function AdminBillingPage() {
     }
   };
 
+  const handleSaveMfsConfig = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setConfigSaving(true);
+    setConfigSuccess(false);
+    try {
+      const res = await updateAdminMfsConfig(mfsConfig, adminKey || undefined);
+      if (res.config) setMfsConfig(res.config);
+      setConfigSuccess(true);
+      setTimeout(() => setConfigSuccess(false), 3000);
+    } catch (err: any) {
+      setAlertInfo({ title: 'Configuration Update Failed', description: err?.message || 'Server error', variant: 'error' });
+    } finally {
+      setConfigSaving(false);
+    }
+  };
+
   // Filtered list by search term
   const filteredPayments = useMemo(() => {
     const q = searchQuery.toLowerCase().trim();
@@ -129,6 +187,66 @@ export default function AdminBillingPage() {
     return { total: payments.length, pending, verified, rejected, totalBdt };
   }, [payments]);
 
+  // Loading state
+  if (sessionLoading) {
+    return (
+      <div className="min-h-screen bg-canvas flex items-center justify-center p-6 text-muted font-mono text-sm">
+        <Icon.Refresh className="h-5 w-5 animate-spin mr-2 text-signal" />
+        Authenticating Super Admin session...
+      </div>
+    );
+  }
+
+  // Unauthorized Gate Screen
+  if (!isAuthorized) {
+    return (
+      <div className="min-h-screen bg-canvas text-content flex items-center justify-center p-4">
+        <div className="w-full max-w-md rounded-2xl border border-edge bg-card p-6 shadow-xl text-center space-y-4">
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-rose-500/15 text-rose-500 mx-auto">
+            <Icon.Lock className="h-6 w-6" />
+          </div>
+          <h2 className="font-sans text-xl font-bold text-content">Super Admin Authorization Required</h2>
+          <p className="font-mono text-xs text-muted leading-relaxed">
+            The platform operations console is restricted to Super Admins. Sign in with an authorized administrator account or enter an admin secret key.
+          </p>
+
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              const val = (e.currentTarget.elements.namedItem('key') as HTMLInputElement)?.value;
+              handleSaveAdminKey(val.trim());
+            }}
+            className="space-y-3 pt-2"
+          >
+            <input
+              name="key"
+              type="password"
+              placeholder="Enter ADMIN_SECRET_KEY..."
+              className="w-full rounded-xl border border-edge bg-well px-3.5 py-2.5 font-mono text-xs text-content focus:border-signal focus:outline-hidden"
+              autoFocus
+            />
+            <button
+              type="submit"
+              className="w-full rounded-xl bg-signal py-2.5 font-mono text-xs font-bold text-white uppercase tracking-wider hover:bg-signal/90 transition-all cursor-pointer"
+            >
+              Unlock Console
+            </button>
+          </form>
+
+          <div className="pt-2 border-t border-edge">
+            <Link
+              href="/developer"
+              className="font-mono text-xs text-muted hover:text-signal transition-colors inline-flex items-center gap-1"
+            >
+              <Icon.ArrowLeft className="h-3 w-3" />
+              <span>Return to Developer Workspace</span>
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-canvas text-content">
       {/* Top Navigation Bar */}
@@ -148,10 +266,10 @@ export default function AdminBillingPage() {
                 ৳
               </span>
               <h1 className="font-sans text-sm font-bold tracking-tight text-content">
-                MFS Payment Admin
+                Super Admin Console
               </h1>
               <span className="rounded bg-well px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider text-muted border border-edge">
-                Bangladesh Engine
+                {isSuperAdmin ? 'Super Admin' : 'Key Authenticated'}
               </span>
             </div>
           </div>
@@ -159,43 +277,76 @@ export default function AdminBillingPage() {
           <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={() => setShowKeyInput((v) => !v)}
-              className="rounded-lg border border-edge bg-well px-3 py-1.5 font-mono text-xs text-muted hover:text-content transition-colors flex items-center gap-1.5"
+              onClick={() => setShowKeyInput(!showKeyInput)}
+              className="flex items-center gap-1.5 rounded-lg border border-edge bg-card px-3 py-1.5 font-mono text-xs text-muted hover:text-content hover:border-signal/50 transition-colors"
             >
-              <Icon.Lock className="h-3 w-3" />
+              <Icon.Lock className="h-3.5 w-3.5" />
               <span>{adminKey ? 'Key Configured' : 'Set Admin Key'}</span>
             </button>
 
             <button
               type="button"
-              onClick={loadPayments}
+              onClick={() => {
+                loadPayments();
+                loadConfig();
+              }}
               disabled={loading}
-              className="rounded-lg border border-edge bg-well px-3 py-1.5 font-mono text-xs text-content hover:bg-card transition-colors flex items-center gap-1.5 disabled:opacity-50"
+              className="flex items-center gap-1.5 rounded-lg bg-well border border-edge hover:bg-well/80 px-3 py-1.5 font-mono text-xs text-content transition-colors"
             >
-              <Icon.Refresh className={`h-3 w-3 ${loading ? 'animate-spin' : ''}`} />
+              <Icon.Refresh className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
               <span>Refresh</span>
             </button>
           </div>
+        </div>
+
+        {/* Tab Switcher */}
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 flex gap-6 border-t border-edge/60">
+          <button
+            type="button"
+            onClick={() => setActiveTab('ledger')}
+            className={`flex items-center gap-2 py-3 font-mono text-xs font-bold border-b-2 transition-all cursor-pointer ${
+              activeTab === 'ledger'
+                ? 'border-signal text-signal'
+                : 'border-transparent text-muted hover:text-content'
+            }`}
+          >
+            <span>৳ MFS Verification Ledger</span>
+            {metrics.pending > 0 && (
+              <span className="rounded-full bg-amber-500/20 text-amber-600 dark:text-amber-400 px-2 py-0.2 text-[10px]">
+                {metrics.pending} pending
+              </span>
+            )}
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('accounts')}
+            className={`flex items-center gap-2 py-3 font-mono text-xs font-bold border-b-2 transition-all cursor-pointer ${
+              activeTab === 'accounts'
+                ? 'border-signal text-signal'
+                : 'border-transparent text-muted hover:text-content'
+            }`}
+          >
+            <Icon.Settings className="h-3.5 w-3.5" />
+            <span>⚙️ MFS Accounts & Notices</span>
+          </button>
         </div>
       </header>
 
       {/* Admin Key Drawer */}
       {showKeyInput && (
-        <div className="border-b border-edge bg-well/60 px-4 py-3">
+        <div className="bg-well/80 border-b border-edge px-4 sm:px-6 lg:px-8 py-3 animate-in fade-in">
           <div className="mx-auto max-w-7xl flex items-center gap-3">
-            <label className="font-mono text-xs text-muted whitespace-nowrap">
-              Admin Secret Key:
-            </label>
+            <span className="font-mono text-xs text-muted">Admin Secret Key:</span>
             <input
               type="password"
-              placeholder="Enter ADMIN_SECRET_KEY"
               defaultValue={adminKey}
+              placeholder="Enter ADMIN_SECRET_KEY..."
+              className="rounded-lg border border-edge bg-card px-3 py-1 font-mono text-xs text-content w-64 focus:border-signal focus:outline-hidden"
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
-                  handleSaveAdminKey((e.target as HTMLInputElement).value.trim());
+                  handleSaveAdminKey(e.currentTarget.value.trim());
                 }
               }}
-              className="rounded-lg border border-edge bg-card px-3 py-1 font-mono text-xs text-content w-64 focus:border-signal focus:outline-hidden"
             />
             <button
               type="button"
@@ -219,284 +370,502 @@ export default function AdminBillingPage() {
       )}
 
       <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8 space-y-6">
-        {/* Metric Cards Row */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-          <div className="rounded-xl border border-edge bg-card p-4 shadow-xs">
-            <div className="font-mono text-[11px] uppercase tracking-wider text-muted">
-              Total Submissions
+        {activeTab === 'accounts' ? (
+          /* TAB 2: Dynamic MFS Accounts Configuration */
+          <div className="max-w-3xl space-y-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="font-sans text-xl font-bold text-content flex items-center gap-2">
+                  <Icon.Settings className="h-5 w-5 text-signal" />
+                  <span>Dynamic MFS Accounts Management</span>
+                </h2>
+                <p className="font-mono text-xs text-muted mt-1">
+                  Update bKash and Nagad numbers, account types, and instructions directly. Changes apply immediately to all users.
+                </p>
+              </div>
+              {configSuccess && (
+                <div className="flex items-center gap-1.5 text-xs font-mono font-bold text-emerald-600 bg-emerald-500/10 px-3 py-1.5 rounded-lg border border-emerald-500/30">
+                  <Icon.Check className="h-4 w-4" />
+                  <span>Settings Saved!</span>
+                </div>
+              )}
             </div>
-            <div className="mt-1 font-sans text-2xl font-bold text-content">
-              {metrics.total}
-            </div>
-          </div>
 
-          <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 shadow-xs">
-            <div className="font-mono text-[11px] uppercase tracking-wider text-amber-600 dark:text-amber-400 font-semibold">
-              Pending Verification
-            </div>
-            <div className="mt-1 font-sans text-2xl font-bold text-amber-600 dark:text-amber-400">
-              {metrics.pending}
-            </div>
-          </div>
+            <form onSubmit={handleSaveMfsConfig} className="space-y-6">
+              {/* bKash Account Settings */}
+              <div className="rounded-2xl border border-edge bg-card p-6 shadow-xs space-y-4">
+                <div className="flex items-center justify-between border-b border-edge pb-3">
+                  <div className="flex items-center gap-2">
+                    <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-[#e2136e] text-white font-bold text-[10px]">
+                      bK
+                    </span>
+                    <h3 className="font-sans font-bold text-sm text-content">bKash Account Settings</h3>
+                  </div>
+                  <label className="flex items-center gap-2 text-xs font-mono cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={mfsConfig.bkash.isActive}
+                      onChange={(e) =>
+                        setMfsConfig({
+                          ...mfsConfig,
+                          bkash: { ...mfsConfig.bkash, isActive: e.target.checked },
+                        })
+                      }
+                      className="rounded border-edge"
+                    />
+                    <span>Active for Checkout</span>
+                  </label>
+                </div>
 
-          <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-4 shadow-xs">
-            <div className="font-mono text-[11px] uppercase tracking-wider text-emerald-600 dark:text-emerald-400 font-semibold">
-              Verified Pro
-            </div>
-            <div className="mt-1 font-sans text-2xl font-bold text-emerald-600 dark:text-emerald-400">
-              {metrics.verified}
-            </div>
-          </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[11px] font-mono uppercase text-muted mb-1.5">
+                      bKash Phone Number
+                    </label>
+                    <input
+                      type="text"
+                      value={mfsConfig.bkash.number}
+                      onChange={(e) =>
+                        setMfsConfig({
+                          ...mfsConfig,
+                          bkash: { ...mfsConfig.bkash, number: e.target.value.trim() },
+                        })
+                      }
+                      placeholder="017XXXXXXXX"
+                      className="w-full rounded-xl border border-edge bg-well px-3.5 py-2 font-mono text-sm text-content focus:border-signal focus:outline-hidden"
+                      required
+                    />
+                  </div>
 
-          <div className="rounded-xl border border-rose-500/30 bg-rose-500/5 p-4 shadow-xs">
-            <div className="font-mono text-[11px] uppercase tracking-wider text-rose-600 dark:text-rose-400 font-semibold">
-              Rejected
-            </div>
-            <div className="mt-1 font-sans text-2xl font-bold text-rose-600 dark:text-rose-400">
-              {metrics.rejected}
-            </div>
-          </div>
+                  <div>
+                    <label className="block text-[11px] font-mono uppercase text-muted mb-1.5">
+                      Account Type
+                    </label>
+                    <select
+                      value={mfsConfig.bkash.type}
+                      onChange={(e) =>
+                        setMfsConfig({
+                          ...mfsConfig,
+                          bkash: { ...mfsConfig.bkash, type: e.target.value as any },
+                        })
+                      }
+                      className="w-full rounded-xl border border-edge bg-well px-3.5 py-2 font-mono text-sm text-content focus:border-signal focus:outline-hidden cursor-pointer"
+                    >
+                      <option value="personal">Personal (Send Money)</option>
+                      <option value="merchant">Merchant (Payment)</option>
+                    </select>
+                  </div>
+                </div>
 
-          <div className="rounded-xl border border-edge bg-card p-4 shadow-xs col-span-2 md:col-span-1">
-            <div className="font-mono text-[11px] uppercase tracking-wider text-muted">
-              Verified Revenue
-            </div>
-            <div className="mt-1 font-sans text-2xl font-bold text-content">
-              ৳{metrics.totalBdt.toLocaleString()}
-            </div>
-          </div>
-        </div>
+                <div>
+                  <label className="block text-[11px] font-mono uppercase text-muted mb-1.5">
+                    User Instructions Note (Bengali / English)
+                  </label>
+                  <input
+                    type="text"
+                    value={mfsConfig.bkash.note}
+                    onChange={(e) =>
+                      setMfsConfig({
+                        ...mfsConfig,
+                        bkash: { ...mfsConfig.bkash, note: e.target.value },
+                      })
+                    }
+                    placeholder="e.g. Send Money অপশন ব্যবহার করুন। রেফারেন্সে গিটহাব হ্যান্ডেল দিন।"
+                    className="w-full rounded-xl border border-edge bg-well px-3.5 py-2 font-mono text-xs text-content focus:border-signal focus:outline-hidden"
+                  />
+                </div>
+              </div>
 
-        {/* Filter and Search Bar */}
-        <div className="rounded-xl border border-edge bg-card p-4 shadow-xs flex flex-wrap items-center justify-between gap-4">
-          {/* Status Tabs */}
-          <div className="flex gap-1.5 bg-well p-1 rounded-lg border border-edge">
-            {(
-              [
-                { id: 'all', label: 'All' },
-                { id: 'pending_verification', label: `Pending (${metrics.pending})` },
-                { id: 'verified', label: 'Verified' },
-                { id: 'rejected', label: 'Rejected' },
-              ] as const
-            ).map((tab) => (
-              <button
-                key={tab.id}
-                type="button"
-                onClick={() => setStatusFilter(tab.id)}
-                className={`px-3 py-1.5 rounded-md font-mono text-xs font-semibold transition-all ${
-                  statusFilter === tab.id
-                    ? 'bg-card text-content shadow-xs'
-                    : 'text-muted hover:text-content'
-                }`}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
+              {/* Nagad Account Settings */}
+              <div className="rounded-2xl border border-edge bg-card p-6 shadow-xs space-y-4">
+                <div className="flex items-center justify-between border-b border-edge pb-3">
+                  <div className="flex items-center gap-2">
+                    <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-[#f7941d] text-white font-bold text-[10px]">
+                      ন
+                    </span>
+                    <h3 className="font-sans font-bold text-sm text-content">Nagad Account Settings</h3>
+                  </div>
+                  <label className="flex items-center gap-2 text-xs font-mono cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={mfsConfig.nagad.isActive}
+                      onChange={(e) =>
+                        setMfsConfig({
+                          ...mfsConfig,
+                          nagad: { ...mfsConfig.nagad, isActive: e.target.checked },
+                        })
+                      }
+                      className="rounded border-edge"
+                    />
+                    <span>Active for Checkout</span>
+                  </label>
+                </div>
 
-          {/* Search box */}
-          <div className="flex items-center gap-2 rounded-lg border border-edge bg-well px-3 py-1.5 w-full sm:w-72">
-            <Icon.Search className="h-3.5 w-3.5 text-muted flex-none" />
-            <input
-              type="text"
-              placeholder="Search TrxID, phone, user..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="bg-transparent font-mono text-xs text-content outline-none w-full placeholder:text-muted/60"
-            />
-            {searchQuery && (
-              <button
-                type="button"
-                onClick={() => setSearchQuery('')}
-                className="text-muted hover:text-content"
-              >
-                <Icon.X className="h-3 w-3" />
-              </button>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[11px] font-mono uppercase text-muted mb-1.5">
+                      Nagad Phone Number
+                    </label>
+                    <input
+                      type="text"
+                      value={mfsConfig.nagad.number}
+                      onChange={(e) =>
+                        setMfsConfig({
+                          ...mfsConfig,
+                          nagad: { ...mfsConfig.nagad, number: e.target.value.trim() },
+                        })
+                      }
+                      placeholder="018XXXXXXXX"
+                      className="w-full rounded-xl border border-edge bg-well px-3.5 py-2 font-mono text-sm text-content focus:border-signal focus:outline-hidden"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-mono uppercase text-muted mb-1.5">
+                      Account Type
+                    </label>
+                    <select
+                      value={mfsConfig.nagad.type}
+                      onChange={(e) =>
+                        setMfsConfig({
+                          ...mfsConfig,
+                          nagad: { ...mfsConfig.nagad, type: e.target.value as any },
+                        })
+                      }
+                      className="w-full rounded-xl border border-edge bg-well px-3.5 py-2 font-mono text-sm text-content focus:border-signal focus:outline-hidden cursor-pointer"
+                    >
+                      <option value="personal">Personal (Send Money)</option>
+                      <option value="merchant">Merchant (Payment)</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-mono uppercase text-muted mb-1.5">
+                    User Instructions Note (Bengali / English)
+                  </label>
+                  <input
+                    type="text"
+                    value={mfsConfig.nagad.note}
+                    onChange={(e) =>
+                      setMfsConfig({
+                        ...mfsConfig,
+                        nagad: { ...mfsConfig.nagad, note: e.target.value },
+                      })
+                    }
+                    placeholder="e.g. Send Money অপশন ব্যবহার করুন।"
+                    className="w-full rounded-xl border border-edge bg-well px-3.5 py-2 font-mono text-xs text-content focus:border-signal focus:outline-hidden"
+                  />
+                </div>
+              </div>
+
+              {/* Notice Message Banner */}
+              <div className="rounded-2xl border border-edge bg-card p-6 shadow-xs space-y-3">
+                <h3 className="font-sans font-bold text-sm text-content flex items-center gap-2">
+                  <Icon.Info className="h-4 w-4 text-signal" />
+                  <span>Checkout Modal Announcement Banner</span>
+                </h3>
+                <p className="text-xs font-mono text-muted">
+                  This notice will be prominently displayed inside the bKash/Nagad checkout modal for all users.
+                </p>
+                <TextArea
+                  rows={2}
+                  value={mfsConfig.noticeMessage || ''}
+                  onChange={(e) =>
+                    setMfsConfig({
+                      ...mfsConfig,
+                      noticeMessage: e.target.value,
+                    })
+                  }
+                  placeholder="e.g. বিকাশ অথবা নগদ দিয়ে পেমেন্ট করার পর ট্রানজেকশন আইডি (TrxID) সাবমিট করুন..."
+                  mono
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-2">
+                <button
+                  type="submit"
+                  disabled={configSaving}
+                  className="rounded-xl bg-signal px-6 py-2.5 font-mono text-xs font-bold uppercase tracking-wider text-white shadow-md hover:bg-signal/90 transition-all disabled:opacity-50 cursor-pointer"
+                >
+                  {configSaving ? 'Saving Changes...' : 'Save MFS Configuration'}
+                </button>
+              </div>
+            </form>
+          </div>
+        ) : (
+          /* TAB 1: Verification Ledger */
+          <>
+            {/* Metric Cards Row */}
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+              <div className="rounded-xl border border-edge bg-card p-4 shadow-xs">
+                <div className="font-mono text-[11px] uppercase tracking-wider text-muted">
+                  Total Submissions
+                </div>
+                <div className="mt-1 font-sans text-2xl font-bold text-content">
+                  {metrics.total}
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 shadow-xs">
+                <div className="font-mono text-[11px] uppercase tracking-wider text-amber-600 dark:text-amber-400 font-semibold">
+                  Pending Verification
+                </div>
+                <div className="mt-1 font-sans text-2xl font-bold text-amber-600 dark:text-amber-400">
+                  {metrics.pending}
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-4 shadow-xs">
+                <div className="font-mono text-[11px] uppercase tracking-wider text-emerald-600 dark:text-emerald-400 font-semibold">
+                  Verified Pro
+                </div>
+                <div className="mt-1 font-sans text-2xl font-bold text-emerald-600 dark:text-emerald-400">
+                  {metrics.verified}
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-rose-500/30 bg-rose-500/5 p-4 shadow-xs">
+                <div className="font-mono text-[11px] uppercase tracking-wider text-rose-600 dark:text-rose-400 font-semibold">
+                  Rejected / Invalid
+                </div>
+                <div className="mt-1 font-sans text-2xl font-bold text-rose-600 dark:text-rose-400">
+                  {metrics.rejected}
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-[#ea580c]/30 bg-[#ea580c]/5 p-4 shadow-xs col-span-2 md:col-span-1">
+                <div className="font-mono text-[11px] uppercase tracking-wider text-[#ea580c] dark:text-signal font-semibold">
+                  Verified BDT Revenue
+                </div>
+                <div className="mt-1 font-sans text-2xl font-bold text-[#ea580c] dark:text-signal">
+                  ৳{metrics.totalBdt.toLocaleString('en-US')}
+                </div>
+              </div>
+            </div>
+
+            {/* Controls Bar: Filter Status + Search Input */}
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-card border border-edge rounded-xl p-3 shadow-xs">
+              {/* Filter Tabs */}
+              <div className="flex items-center gap-1.5 overflow-x-auto thin-scroll pb-1 sm:pb-0">
+                {(['all', 'pending_verification', 'verified', 'rejected'] as const).map((filter) => (
+                  <button
+                    key={filter}
+                    type="button"
+                    onClick={() => setStatusFilter(filter)}
+                    className={`rounded-lg px-3 py-1.5 font-mono text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer ${
+                      statusFilter === filter
+                        ? 'bg-signal text-white shadow-xs'
+                        : 'bg-well text-muted hover:text-content'
+                    }`}
+                  >
+                    {filter === 'all'
+                      ? 'All'
+                      : filter === 'pending_verification'
+                        ? 'Pending'
+                        : filter === 'verified'
+                          ? 'Verified'
+                          : 'Rejected'}
+                  </button>
+                ))}
+              </div>
+
+              {/* Search Bar */}
+              <div className="relative flex-1 sm:max-w-xs">
+                <Icon.Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-muted" />
+                <input
+                  type="text"
+                  placeholder="Search TrxID, phone, user..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full rounded-lg border border-edge bg-well pl-9 pr-3 py-1.5 font-mono text-xs text-content focus:border-signal focus:outline-hidden"
+                />
+              </div>
+            </div>
+
+            {/* Error Banner */}
+            {error && (
+              <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-4 text-xs font-mono text-rose-600 dark:text-rose-400 flex items-center justify-between">
+                <span>{error}</span>
+                <button
+                  type="button"
+                  onClick={loadPayments}
+                  className="underline hover:no-underline font-bold"
+                >
+                  Retry
+                </button>
+              </div>
             )}
-          </div>
-        </div>
 
-        {/* Error Notification */}
-        {error && (
-          <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-4 font-mono text-xs text-rose-600 dark:text-rose-400">
-            {error}
-          </div>
-        )}
-
-        {/* Payments Table */}
-        <div className="rounded-2xl border border-edge bg-card overflow-hidden shadow-xs">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left font-mono text-xs">
-              <thead className="border-b border-edge bg-well/70 text-muted uppercase text-[10px] tracking-wider">
-                <tr>
-                  <th className="px-4 py-3.5">Provider</th>
-                  <th className="px-4 py-3.5">Transaction ID</th>
-                  <th className="px-4 py-3.5">Amount / Plan</th>
-                  <th className="px-4 py-3.5">User</th>
-                  <th className="px-4 py-3.5">Sender Phone</th>
-                  <th className="px-4 py-3.5">Status</th>
-                  <th className="px-4 py-3.5">Date & Provisional</th>
-                  <th className="px-4 py-3.5 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-edge">
-                {loading ? (
-                  <tr>
-                    <td colSpan={8} className="px-4 py-12 text-center text-muted">
-                      <Icon.Spinner className="h-5 w-5 animate-spin mx-auto text-muted mb-2" />
-                      Loading MFS payments...
-                    </td>
-                  </tr>
-                ) : filteredPayments.length === 0 ? (
-                  <tr>
-                    <td colSpan={8} className="px-4 py-12 text-center text-muted">
-                      No transactions found matching your criteria.
-                    </td>
-                  </tr>
-                ) : (
-                  filteredPayments.map((record) => {
-                    const planDef = PLANS[record.planId] || { label: record.planId, displayBdt: `৳${record.amountBdt}` };
-                    const isPending = record.status === 'pending_verification';
-                    const isBusy = actionInProgress === record.id;
-                    const date = new Date(record.createdAt);
-
-                    return (
-                      <tr
-                        key={record.id}
-                        className={`transition-colors hover:bg-well/40 ${
-                          isPending ? 'bg-amber-500/[0.02]' : ''
-                        }`}
-                      >
-                        {/* Provider */}
-                        <td className="px-4 py-3.5 whitespace-nowrap">
-                          <span
-                            className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold text-white uppercase ${
-                              record.provider === 'bkash'
-                                ? 'bg-[#e2136e]'
-                                : record.provider === 'nagad'
-                                  ? 'bg-[#f7941d]'
-                                  : 'bg-[#8c3494]'
-                            }`}
-                          >
-                            {record.provider}
-                          </span>
-                        </td>
-
-                        {/* TrxID */}
-                        <td className="px-4 py-3.5 whitespace-nowrap">
-                          <div className="flex items-center gap-1.5">
-                            <span className="font-bold text-content tracking-wider">
-                              {record.trxId}
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => handleCopyTrx(record.trxId)}
-                              title="Copy TrxID"
-                              className="text-muted hover:text-content p-1 rounded hover:bg-well"
-                            >
-                              {copiedTrxId === record.trxId ? (
-                                <Icon.Check className="h-3 w-3 text-emerald-600 dark:text-emerald-400" />
-                              ) : (
-                                <Icon.Copy className="h-3 w-3" />
-                              )}
-                            </button>
-                          </div>
-                        </td>
-
-                        {/* Plan & Amount */}
-                        <td className="px-4 py-3.5 whitespace-nowrap">
-                          <div className="font-bold text-content">
-                            ৳{record.amountBdt}
-                          </div>
-                          <div className="text-[10px] text-muted">
-                            {planDef.label}
-                          </div>
-                        </td>
-
-                        {/* User */}
-                        <td className="px-4 py-3.5">
-                          <div className="font-semibold text-content truncate max-w-[140px]">
-                            {record.userHandle ? `@${record.userHandle}` : record.userEmail || record.userId.slice(0, 10)}
-                          </div>
-                          {record.userEmail && record.userHandle && (
-                            <div className="text-[10px] text-muted truncate max-w-[140px]">
-                              {record.userEmail}
-                            </div>
-                          )}
-                        </td>
-
-                        {/* Sender Phone */}
-                        <td className="px-4 py-3.5 whitespace-nowrap text-content">
-                          {record.senderNumber}
-                        </td>
-
-                        {/* Status */}
-                        <td className="px-4 py-3.5 whitespace-nowrap">
-                          {record.status === 'verified' && (
-                            <span className="inline-flex items-center gap-1 rounded bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
-                              <Icon.Check className="h-2.5 w-2.5" />
-                              Verified
-                            </span>
-                          )}
-                          {record.status === 'pending_verification' && (
-                            <span className="inline-flex items-center gap-1 rounded bg-amber-500/15 border border-amber-500/30 px-2 py-0.5 text-[10px] font-bold text-amber-600 dark:text-amber-400">
-                              <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
-                              Pending
-                            </span>
-                          )}
-                          {record.status === 'rejected' && (
-                            <span className="inline-flex items-center gap-1 rounded bg-rose-500/15 border border-rose-500/30 px-2 py-0.5 text-[10px] font-bold text-rose-600 dark:text-rose-400">
-                              <Icon.X className="h-2.5 w-2.5" />
-                              Rejected
-                            </span>
-                          )}
-                        </td>
-
-                        {/* Date & Provisional Access */}
-                        <td className="px-4 py-3.5 whitespace-nowrap text-[11px] text-muted">
-                          <div>{date.toLocaleDateString()} {date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
-                          {record.status === 'pending_verification' && (
-                            <div className="text-[10px] text-amber-600 dark:text-amber-400">
-                              Provisional active
-                            </div>
-                          )}
-                        </td>
-
-                        {/* Actions */}
-                        <td className="px-4 py-3.5 whitespace-nowrap text-right">
-                          {isPending ? (
-                            <div className="flex items-center justify-end gap-1.5">
-                              <button
-                                type="button"
-                                disabled={isBusy}
-                                onClick={() => handleApprove(record)}
-                                className="rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1 text-xs font-bold transition-all disabled:opacity-50"
-                              >
-                                {isBusy ? '...' : 'Approve'}
-                              </button>
-                              <button
-                                type="button"
-                                disabled={isBusy}
-                                onClick={() => setRejectModalRecord(record)}
-                                className="rounded-lg border border-rose-500/40 text-rose-600 dark:text-rose-400 hover:bg-rose-500/10 px-2.5 py-1 text-xs font-semibold transition-all disabled:opacity-50"
-                              >
-                                Reject
-                              </button>
-                            </div>
-                          ) : (
-                            <span className="text-[10px] text-muted">
-                              {record.verifiedAt ? `Processed ${new Date(record.verifiedAt).toLocaleDateString()}` : 'Completed'}
-                            </span>
-                          )}
+            {/* Transactions Table */}
+            <div className="rounded-2xl border border-edge bg-card shadow-xs overflow-hidden">
+              <div className="overflow-x-auto thin-scroll">
+                <table className="w-full text-left font-mono text-xs">
+                  <thead className="bg-well/60 border-b border-edge text-[10px] uppercase tracking-wider text-muted">
+                    <tr>
+                      <th className="px-4 py-3">Provider</th>
+                      <th className="px-4 py-3">TrxID</th>
+                      <th className="px-4 py-3">Plan / BDT</th>
+                      <th className="px-4 py-3">User</th>
+                      <th className="px-4 py-3">Sender Phone</th>
+                      <th className="px-4 py-3">Status</th>
+                      <th className="px-4 py-3">Submitted At</th>
+                      <th className="px-4 py-3 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-edge">
+                    {loading ? (
+                      <tr>
+                        <td colSpan={8} className="px-4 py-12 text-center text-muted">
+                          <Icon.Refresh className="h-5 w-5 animate-spin mx-auto mb-2 text-signal" />
+                          Loading transaction records...
                         </td>
                       </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
+                    ) : filteredPayments.length === 0 ? (
+                      <tr>
+                        <td colSpan={8} className="px-4 py-12 text-center text-muted">
+                          No transactions found matching your criteria.
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredPayments.map((record) => {
+                        const planDef = PLANS[record.planId] || { label: record.planId, displayBdt: `৳${record.amountBdt}` };
+                        const isPending = record.status === 'pending_verification';
+                        const isBusy = actionInProgress === record.id;
+                        const date = new Date(record.submittedAt || record.createdAt);
+
+                        return (
+                          <tr
+                            key={record.id}
+                            className={`transition-colors hover:bg-well/40 ${
+                              isPending ? 'bg-amber-500/[0.02]' : ''
+                            }`}
+                          >
+                            {/* Provider */}
+                            <td className="px-4 py-3.5 whitespace-nowrap">
+                              <span
+                                className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold text-white uppercase ${
+                                  record.provider === 'bkash' ? 'bg-[#e2136e]' : 'bg-[#f7941d]'
+                                }`}
+                              >
+                                {record.provider}
+                              </span>
+                            </td>
+
+                            {/* TrxID */}
+                            <td className="px-4 py-3.5 whitespace-nowrap">
+                              <div className="flex items-center gap-1.5">
+                                <span className="font-bold text-content tracking-wider">
+                                  {record.trxId}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => handleCopyTrx(record.trxId)}
+                                  title="Copy TrxID"
+                                  className="text-muted hover:text-content p-1 rounded hover:bg-well cursor-pointer"
+                                >
+                                  {copiedTrxId === record.trxId ? (
+                                    <Icon.Check className="h-3 w-3 text-emerald-600 dark:text-emerald-400" />
+                                  ) : (
+                                    <Icon.Copy className="h-3 w-3" />
+                                  )}
+                                </button>
+                              </div>
+                            </td>
+
+                            {/* Plan & Amount */}
+                            <td className="px-4 py-3.5 whitespace-nowrap">
+                              <div className="font-bold text-content">
+                                ৳{record.amountBdt}
+                              </div>
+                              <div className="text-[10px] text-muted">
+                                {planDef.label}
+                              </div>
+                            </td>
+
+                            {/* User */}
+                            <td className="px-4 py-3.5">
+                              <div className="font-semibold text-content truncate max-w-[140px]">
+                                {record.userHandle ? `@${record.userHandle}` : record.userEmail || record.userId.slice(0, 10)}
+                              </div>
+                            </td>
+
+                            {/* Phone */}
+                            <td className="px-4 py-3.5 whitespace-nowrap text-muted">
+                              {record.senderNumber}
+                            </td>
+
+                            {/* Status */}
+                            <td className="px-4 py-3.5 whitespace-nowrap">
+                              <span
+                                className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
+                                  record.status === 'verified'
+                                    ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
+                                    : record.status === 'rejected'
+                                      ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20'
+                                      : 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20'
+                                }`}
+                              >
+                                <span>●</span>
+                                <span>
+                                  {record.status === 'verified'
+                                    ? 'Verified'
+                                    : record.status === 'rejected'
+                                      ? 'Rejected'
+                                      : 'Pending'}
+                                </span>
+                              </span>
+                            </td>
+
+                            {/* Date */}
+                            <td className="px-4 py-3.5 whitespace-nowrap text-muted text-[11px]">
+                              {date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}{' '}
+                              <span className="text-[10px] opacity-70">
+                                {date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                              </span>
+                            </td>
+
+                            {/* Actions */}
+                            <td className="px-4 py-3.5 whitespace-nowrap text-right">
+                              {isPending ? (
+                                <div className="flex items-center justify-end gap-1.5">
+                                  <button
+                                    type="button"
+                                    disabled={isBusy}
+                                    onClick={() => handleApprove(record)}
+                                    className="rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-1 text-xs font-bold transition-all disabled:opacity-50 cursor-pointer shadow-xs"
+                                  >
+                                    {isBusy ? '...' : 'Approve'}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    disabled={isBusy}
+                                    onClick={() => {
+                                      setRejectModalRecord(record);
+                                      setRejectReason('');
+                                    }}
+                                    className="rounded-lg border border-rose-500/30 bg-rose-500/10 text-rose-600 hover:bg-rose-500/20 px-2 py-1 text-xs font-bold transition-all disabled:opacity-50 cursor-pointer"
+                                  >
+                                    Reject
+                                  </button>
+                                </div>
+                              ) : (
+                                <span className="text-[11px] text-muted font-sans">
+                                  {record.status === 'verified' ? '✓ Verified' : '✕ Rejected'}
+                                </span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </>
+        )}
       </main>
 
       {/* Reject Modal */}
@@ -556,7 +925,7 @@ export default function AdminBillingPage() {
                   type="button"
                   onClick={handleConfirmReject}
                   disabled={actionInProgress === rejectModalRecord.id}
-                  className="rounded-lg bg-rose-600 hover:bg-rose-700 text-white px-4 py-1.5 font-bold transition-all disabled:opacity-50"
+                  className="rounded-lg bg-rose-600 hover:bg-rose-700 text-white px-4 py-1.5 font-bold transition-all disabled:opacity-50 cursor-pointer"
                 >
                   Confirm Rejection
                 </button>

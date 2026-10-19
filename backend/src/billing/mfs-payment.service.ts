@@ -9,7 +9,7 @@ import path from 'path';
 import { PlanId, PLANS } from '../config/plans';
 import { writeSubscription } from './subscriptions';
 
-export type MfsProvider = 'bkash' | 'nagad' | 'rocket';
+export type MfsProvider = 'bkash' | 'nagad';
 export type MfsPaymentStatus = 'pending_verification' | 'verified' | 'rejected';
 
 export interface MfsPaymentRecord {
@@ -31,14 +31,22 @@ export interface MfsPaymentRecord {
   graceUntil: string;
 }
 
+export interface MfsAccountDetail {
+  number: string;
+  type: 'personal' | 'merchant';
+  note: string;
+  isActive: boolean;
+}
+
 export interface MfsAccountConfig {
-  bkash: { number: string; type: 'personal' | 'merchant'; note: string };
-  nagad: { number: string; type: 'personal' | 'merchant'; note: string };
-  rocket: { number: string; type: 'personal' | 'merchant'; note: string };
+  bkash: MfsAccountDetail;
+  nagad: MfsAccountDetail;
+  noticeMessage?: string;
 }
 
 const CACHE_DIR = path.resolve(__dirname, '../../cache');
 const PAYMENTS_FILE = path.join(CACHE_DIR, 'mfs-payments.json');
+const CONFIG_FILE = path.join(CACHE_DIR, 'mfs-config.json');
 
 export class MfsPaymentService {
   private payments: Map<string, MfsPaymentRecord> = new Map();
@@ -49,17 +57,15 @@ export class MfsPaymentService {
       number: process.env.BKASH_ACCOUNT_NUMBER || '01711-000000',
       type: (process.env.BKASH_ACCOUNT_TYPE as any) || 'personal',
       note: 'Send Money (Personal) অথবা Payment (Merchant) অপশন ব্যবহার করুন। রেফারেন্সে আপনার গিটহাব ইউজারনেম দিন।',
+      isActive: true,
     },
     nagad: {
       number: process.env.NAGAD_ACCOUNT_NUMBER || '01811-000000',
       type: (process.env.NAGAD_ACCOUNT_TYPE as any) || 'personal',
       note: 'Send Money অপশন ব্যবহার করুন। রেফারেন্সে আপনার গিটহাব হ্যান্ডেল দিন।',
+      isActive: true,
     },
-    rocket: {
-      number: process.env.ROCKET_ACCOUNT_NUMBER || '01911-000000',
-      type: (process.env.ROCKET_ACCOUNT_TYPE as any) || 'personal',
-      note: 'Send Money অপশন ব্যবহার করুন।',
-    },
+    noticeMessage: 'বিকাশ অথবা নগদ দিয়ে পেমেন্ট করার পর ট্রানজেকশন আইডি (TrxID) সাবমিট করুন। সাথে সাথেই তাৎক্ষণিক ২৪ ঘণ্টার প্রভিশনাল প্রো অ্যাক্সেস চালু হবে।',
   };
 
   constructor() {
@@ -79,8 +85,15 @@ export class MfsPaymentService {
           this.payments.set(item.id, item);
         }
       }
+      if (fs.existsSync(CONFIG_FILE)) {
+        const rawConfig = fs.readFileSync(CONFIG_FILE, 'utf8');
+        const parsed = JSON.parse(rawConfig);
+        if (parsed.bkash) this.accountsConfig.bkash = { ...this.accountsConfig.bkash, ...parsed.bkash };
+        if (parsed.nagad) this.accountsConfig.nagad = { ...this.accountsConfig.nagad, ...parsed.nagad };
+        if (parsed.noticeMessage !== undefined) this.accountsConfig.noticeMessage = parsed.noticeMessage;
+      }
     } catch (err) {
-      console.error('[mfs-payment] Failed to load payments from disk:', err);
+      console.error('[mfs-payment] Failed to load payments or config from disk:', err);
     }
     this.loaded = true;
   }
@@ -97,8 +110,39 @@ export class MfsPaymentService {
     }
   }
 
+  public saveConfigToDisk(): void {
+    try {
+      if (!fs.existsSync(CACHE_DIR)) {
+        fs.mkdirSync(CACHE_DIR, { recursive: true });
+      }
+      fs.writeFileSync(CONFIG_FILE, JSON.stringify(this.accountsConfig, null, 2), 'utf8');
+    } catch (err) {
+      console.error('[mfs-payment] Failed to persist MFS config to disk:', err);
+    }
+  }
+
+  public getAccountsConfig(): MfsAccountConfig {
+    this.ensureLoaded();
+    return this.accountsConfig;
+  }
+
+  public updateAccountsConfig(update: Partial<MfsAccountConfig>): MfsAccountConfig {
+    this.ensureLoaded();
+    if (update.bkash) {
+      this.accountsConfig.bkash = { ...this.accountsConfig.bkash, ...update.bkash };
+    }
+    if (update.nagad) {
+      this.accountsConfig.nagad = { ...this.accountsConfig.nagad, ...update.nagad };
+    }
+    if (update.noticeMessage !== undefined) {
+      this.accountsConfig.noticeMessage = update.noticeMessage;
+    }
+    this.saveConfigToDisk();
+    return this.accountsConfig;
+  }
+
   /**
-   * Submit a payment with bKash / Nagad / Rocket transaction ID.
+   * Submit a payment with bKash / Nagad transaction ID.
    * Grants 24-hour instant provisional access so user never has to wait.
    */
   async submitPayment(input: {
@@ -111,6 +155,10 @@ export class MfsPaymentService {
     planId: PlanId;
   }): Promise<{ record: MfsPaymentRecord; instantAccessGranted: boolean }> {
     this.ensureLoaded();
+
+    if (input.provider !== 'bkash' && input.provider !== 'nagad') {
+      throw new Error('Unsupported MFS provider. Only bKash and Nagad are accepted.');
+    }
 
     const plan = PLANS[input.planId];
     if (!plan) {

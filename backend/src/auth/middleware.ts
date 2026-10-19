@@ -23,6 +23,7 @@ export interface AuthContext {
   userId: string;
   email: string | null;
   handle: string | null;
+  role?: string | null;
 }
 
 declare module 'express-serve-static-core' {
@@ -61,6 +62,7 @@ function verifySessionToken(token: string): AuthContext | null {
       userId: claims.sub,
       email: typeof claims.email === 'string' ? claims.email : null,
       handle: typeof claims.handle === 'string' ? claims.handle : null,
+      role: typeof claims.role === 'string' ? claims.role : null,
     };
   } catch {
     return null;

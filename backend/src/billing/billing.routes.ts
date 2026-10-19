@@ -195,7 +195,48 @@ router.get('/subscription', requireAuth, async (req: Request, res: Response) => 
   });
 });
 
-// --- Bangladesh MFS (bKash / Nagad / Rocket) Flow ---------------------------
+// --- Bangladesh MFS (bKash & Nagad) Flow -----------------------------------
+
+/** GET /api/billing/mfs/config — Public endpoint to get active dynamic bKash & Nagad accounts */
+router.get('/mfs/config', (_req: Request, res: Response) => {
+  try {
+    const config = mfsPaymentService.getAccountsConfig();
+    res.json({ success: true, config });
+  } catch (err: any) {
+    res.status(500).json({ error: 'config_fetch_failed', message: err.message });
+  }
+});
+
+/** POST /api/billing/mfs/admin/config — Super Admin update dynamic MFS accounts & instructions */
+router.post('/mfs/admin/config', async (req: Request, res: Response) => {
+  const { adminKey, config } = req.body || {};
+  const providedKey = adminKey || req.headers['x-admin-key'];
+
+  const expectedKey = process.env.ADMIN_SECRET_KEY;
+  const isAdminUser =
+    req.auth?.role === 'admin' ||
+    (req.auth?.email &&
+      ['admin@gitgrill.com', 'rabby.xponent@gmail.com', 'alter_ego@gitgrill.com'].includes(
+        req.auth.email.toLowerCase()
+      ));
+
+  if (!isAdminUser && expectedKey && providedKey !== expectedKey) {
+    res.status(403).json({ error: 'unauthorized', message: 'Invalid admin credentials.' });
+    return;
+  }
+
+  if (!config || typeof config !== 'object') {
+    res.status(400).json({ error: 'invalid_config', message: 'MFS configuration object is required.' });
+    return;
+  }
+
+  try {
+    const updated = mfsPaymentService.updateAccountsConfig(config);
+    res.json({ success: true, message: 'MFS configuration updated successfully.', config: updated });
+  } catch (err: any) {
+    res.status(500).json({ error: 'update_failed', message: err.message });
+  }
+});
 
 /** POST /api/billing/mfs/submit — Submit MFS TrxID and get 24h provisional access */
 router.post('/mfs/submit', async (req: Request, res: Response) => {
@@ -253,7 +294,14 @@ router.get('/mfs/admin/list', async (req: Request, res: Response) => {
   try {
     const expectedKey = process.env.ADMIN_SECRET_KEY;
     const providedKey = req.headers['x-admin-key'] || req.query.adminKey;
-    if (expectedKey && providedKey !== expectedKey) {
+    const isAdminUser =
+      req.auth?.role === 'admin' ||
+      (req.auth?.email &&
+        ['admin@gitgrill.com', 'rabby.xponent@gmail.com', 'alter_ego@gitgrill.com'].includes(
+          req.auth.email.toLowerCase()
+        ));
+
+    if (!isAdminUser && expectedKey && providedKey !== expectedKey) {
       res.status(403).json({ error: 'unauthorized', message: 'Invalid admin credentials.' });
       return;
     }
@@ -269,10 +317,15 @@ router.get('/mfs/admin/list', async (req: Request, res: Response) => {
 router.post('/mfs/admin/verify', async (req: Request, res: Response) => {
   const { paymentId, action, notes, adminKey } = req.body || {};
   const providedKey = adminKey || req.headers['x-admin-key'];
-
-  // Simple admin protection if set in env
   const expectedKey = process.env.ADMIN_SECRET_KEY;
-  if (expectedKey && providedKey !== expectedKey) {
+  const isAdminUser =
+    req.auth?.role === 'admin' ||
+    (req.auth?.email &&
+      ['admin@gitgrill.com', 'rabby.xponent@gmail.com', 'alter_ego@gitgrill.com'].includes(
+        req.auth.email.toLowerCase()
+      ));
+
+  if (!isAdminUser && expectedKey && providedKey !== expectedKey) {
     res.status(403).json({ error: 'unauthorized', message: 'Invalid admin credentials.' });
     return;
   }
@@ -283,7 +336,7 @@ router.post('/mfs/admin/verify', async (req: Request, res: Response) => {
   }
 
   try {
-    const updated = await mfsPaymentService.verifyPayment(paymentId, action, 'admin', notes);
+    const updated = await mfsPaymentService.verifyPayment(paymentId, action, req.auth?.email || 'admin', notes);
     res.json({ success: true, record: updated });
   } catch (err: any) {
     res.status(400).json({ error: 'verification_failed', message: err.message });

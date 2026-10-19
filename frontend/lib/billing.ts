@@ -107,9 +107,9 @@ export function isPerSeat(plan: PlanId): boolean {
   return PLANS[plan].perSeat;
 }
 
-// --- Bangladesh MFS (bKash / Nagad / Rocket) --------------------------------
+// --- Bangladesh MFS (bKash & Nagad) ---------------------------------------
 
-export type MfsProvider = 'bkash' | 'nagad' | 'rocket';
+export type MfsProvider = 'bkash' | 'nagad';
 
 export interface MfsSubmitPayload {
   provider: MfsProvider;
@@ -127,19 +127,63 @@ export interface MfsSubmitResponse {
   instantAccessGranted: boolean;
 }
 
+export interface MfsAccountDetail {
+  number: string;
+  type: 'personal' | 'merchant';
+  note: string;
+  isActive: boolean;
+}
+
+export interface MfsAccountConfig {
+  bkash: MfsAccountDetail;
+  nagad: MfsAccountDetail;
+  noticeMessage?: string;
+}
+
 export interface MfsStatusResponse {
   hasPending: boolean;
   latestRecord: any | null;
-  accounts: {
-    bkash: { number: string; type: string; note: string };
-    nagad: { number: string; type: string; note: string };
-    rocket: { number: string; type: string; note: string };
-  };
+  accounts: MfsAccountConfig;
 }
 
 /** Submit a manual bKash/Nagad TrxID for instant provisional activation */
 export async function submitMfsPayment(payload: MfsSubmitPayload): Promise<MfsSubmitResponse> {
   return post<MfsSubmitResponse>('/api/billing/mfs/submit', payload);
+}
+
+/** Fetch public dynamic MFS accounts & payment notices */
+export async function fetchMfsConfig(): Promise<MfsAccountConfig | null> {
+  try {
+    const res = await fetch(`${API_URL}/api/billing/mfs/config`, {
+      cache: 'no-store',
+    });
+    if (!res.ok) return null;
+    const body = await res.json();
+    return body.config as MfsAccountConfig;
+  } catch {
+    return null;
+  }
+}
+
+/** Super Admin: Update dynamic MFS accounts & instructions */
+export async function updateAdminMfsConfig(
+  config: MfsAccountConfig,
+  adminKey?: string
+): Promise<{ success: boolean; config: MfsAccountConfig }> {
+  const headers = await authHeaders();
+  if (adminKey) {
+    (headers as any)['x-admin-key'] = adminKey;
+  }
+  const res = await fetch(`${API_URL}/api/billing/mfs/admin/config`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ config, adminKey }),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body?.message || `Failed to update MFS config (${res.status})`);
+  }
+  return res.json();
 }
 
 /** Fetch current user MFS payment status and account numbers */
@@ -170,6 +214,7 @@ export interface AdminMfsRecord {
   status: 'pending_verification' | 'verified' | 'rejected';
   instantAccessGranted: boolean;
   provisionalAccessUntil: string;
+  submittedAt?: string;
   verifiedAt?: string;
   verifiedBy?: string;
   adminNotes?: string;

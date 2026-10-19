@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Icon } from '@/components/icons';
-import { PLANS, PlanId, submitMfsPayment, fetchMfsStatus, MfsProvider } from '@/lib/billing';
+import { PLANS, PlanId, submitMfsPayment, fetchMfsConfig, MfsAccountConfig, MfsProvider } from '@/lib/billing';
 import { useSession } from '@/components/SessionProvider';
 
 interface BkashNagadModalProps {
@@ -27,17 +27,17 @@ export function BkashNagadModal({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successResult, setSuccessResult] = useState<any | null>(null);
-  const [accounts, setAccounts] = useState({
-    bkash: { number: '01711-000000', type: 'Personal', note: 'Send Money অপশন ব্যবহার করুন' },
-    nagad: { number: '01811-000000', type: 'Personal', note: 'Send Money অপশন ব্যবহার করুন' },
-    rocket: { number: '01911-000000', type: 'Personal', note: 'Send Money অপশন ব্যবহার করুন' },
+  const [accounts, setAccounts] = useState<MfsAccountConfig>({
+    bkash: { number: '01711-000000', type: 'personal', note: 'Send Money অপশন ব্যবহার করুন', isActive: true },
+    nagad: { number: '01811-000000', type: 'personal', note: 'Send Money অপশন ব্যবহার করুন', isActive: true },
+    noticeMessage: 'বিকাশ অথবা নগদ দিয়ে পেমেন্ট করার পর ট্রানজেকশন আইডি (TrxID) সাবমিট করুন।',
   });
 
   useEffect(() => {
     if (isOpen) {
-      fetchMfsStatus().then((res) => {
-        if (res?.accounts) {
-          setAccounts(res.accounts as any);
+      fetchMfsConfig().then((res) => {
+        if (res) {
+          setAccounts(res);
         }
       });
     }
@@ -168,7 +168,7 @@ export function BkashNagadModal({
           /* Payment Form */
           <div className="mt-4">
             <p className="text-xs text-muted leading-relaxed">
-              Upgrade to Pro without an international card. Pay directly via bKash, Nagad, or Rocket.
+              Upgrade to Pro directly via bKash or Nagad. Instant 24-hour provisional access is activated immediately.
             </p>
 
             {/* Plan selector */}
@@ -216,13 +216,13 @@ export function BkashNagadModal({
             {/* Step 1: Send Money Box */}
             <div className="mt-4 rounded-xl border border-edge bg-well/70 p-4">
               <div className="font-mono text-xs font-bold uppercase tracking-wider text-content flex items-center justify-between">
-                <span>1. Send Money ({planInfo.displayBdt})</span>
+                <span>1. {activeAccount.type === 'merchant' ? 'Make Payment' : 'Send Money'} ({planInfo.displayBdt})</span>
                 {/* Method selector pills */}
                 <div className="flex gap-1.5">
                   <button
                     type="button"
                     onClick={() => setProvider('bkash')}
-                    className={`px-2.5 py-1 rounded text-xs font-bold font-mono transition-all ${
+                    className={`px-3 py-1 rounded text-xs font-bold font-mono transition-all ${
                       provider === 'bkash'
                         ? 'bg-[#e2136e] text-white shadow-xs'
                         : 'border border-edge bg-card text-muted hover:text-content'
@@ -233,24 +233,13 @@ export function BkashNagadModal({
                   <button
                     type="button"
                     onClick={() => setProvider('nagad')}
-                    className={`px-2.5 py-1 rounded text-xs font-bold font-mono transition-all ${
+                    className={`px-3 py-1 rounded text-xs font-bold font-mono transition-all ${
                       provider === 'nagad'
                         ? 'bg-[#f7941d] text-white shadow-xs'
                         : 'border border-edge bg-card text-muted hover:text-content'
                     }`}
                   >
                     Nagad
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setProvider('rocket')}
-                    className={`px-2.5 py-1 rounded text-xs font-bold font-mono transition-all ${
-                      provider === 'rocket'
-                        ? 'bg-[#8c3494] text-white shadow-xs'
-                        : 'border border-edge bg-card text-muted hover:text-content'
-                    }`}
-                  >
-                    Rocket
                   </button>
                 </div>
               </div>

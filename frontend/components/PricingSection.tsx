@@ -199,7 +199,7 @@ export function PricingSection() {
                   </div>
                 ) : (
                   <div className="mt-2 text-[11px] font-mono text-slate-500 dark:text-muted">
-                    bKash, Nagad or Rocket · Instant 24h provisional activation
+                    bKash or Nagad · Instant 24h provisional activation
                   </div>
                 )}
 
@@ -307,7 +307,7 @@ export function PricingSection() {
                     </li>
                     <li className="flex items-start gap-2">
                       <Icon.Check className="h-4 w-4 flex-none text-signal mt-0.5" />
-                      <span>Instant bKash/Nagad/Rocket activation with 24-hr provisional access</span>
+                      <span>Instant bKash/Nagad activation with 24-hr provisional access</span>
                     </li>
                   </ul>
                 </div>
@@ -541,12 +541,6 @@ export function PricingSection() {
               </span>
               <span className="inline-flex items-center rounded-lg border border-orange-200 dark:border-orange-900/40 bg-orange-50 dark:bg-orange-950/30 px-2.5 py-1 font-mono text-[11px] font-bold text-orange-700 dark:text-orange-300">
                 Nagad
-              </span>
-              <span className="inline-flex items-center rounded-lg border border-purple-200 dark:border-purple-900/40 bg-purple-50 dark:bg-purple-950/30 px-2.5 py-1 font-mono text-[11px] font-bold text-purple-700 dark:text-purple-300">
-                Rocket
-              </span>
-              <span className="inline-flex items-center rounded-lg border border-blue-200 dark:border-blue-900/40 bg-blue-50 dark:bg-blue-950/30 px-2.5 py-1 font-mono text-[11px] font-bold text-blue-700 dark:text-blue-300">
-                Cards (Stripe)
               </span>
             </div>
 

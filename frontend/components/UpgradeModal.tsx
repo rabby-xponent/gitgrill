@@ -202,43 +202,13 @@ export function UpgradeModal({
               </p>
               <button
                 type="button"
-                onClick={handleCheckout}
-                disabled={busy}
-                className="flex items-center justify-center gap-1.5 rounded-xl bg-signal px-4 py-2.5 font-mono text-xs font-bold uppercase tracking-wider text-white shadow-xs transition-all hover:bg-signal/90 disabled:opacity-60 active:scale-[0.99]"
-              >
-                {busy ? 'Opening checkout…' : `Pay with Card — ${PLANS[plan].display}`}
-              </button>
-
-              {/* Bangladesh MFS Option */}
-              <button
-                type="button"
                 onClick={() => setShowBkashModal(true)}
-                className="flex items-center justify-center gap-2 rounded-xl border border-[#ea580c]/50 bg-[#ea580c]/10 hover:bg-[#ea580c]/20 px-4 py-2.5 font-mono text-xs font-bold text-[#ea580c] dark:text-signal transition-all"
+                className="flex items-center justify-center gap-2 rounded-xl bg-signal hover:bg-signal/90 px-4 py-3 font-mono text-xs font-bold uppercase tracking-wider text-white shadow-xs transition-all active:scale-[0.99] cursor-pointer"
               >
-                <span className="flex h-4 w-4 items-center justify-center rounded-full bg-[#ea580c] text-white text-[10px]">৳</span>
+                <span className="flex h-4 w-4 items-center justify-center rounded-full bg-white text-signal text-[10px] font-extrabold">৳</span>
                 <span>Upgrade with bKash / Nagad ({PLANS[plan].displayBdt})</span>
               </button>
             </>
-          )}
-
-          {unavailable && (
-            <div className="rounded-xl border border-edge bg-well p-3 text-center space-y-2">
-              <p className="font-mono text-[11px] leading-relaxed text-muted">
-                ইন্টারন্যাশনাল কার্ড পেমেন্ট সক্রিয় নেই। বাংলাদেশী ব্যবহারকারীরা বিকাশ/নগদে তাৎক্ষণিক প্রো এক্টিভ করতে পারেন:
-              </p>
-              <button
-                type="button"
-                onClick={() => setShowBkashModal(true)}
-                className="w-full rounded-lg bg-signal/20 border border-signal/40 py-2 font-mono text-xs font-bold text-signal hover:bg-signal/30 transition-all"
-              >
-                বিকাশ / নগদ দিয়ে আনলক করুন (৳৩৯৯/মাস)
-              </button>
-            </div>
-          )}
-          {error && (
-            <p className="rounded-xl border border-signal/40 bg-signal/10 px-4 py-2.5 text-center font-mono text-[11px] leading-relaxed text-signal">
-              {error}
-            </p>
           )}
 
           <button
