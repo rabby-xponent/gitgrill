@@ -24,6 +24,7 @@ import {
 import { ThemeToggle } from '@/lib/theme';
 import { AccountMenu } from '@/components/AccountMenu';
 import { useSession } from '@/components/SessionProvider';
+import { isAdmin } from '@/lib/admin';
 import { Icon } from '@/components/icons';
 import { Select, Checkbox, StarRating, SearchInput, SegmentedTabs, ConfirmModal } from '@/components/ui';
 import type { SelectOption } from '@/components/ui';
@@ -73,14 +74,16 @@ function RecruiterPortalContent() {
 
   useEffect(() => {
     const baseAccount = getRecruiterAccount();
+    const isSuperAdmin = isAdmin(sessionUser);
     if (sessionUser) {
       setAccount({
         ...baseAccount,
         id: sessionUser.id,
         name: sessionUser.name || sessionUser.handle || sessionUser.email?.split('@')[0] || baseAccount.name,
         email: sessionUser.email || baseAccount.email,
-        title: baseAccount.title || 'Technical Talent Partner',
-        company: baseAccount.company || 'Personal Workspace',
+        title: isSuperAdmin ? 'Super Administrator' : (baseAccount.title || 'Technical Talent Partner'),
+        company: isSuperAdmin ? 'Platform Admin Workspace' : (baseAccount.company || 'Personal Workspace'),
+        planTier: isSuperAdmin ? 'enterprise' : baseAccount.planTier,
       });
     } else {
       setAccount(baseAccount);
@@ -330,9 +333,20 @@ Live Evidence Dossier: ${window.location.origin}/profile/${cand.username}?jobId=
                 </div>
               </div>
               <span className="rounded border border-signal/25 bg-signal/10 px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase text-signal">
-                {account.planTier}
+                {isAdmin(sessionUser) ? 'Super Admin · Unlimited' : account.planTier}
               </span>
             </button>
+
+            {isAdmin(sessionUser) && (
+              <Link
+                href="/developer"
+                className="hidden sm:inline-flex items-center gap-1.5 rounded-lg border border-signal/30 bg-signal/10 px-2.5 sm:px-3 py-1.5 font-mono text-xs font-semibold text-signal hover:bg-signal/20 transition-colors shadow-2xs"
+                title="Super Admin: Return to Developer CareerOS"
+              >
+                <Icon.Github className="h-3.5 w-3.5" />
+                <span>CareerOS</span>
+              </Link>
+            )}
 
             <Link
               href="/"
@@ -354,10 +368,12 @@ Live Evidence Dossier: ${window.location.origin}/profile/${cand.username}?jobId=
             <div className="flex flex-wrap items-center gap-2">
               <span className="inline-flex items-center gap-1.5 rounded-full border border-signal/30 bg-signal/10 px-2.5 py-0.5 font-mono text-[10px] uppercase tracking-wider font-bold text-signal">
                 <span className="h-1.5 w-1.5 rounded-full bg-signal" />
-                Welcome back, {account.name}
+                Welcome back, {account.name} {isAdmin(sessionUser) ? '(Super Admin)' : ''}
               </span>
               <span className="h-1 w-1 rounded-full bg-muted/50" />
-              <span className="font-mono text-xs text-muted">{account.department}</span>
+              <span className="font-mono text-xs text-muted">
+                {isAdmin(sessionUser) ? 'Full Unlimited Platform & Talent Pool Access' : account.department}
+              </span>
             </div>
             <h1 className="font-sans text-2xl font-bold tracking-tight text-content sm:text-3xl">
               Recruiter Talent Operating System

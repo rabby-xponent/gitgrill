@@ -177,11 +177,13 @@ export function AccountMenu({ workspace }: { workspace?: 'developer' | 'recruite
   const initials = label.slice(0, 2).toUpperCase();
 
   // Tier display label: if user is logged in, tier should never show 'anonymous'
-  const tierDisplay = paid
-    ? entitlements.tier === 'pro'
-      ? 'Developer Pro'
-      : 'Team'
-    : 'Free Starter';
+  const tierDisplay = isSuperAdmin
+    ? 'Super Admin (Uncapped)'
+    : paid
+      ? entitlements.tier === 'pro'
+        ? 'Developer Pro'
+        : 'Team'
+      : 'Free Starter';
 
   return (
     <>
@@ -217,44 +219,80 @@ export function AccountMenu({ workspace }: { workspace?: 'developer' | 'recruite
               </div>
             </div>
 
-            {/* Dedicated Workspace Badge (No dual-switching) */}
-            <div className="p-1.5">
+            {/* Dedicated Workspace Badges */}
+            <div className="p-1.5 space-y-1">
               <div className="px-2 pb-1 pt-1 font-mono text-[10px] uppercase tracking-wider text-muted">
-                Active Space
+                {isSuperAdmin ? 'Workspaces (All-Access)' : 'Active Space'}
               </div>
-              <Link
-                href={workspaceRoute}
-                onClick={() => setOpen(false)}
-                className="flex items-center gap-2 rounded-lg bg-signal/10 hover:bg-signal/20 px-2.5 py-1.5 font-mono text-xs text-signal font-semibold transition-all group"
-                title="Go to active workspace"
-              >
-                {effectiveWorkspace === 'recruiter' ? (
-                  <>
-                    <Icon.Briefcase className="h-3.5 w-3.5 text-[#ea580c]" />
-                    <span className="flex-1 text-[#ea580c]">RecruiterOS</span>
-                    <span className="rounded bg-[#ea580c]/20 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-[#ea580c]">Recruiter</span>
-                  </>
-                ) : (
-                  <>
-                    <Icon.Github className="h-3.5 w-3.5" />
-                    <span className="flex-1">Developer CareerOS</span>
-                    <span className="rounded bg-signal/20 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider">Developer</span>
-                  </>
-                )}
-                <Icon.ArrowRight className="h-3 w-3 opacity-60 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all" />
-              </Link>
 
-              {/* MFS Payments Admin: Strictly Gated to Super-Admins */}
-              {isSuperAdmin && (
+              {isSuperAdmin ? (
+                <>
+                  <Link
+                    href="/developer"
+                    onClick={() => setOpen(false)}
+                    className={`flex items-center gap-2 rounded-lg px-2.5 py-1.5 font-mono text-xs font-semibold transition-all group ${
+                      workspace === 'developer'
+                        ? 'bg-signal/20 text-signal border border-signal/30'
+                        : 'hover:bg-well text-content'
+                    }`}
+                    title="Developer CareerOS Workspace"
+                  >
+                    <Icon.Github className="h-3.5 w-3.5 text-signal shrink-0" />
+                    <span className="flex-1">Developer CareerOS</span>
+                    <span className="rounded bg-signal/20 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-signal">
+                      CareerOS
+                    </span>
+                  </Link>
+
+                  <Link
+                    href="/recruiter"
+                    onClick={() => setOpen(false)}
+                    className={`flex items-center gap-2 rounded-lg px-2.5 py-1.5 font-mono text-xs font-semibold transition-all group ${
+                      workspace === 'recruiter'
+                        ? 'bg-[#ea580c]/20 text-[#ea580c] border border-[#ea580c]/30'
+                        : 'hover:bg-well text-content'
+                    }`}
+                    title="RecruiterOS Portal"
+                  >
+                    <Icon.Briefcase className="h-3.5 w-3.5 text-[#ea580c] shrink-0" />
+                    <span className="flex-1 text-[#ea580c]">RecruiterOS Portal</span>
+                    <span className="rounded bg-[#ea580c]/20 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-[#ea580c]">
+                      Unlimited
+                    </span>
+                  </Link>
+
+                  <Link
+                    href="/admin/billing"
+                    role="menuitem"
+                    onClick={() => setOpen(false)}
+                    className="flex items-center gap-2 rounded-lg border border-[#ea580c]/25 bg-[#ea580c]/5 hover:bg-[#ea580c]/15 px-2.5 py-1.5 font-mono text-xs text-[#ea580c] transition-colors"
+                  >
+                    <span className="flex h-3.5 w-3.5 items-center justify-center rounded bg-[#ea580c]/20 font-bold text-[9px]">৳</span>
+                    <span className="flex-1 font-semibold">Super Admin Console</span>
+                    <span className="rounded bg-[#ea580c]/20 px-1.5 py-0.5 text-[8px] uppercase font-bold">Admin</span>
+                  </Link>
+                </>
+              ) : (
                 <Link
-                  href="/admin/billing"
-                  role="menuitem"
+                  href={workspaceRoute}
                   onClick={() => setOpen(false)}
-                  className="mt-1 flex items-center gap-2 rounded-lg border border-[#ea580c]/20 bg-[#ea580c]/5 px-2 py-1.5 font-mono text-xs text-[#ea580c] hover:bg-[#ea580c]/10 transition-colors"
+                  className="flex items-center gap-2 rounded-lg bg-signal/10 hover:bg-signal/20 px-2.5 py-1.5 font-mono text-xs text-signal font-semibold transition-all group"
+                  title="Go to active workspace"
                 >
-                  <span className="flex h-3.5 w-3.5 items-center justify-center rounded bg-[#ea580c]/20 font-bold text-[9px]">৳</span>
-                  <span className="flex-1 font-semibold">MFS Payments Admin</span>
-                  <span className="rounded bg-[#ea580c]/20 px-1 py-0.2 text-[8px] uppercase">Admin</span>
+                  {effectiveWorkspace === 'recruiter' ? (
+                    <>
+                      <Icon.Briefcase className="h-3.5 w-3.5 text-[#ea580c]" />
+                      <span className="flex-1 text-[#ea580c]">RecruiterOS</span>
+                      <span className="rounded bg-[#ea580c]/20 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-[#ea580c]">Recruiter</span>
+                    </>
+                  ) : (
+                    <>
+                      <Icon.Github className="h-3.5 w-3.5" />
+                      <span className="flex-1">Developer CareerOS</span>
+                      <span className="rounded bg-signal/20 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider">Developer</span>
+                    </>
+                  )}
+                  <Icon.ArrowRight className="h-3 w-3 opacity-60 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all" />
                 </Link>
               )}
             </div>
@@ -262,25 +300,32 @@ export function AccountMenu({ workspace }: { workspace?: 'developer' | 'recruite
             {/* Plan & Upgrade Section */}
             <div className="border-t border-edge p-1.5">
               <div className="flex items-center justify-between px-2 pb-1 pt-1 font-mono text-[10px] uppercase tracking-wider text-muted">
-                <span>Plan</span>
-                <span className={`font-semibold ${paid ? 'text-signal' : 'text-content'}`}>{tierDisplay}</span>
+                <span>Platform Tier</span>
+                <span className={`font-semibold ${isSuperAdmin ? 'text-signal' : paid ? 'text-signal' : 'text-content'}`}>{tierDisplay}</span>
               </div>
-              <button
-                type="button"
-                role="menuitem"
-                disabled={billingBusy}
-                onClick={() => void handleBilling()}
-                className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 font-mono text-xs text-content transition-colors hover:bg-well hover:text-signal disabled:opacity-60"
-              >
-                <Icon.Zap className="h-3.5 w-3.5 text-[#ea580c] dark:text-signal" />
-                <span className="flex-1 text-left font-semibold">
-                  {billingBusy
-                    ? 'Opening…'
-                    : paid
-                      ? 'Manage billing'
-                      : 'Upgrade to Pro — ৳399/mo'}
-                </span>
-              </button>
+              {isSuperAdmin ? (
+                <div className="flex items-center gap-2 rounded-lg bg-signal/10 px-2.5 py-1.5 font-mono text-xs text-signal font-semibold">
+                  <Icon.Shield className="h-3.5 w-3.5 text-signal shrink-0" />
+                  <span className="flex-1">Full Unlimited Platform Access</span>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  role="menuitem"
+                  disabled={billingBusy}
+                  onClick={() => void handleBilling()}
+                  className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 font-mono text-xs text-content transition-colors hover:bg-well hover:text-signal disabled:opacity-60"
+                >
+                  <Icon.Zap className="h-3.5 w-3.5 text-[#ea580c] dark:text-signal" />
+                  <span className="flex-1 text-left font-semibold">
+                    {billingBusy
+                      ? 'Opening…'
+                      : paid
+                        ? 'Manage billing'
+                        : 'Upgrade to Pro — ৳399/mo'}
+                  </span>
+                </button>
+              )}
               {billingNote && (
                 <p className="px-2 pb-1 font-mono text-[10px] leading-relaxed text-muted">
                   {billingNote}

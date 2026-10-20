@@ -446,6 +446,15 @@ export default function AdminBillingPage() {
               <span>Developer<span className="hidden xs:inline"> Workspace</span></span>
             </Link>
             <span className="text-edge">/</span>
+            <Link
+              href="/recruiter"
+              className="flex items-center gap-1.5 font-mono text-xs text-[#ea580c] hover:underline transition-colors shrink-0 font-semibold"
+              title="Super Admin: Jump to RecruiterOS"
+            >
+              <Icon.Briefcase className="h-3.5 w-3.5" />
+              <span>RecruiterOS</span>
+            </Link>
+            <span className="text-edge">/</span>
             <div className="flex items-center gap-2">
               <span className="flex h-5 w-5 items-center justify-center rounded bg-[#ea580c]/15 text-[#ea580c] font-mono font-bold text-xs shrink-0">
                 ৳

@@ -2,6 +2,8 @@
 
 import React, { useState } from 'react';
 import { RecruiterAccount, saveRecruiterAccount } from '@/lib/recruiter-auth';
+import { useSession } from '@/components/SessionProvider';
+import { isAdmin } from '@/lib/admin';
 import { Icon } from '@/components/icons';
 import { Switch } from '@/components/ui';
 
@@ -18,6 +20,8 @@ export default function RecruiterAccountModal({
   account,
   onUpdate,
 }: RecruiterAccountModalProps) {
+  const { user } = useSession();
+  const isSuperAdmin = isAdmin(user);
   const [name, setName] = useState(account.name);
   const [title, setTitle] = useState(account.title);
   const [company, setCompany] = useState(account.company);
@@ -79,7 +83,7 @@ export default function RecruiterAccountModal({
                   Recruiter Identity & Workspace
                 </span>
                 <span className="rounded-full border border-signal/25 bg-signal/10 px-2 py-0.5 font-mono text-[9px] font-bold text-signal uppercase">
-                  {account.planTier}
+                  {isSuperAdmin ? 'Super Admin · Unlimited' : account.planTier}
                 </span>
               </div>
               <h2 className="font-mono text-sm font-bold text-content">

@@ -11,6 +11,8 @@ import { QuotaMeter } from '@/components/QuotaMeter';
 import { CheckoutNotice } from '@/components/CheckoutNotice';
 import { useCapabilityLock } from '@/components/FeatureLock';
 import { useEntitlements } from '@/hooks/useEntitlements';
+import { useSession } from '@/components/SessionProvider';
+import { isAdmin } from '@/lib/admin';
 import { Icon } from '@/components/icons';
 import { GitGrillLogo } from '@/components/GitGrillLogo';
 import { Select, SearchInput, ConfirmModal, AlertModal } from '@/components/ui';
@@ -67,6 +69,8 @@ function DeveloperCareerContent() {
   // Entitlements (M25A): the meter and every lock chip below read verdicts from
   // the backend tier registry — the browser never decides a limit itself.
   const { entitlements } = useEntitlements();
+  const { user } = useSession();
+  const isSuperAdmin = isAdmin(user);
 
   useEffect(() => {
     setDevProfile(getDeveloperProfile());
@@ -189,6 +193,16 @@ function DeveloperCareerContent() {
           </div>
 
           <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
+            {isSuperAdmin && (
+              <Link
+                href="/recruiter"
+                className="hidden sm:inline-flex items-center gap-1.5 rounded-lg border border-[#ea580c]/30 bg-[#ea580c]/10 px-2.5 sm:px-3 py-1.5 font-mono text-xs font-semibold text-[#ea580c] hover:bg-[#ea580c]/20 transition-colors shadow-2xs"
+                title="Super Admin: Access RecruiterOS Command Center"
+              >
+                <Icon.Briefcase className="h-3.5 w-3.5" />
+                <span>RecruiterOS</span>
+              </Link>
+            )}
             <QuotaMeter />
             <AccountMenu workspace="developer" />
             <ThemeToggle />
