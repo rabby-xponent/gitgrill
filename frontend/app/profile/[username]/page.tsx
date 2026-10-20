@@ -105,40 +105,43 @@ export default function ProfilePage() {
   return (
     <main className="page-texture min-h-screen bg-canvas text-content flex flex-col">
       <nav className="sticky top-0 z-30 border-b border-edge bg-canvas shadow-xs print:hidden flex-none">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
-          <Link href="/" className="flex items-center">
+        <div className="mx-auto flex max-w-5xl items-center justify-between px-4 sm:px-6 py-3 sm:py-4">
+          <Link href="/" className="flex items-center shrink-0">
             <GitGrillLogo size="sm" />
           </Link>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 sm:gap-4 shrink-0">
             {status === 'complete' && (
               <>
                 <button
                   type="button"
                   onClick={() => setShowDeepAudit(true)}
-                  className="rounded-md border border-[#ea580c]/50 bg-[#ea580c]/10 hover:bg-[#ea580c]/20 px-3 py-1.5 font-mono text-[11px] font-bold uppercase tracking-wider text-[#ea580c] dark:text-signal transition-colors flex items-center gap-1.5 shadow-xs"
+                  className="rounded-md border border-[#ea580c]/50 bg-[#ea580c]/10 hover:bg-[#ea580c]/20 px-2.5 sm:px-3 py-1.5 font-mono text-[11px] font-bold uppercase tracking-wider text-[#ea580c] dark:text-signal transition-colors flex items-center gap-1.5 shadow-xs cursor-pointer shrink-0"
                 >
-                  <span>Tier 2 Code Audit</span>
+                  <span className="hidden xs:inline">Tier 2 Code Audit</span>
+                  <span className="xs:hidden">Tier 2</span>
                 </button>
                 <button
                   onClick={() => generate(username, true, liveUrl, activeJd, activeTitle)}
-                  className="inline-flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-wider text-muted transition-colors hover:text-signal"
+                  className="inline-flex items-center gap-1 font-mono text-[11px] uppercase tracking-wider text-muted transition-colors hover:text-signal cursor-pointer shrink-0"
+                  title="Regenerate analysis"
                 >
                   <Icon.Refresh className="h-3 w-3" />
-                  regenerate
+                  <span className="hidden sm:inline">regenerate</span>
                 </button>
               </>
             )}
             <Link
               href="/"
-              className="rounded-md border border-edge bg-card px-3 py-1.5 font-mono text-[11px] uppercase tracking-wider text-muted transition-colors hover:border-signal/50 hover:text-signal"
+              className="rounded-md border border-edge bg-card px-2.5 sm:px-3 py-1.5 font-mono text-[11px] uppercase tracking-wider text-muted transition-colors hover:border-signal/50 hover:text-signal shrink-0 whitespace-nowrap"
             >
-              + analyze another
+              <span className="hidden sm:inline">+ analyze another</span>
+              <span className="sm:hidden">+ new</span>
             </Link>
           </div>
         </div>
       </nav>
 
-      <div className="mx-auto max-w-5xl px-6 py-10 print:max-w-none print:p-0 flex-1 w-full flex flex-col">
+      <div className="mx-auto max-w-5xl px-4 sm:px-6 py-6 sm:py-10 print:max-w-none print:p-0 flex-1 w-full flex flex-col">
         {error &&
           (error.code === 'demo_exhausted' ||
             error.code === 'rate_limited' ||

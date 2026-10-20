@@ -4,9 +4,9 @@ import { useState } from 'react';
 import { DevProfile } from '@/types/profile';
 import { Icon } from '@/components/icons';
 
-function Stat({ label, value }: { label: string; value: string | number }) {
+function Stat({ label, value, className = '' }: { label: string; value: string | number; className?: string }) {
   return (
-    <div className="rounded-lg border border-edge/60 bg-surface/30 p-3 print:border-zinc-300 print:bg-white print:p-2">
+    <div className={`rounded-lg border border-edge/60 bg-surface/30 p-3 print:border-zinc-300 print:bg-white print:p-2 ${className}`}>
       <div className="font-mono text-xl font-bold text-ece9f0 print:text-base print:text-zinc-900">{value}</div>
       <div className="mt-0.5 font-mono text-[10px] uppercase tracking-widest text-muted print:text-zinc-500">
         {label}
@@ -368,12 +368,12 @@ export function ProfileView({
               {g.name || profile.username}
             </h1>
             {/* Recruiter / Developer Action Buttons */}
-            <div className="flex items-center gap-2 print:hidden">
+            <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto print:hidden">
               <button
                 onClick={copyRecruiterBrief}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-edge bg-card px-3.5 py-2 font-mono text-[11px] font-semibold uppercase tracking-wider text-content shadow-xs transition-all hover:border-signal/50 hover:bg-well hover:text-signal active:scale-95"
+                className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 rounded-lg border border-edge bg-card px-3.5 py-2 font-mono text-[11px] font-semibold uppercase tracking-wider text-content shadow-xs transition-all hover:border-signal/50 hover:bg-well hover:text-signal active:scale-95 cursor-pointer text-center"
               >
-                <span>{copied ? <Icon.Check className="h-3.5 w-3.5 text-emerald-600" /> : <Icon.Clipboard className="h-3.5 w-3.5" />}</span>
+                <span>{copied ? <Icon.Check className="h-3.5 w-3.5 text-emerald-600 shrink-0" /> : <Icon.Clipboard className="h-3.5 w-3.5 shrink-0" />}</span>
                 <span>
                   {copied
                     ? isDev
@@ -386,9 +386,9 @@ export function ProfileView({
               </button>
               <button
                 onClick={() => window.print()}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-signal/30 bg-signal/[0.08] px-3.5 py-2 font-mono text-[11px] font-semibold uppercase tracking-wider text-signal shadow-xs transition-all hover:bg-signal/15 active:scale-95"
+                className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 rounded-lg border border-signal/30 bg-signal/[0.08] px-3.5 py-2 font-mono text-[11px] font-semibold uppercase tracking-wider text-signal shadow-xs transition-all hover:bg-signal/15 active:scale-95 cursor-pointer text-center"
               >
-                <Icon.Printer className="h-3.5 w-3.5" />
+                <Icon.Printer className="h-3.5 w-3.5 shrink-0" />
                 <span>Export PDF</span>
               </button>
             </div>
@@ -577,11 +577,11 @@ export function ProfileView({
       )}
 
       {/* Recruiter Navigation Bar (Web Only) */}
-      <div className="sticky top-[57px] z-20 -mx-6 mb-8 flex items-center justify-between border-y border-edge bg-canvas px-6 py-2.5 shadow-xs print:hidden">
-        <div className="flex flex-wrap items-center gap-2">
+      <div className="sticky top-[57px] z-20 -mx-4 sm:-mx-6 mb-8 flex items-center justify-between border-y border-edge bg-canvas px-4 sm:px-6 py-2 sm:py-2.5 shadow-xs print:hidden">
+        <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto no-scrollbar max-w-full">
           <button
             onClick={() => setActiveTab('verdict')}
-            className={`rounded-md px-3 py-1 font-mono text-[11px] uppercase tracking-wider transition-colors ${
+            className={`rounded-md px-3 py-1 font-mono text-[11px] uppercase tracking-wider transition-colors shrink-0 whitespace-nowrap cursor-pointer ${
               activeTab === 'verdict'
                 ? 'bg-signal text-white font-semibold shadow-xs'
                 : 'text-muted hover:text-content hover:bg-well'
@@ -591,7 +591,7 @@ export function ProfileView({
           </button>
           <button
             onClick={() => setActiveTab('evidence')}
-            className={`rounded-md px-3 py-1 font-mono text-[11px] uppercase tracking-wider transition-colors ${
+            className={`rounded-md px-3 py-1 font-mono text-[11px] uppercase tracking-wider transition-colors shrink-0 whitespace-nowrap cursor-pointer ${
               activeTab === 'evidence'
                 ? 'bg-signal text-white font-semibold shadow-xs'
                 : 'text-muted hover:text-content hover:bg-well'
@@ -601,7 +601,7 @@ export function ProfileView({
           </button>
           <button
             onClick={() => setActiveTab('signals')}
-            className={`rounded-md px-3 py-1 font-mono text-[11px] uppercase tracking-wider transition-colors ${
+            className={`rounded-md px-3 py-1 font-mono text-[11px] uppercase tracking-wider transition-colors shrink-0 whitespace-nowrap cursor-pointer ${
               activeTab === 'signals'
                 ? 'bg-signal text-white font-semibold shadow-xs'
                 : 'text-muted hover:text-content hover:bg-well'
@@ -611,7 +611,7 @@ export function ProfileView({
           </button>
           <button
             onClick={() => setActiveTab('interview')}
-            className={`rounded-md px-3 py-1 font-mono text-[11px] uppercase tracking-wider transition-colors ${
+            className={`rounded-md px-3 py-1 font-mono text-[11px] uppercase tracking-wider transition-colors shrink-0 whitespace-nowrap cursor-pointer ${
               activeTab === 'interview'
                 ? 'bg-signal text-white font-semibold shadow-xs'
                 : 'text-muted hover:text-content hover:bg-well'
@@ -620,7 +620,7 @@ export function ProfileView({
             15-Min Phone Screen
           </button>
         </div>
-        <div className="hidden font-mono text-[10px] text-muted sm:block">
+        <div className="hidden font-mono text-[10px] text-muted lg:block shrink-0 ml-2">
           Candidate Evaluation View
         </div>
       </div>
@@ -631,7 +631,7 @@ export function ProfileView({
         <Stat label="Public Repos" value={g.publicRepos} />
         <Stat label="Total Forks" value={g.totalForks.toLocaleString()} />
         <Stat label="Network Followers" value={g.followers.toLocaleString()} />
-        <Stat label="Member Since" value={g.joinedYear || '—'} />
+        <Stat label="Member Since" value={g.joinedYear || '—'} className="col-span-2 sm:col-span-1" />
       </div>
 
       {/* SECTION GROUP 1: OVERVIEW & KEY FACTS */}
@@ -777,7 +777,7 @@ export function ProfileView({
                   <div className="text-[10px] font-bold uppercase tracking-wider text-muted print:text-zinc-600">
                     Production Standards Checklist
                   </div>
-                  <div className="mt-2 grid grid-cols-2 gap-1.5 text-[11px]">
+                  <div className="mt-2 grid grid-cols-1 xs:grid-cols-2 gap-1.5 text-[11px]">
                     <span className={`inline-flex items-center gap-1 ${profile.liveAppAudit.productionStandards.httpsEnforced ? 'text-signal print:text-emerald-800 font-semibold' : 'text-muted/70 print:text-zinc-500'}`}>
                       {profile.liveAppAudit.productionStandards.httpsEnforced ? <Icon.Check className="h-3 w-3" /> : <Icon.X className="h-3 w-3" />} HTTPS Enforced
                     </span>
