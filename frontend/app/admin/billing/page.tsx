@@ -436,34 +436,34 @@ export default function AdminBillingPage() {
     <div className="min-h-screen bg-canvas text-content">
       {/* Top Navigation Bar */}
       <header className="border-b border-edge bg-card sticky top-0 z-30 shadow-xs">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-3 sm:py-0 sm:h-16 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
             <Link
               href="/developer"
-              className="flex items-center gap-1.5 font-mono text-xs text-muted hover:text-content transition-colors"
+              className="flex items-center gap-1.5 font-mono text-xs text-muted hover:text-content transition-colors shrink-0"
             >
               <Icon.ArrowLeft className="h-3.5 w-3.5" />
-              <span>Developer Workspace</span>
+              <span>Developer<span className="hidden xs:inline"> Workspace</span></span>
             </Link>
             <span className="text-edge">/</span>
             <div className="flex items-center gap-2">
-              <span className="flex h-5 w-5 items-center justify-center rounded bg-[#ea580c]/15 text-[#ea580c] font-mono font-bold text-xs">
+              <span className="flex h-5 w-5 items-center justify-center rounded bg-[#ea580c]/15 text-[#ea580c] font-mono font-bold text-xs shrink-0">
                 ৳
               </span>
-              <h1 className="font-sans text-sm font-bold tracking-tight text-content">
-                Super Admin Console
+              <h1 className="font-sans text-sm font-bold tracking-tight text-content truncate">
+                Admin Console
               </h1>
-              <span className="rounded bg-well px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider text-muted border border-edge">
+              <span className="hidden sm:inline-block rounded bg-well px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider text-muted border border-edge">
                 {isSuperAdmin ? 'Super Admin' : 'Key Authenticated'}
               </span>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
             <button
               type="button"
               onClick={() => setShowKeyInput(!showKeyInput)}
-              className="flex items-center gap-1.5 rounded-lg border border-edge bg-card px-3 py-1.5 font-mono text-xs text-muted hover:text-content hover:border-signal/50 transition-colors"
+              className="flex items-center gap-1.5 rounded-lg border border-edge bg-card px-2.5 sm:px-3 py-1.5 font-mono text-xs text-muted hover:text-content hover:border-signal/50 transition-colors"
             >
               <Icon.Lock className="h-3.5 w-3.5" />
               <span>{adminKey ? 'Key Configured' : 'Set Admin Key'}</span>
@@ -478,7 +478,7 @@ export default function AdminBillingPage() {
                 loadUsers();
               }}
               disabled={loading || limitsLoading || usersLoading}
-              className="flex items-center gap-1.5 rounded-lg bg-well border border-edge hover:bg-well/80 px-3 py-1.5 font-mono text-xs text-content transition-colors cursor-pointer"
+              className="flex items-center gap-1.5 rounded-lg bg-well border border-edge hover:bg-well/80 px-2.5 sm:px-3 py-1.5 font-mono text-xs text-content transition-colors cursor-pointer"
             >
               <Icon.Refresh className={`h-3.5 w-3.5 ${loading || limitsLoading || usersLoading ? 'animate-spin' : ''}`} />
               <span>Refresh</span>
@@ -487,7 +487,7 @@ export default function AdminBillingPage() {
         </div>
 
         {/* Tab Switcher */}
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 flex gap-6 border-t border-edge/60 overflow-x-auto">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 flex gap-4 sm:gap-6 border-t border-edge/60 overflow-x-auto no-scrollbar">
           <button
             type="button"
             onClick={() => setActiveTab('ledger')}

@@ -275,29 +275,29 @@ Live Evidence Dossier: ${window.location.origin}/profile/${cand.username}?jobId=
   return (
     <main className="page-texture min-h-screen bg-canvas text-content pb-24 transition-colors">
       {/* Top Navigation */}
-      <nav className="sticky top-0 z-30 border-b border-edge bg-card/90 backdrop-blur-md px-6 py-3.5 transition-colors">
+      <nav className="sticky top-0 z-30 border-b border-edge bg-card/90 backdrop-blur-md px-4 sm:px-6 py-3 sm:py-3.5 transition-colors">
         <div className="mx-auto flex max-w-7xl items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Link href="/" className="flex items-center">
+          <div className="flex items-center gap-2 sm:gap-4 min-w-0">
+            <Link href="/" className="flex items-center shrink-0">
               <GitGrillLogo size="sm" />
             </Link>
             <span className="text-edge">/</span>
-            <div className="flex items-center gap-2">
-              <span className="rounded border border-signal/30 bg-signal/10 px-2 py-0.5 font-mono text-[10px] font-bold uppercase text-signal">
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="shrink-0 rounded border border-signal/30 bg-signal/10 px-2 py-0.5 font-mono text-[10px] font-bold uppercase text-signal">
                 RecruiterOS
               </span>
-              <span className="hidden sm:inline font-mono text-xs text-muted">
+              <span className="hidden sm:inline font-mono text-xs text-muted truncate">
                 Enterprise Talent Intelligence
               </span>
             </div>
           </div>
 
           {/* Recruiter Identity & Actions */}
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
             <AccountMenu workspace="recruiter" />
             {!sessionLoading && !sessionUser && (
               <span
-                className="hidden md:inline-flex items-center gap-1.5 rounded-lg border border-edge bg-well px-2.5 py-1.5 font-mono text-[10px] uppercase tracking-wider text-muted"
+                className="hidden lg:inline-flex items-center gap-1.5 rounded-lg border border-edge bg-well px-2.5 py-1.5 font-mono text-[10px] uppercase tracking-wider text-muted"
                 title="Your requisitions and screenings stay in this browser until you sign in."
               >
                 <Icon.Info className="h-3 w-3" />
@@ -309,10 +309,10 @@ Live Evidence Dossier: ${window.location.origin}/profile/${cand.username}?jobId=
             {/* Recruiter Profile Card Trigger */}
             <button
               onClick={() => setShowAccountModal(true)}
-              className="flex items-center gap-2.5 rounded-xl border border-edge bg-card px-3 py-1.5 shadow-xs transition-colors hover:border-signal/50 cursor-pointer text-left outline-none focus-visible:ring-2 focus-visible:ring-signal/40"
+              className="flex items-center gap-2 rounded-xl border border-edge bg-card px-2 sm:px-3 py-1.5 shadow-xs transition-colors hover:border-signal/50 cursor-pointer text-left outline-none focus-visible:ring-2 focus-visible:ring-signal/40"
               title="Edit recruiter identity and default guardrails"
             >
-              <div className="h-7 w-7 rounded-full border border-signal/30 bg-signal/10 flex items-center justify-center overflow-hidden">
+              <div className="h-7 w-7 rounded-full border border-signal/30 bg-signal/10 flex items-center justify-center overflow-hidden shrink-0">
                 {account.avatarUrl ? (
                   <img src={account.avatarUrl} alt={account.name} className="h-full w-full object-cover" />
                 ) : (
@@ -336,21 +336,22 @@ Live Evidence Dossier: ${window.location.origin}/profile/${cand.username}?jobId=
 
             <Link
               href="/"
-              className="rounded-lg border border-edge bg-card px-3 py-1.5 font-mono text-xs text-muted shadow-xs transition-colors hover:border-signal/50 hover:text-signal"
+              className="rounded-lg border border-edge bg-card px-2.5 sm:px-3 py-1.5 font-mono text-xs text-muted shadow-xs transition-colors hover:border-signal/50 hover:text-signal"
             >
-              ← Public Home
+              <span className="hidden xs:inline">← Public Home</span>
+              <span className="xs:hidden">← Home</span>
             </Link>
           </div>
         </div>
       </nav>
 
       {/* Main Workspace Container */}
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 pt-8 space-y-8">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 pt-6 sm:pt-8 space-y-8">
         {/* Recruiter Welcome Header */}
-        <div className="relative flex flex-col md:flex-row md:items-center justify-between gap-5 rounded-2xl border border-edge bg-card p-6 sm:p-7 shadow-card overflow-hidden">
+        <div className="relative flex flex-col md:flex-row md:items-center justify-between gap-5 rounded-2xl border border-edge bg-card p-5 sm:p-7 shadow-card overflow-hidden">
           <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-signal/50 to-transparent" />
           <div className="space-y-1.5">
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <span className="inline-flex items-center gap-1.5 rounded-full border border-signal/30 bg-signal/10 px-2.5 py-0.5 font-mono text-[10px] uppercase tracking-wider font-bold text-signal">
                 <span className="h-1.5 w-1.5 rounded-full bg-signal" />
                 Welcome back, {account.name}
@@ -366,10 +367,10 @@ Live Evidence Dossier: ${window.location.origin}/profile/${cand.username}?jobId=
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2.5">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 w-full md:w-auto">
             <button
               onClick={() => setShowNewJobModal(true)}
-              className="flex items-center gap-1.5 rounded-xl bg-signal px-4 py-2 font-mono text-xs font-bold text-white transition-colors hover:bg-signal/90 shadow-xs outline-none focus-visible:ring-2 focus-visible:ring-signal/40"
+              className="flex items-center justify-center gap-1.5 rounded-xl bg-signal px-4 py-2 font-mono text-xs font-bold text-white transition-colors hover:bg-signal/90 shadow-xs outline-none focus-visible:ring-2 focus-visible:ring-signal/40 cursor-pointer"
             >
               <Icon.Plus className="h-3.5 w-3.5" />
               <span>Create New Job Project</span>
@@ -377,7 +378,7 @@ Live Evidence Dossier: ${window.location.origin}/profile/${cand.username}?jobId=
 
             <button
               onClick={() => setShowGuardrailsModal(true)}
-              className="flex items-center gap-1.5 rounded-xl border border-edge bg-card px-3.5 py-2 font-mono text-xs font-semibold text-content shadow-xs transition-colors hover:border-signal/50 hover:text-signal outline-none focus-visible:ring-2 focus-visible:ring-signal/40"
+              className="flex items-center justify-center gap-1.5 rounded-xl border border-edge bg-card px-3.5 py-2 font-mono text-xs font-semibold text-content shadow-xs transition-colors hover:border-signal/50 hover:text-signal outline-none focus-visible:ring-2 focus-visible:ring-signal/40 cursor-pointer"
             >
               <Icon.Settings className="h-3.5 w-3.5 text-muted" />
               <span>Guardrails for Role</span>
@@ -479,7 +480,7 @@ Live Evidence Dossier: ${window.location.origin}/profile/${cand.username}?jobId=
 
               <button
                 type="submit"
-                className="rounded-xl bg-signal px-7 py-3 font-mono text-xs font-bold uppercase tracking-wider text-white transition-all shadow-xs flex-none hover:bg-signal/90 outline-none focus-visible:ring-2 focus-visible:ring-signal/40"
+                className="w-full sm:w-auto rounded-xl bg-signal px-7 py-3 font-mono text-xs font-bold uppercase tracking-wider text-white transition-all shadow-xs flex-none hover:bg-signal/90 outline-none focus-visible:ring-2 focus-visible:ring-signal/40 text-center"
               >
                 Screen Candidate
               </button>
@@ -637,27 +638,29 @@ Live Evidence Dossier: ${window.location.origin}/profile/${cand.username}?jobId=
           )}
 
           {/* Filter, Search & Sort Bar */}
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-            <SegmentedTabs
-              active={selectedStage}
-              onChange={setSelectedStage}
-              tabs={[
-                { value: 'all', label: 'All', count: activeProject.candidates.length },
-                ...stageOptions.map((st) => ({
-                  value: st.value,
-                  label: st.label,
-                  count: activeProject.candidates.filter((c) => c.pipelineStage === st.value).length,
-                })),
-              ]}
-            />
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+            <div className="overflow-x-auto no-scrollbar pb-1 -mb-1">
+              <SegmentedTabs
+                active={selectedStage}
+                onChange={setSelectedStage}
+                tabs={[
+                  { value: 'all', label: 'All', count: activeProject.candidates.length },
+                  ...stageOptions.map((st) => ({
+                    value: st.value,
+                    label: st.label,
+                    count: activeProject.candidates.filter((c) => c.pipelineStage === st.value).length,
+                  })),
+                ]}
+              />
+            </div>
 
             {/* Search & Sort */}
-            <div className="flex items-center gap-2">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
               <SearchInput
                 value={searchQuery}
                 onChange={setSearchQuery}
                 placeholder="Search candidate…"
-                className="w-40 sm:w-52"
+                className="w-full sm:w-52"
               />
 
               <Select
@@ -665,7 +668,7 @@ Live Evidence Dossier: ${window.location.origin}/profile/${cand.username}?jobId=
                 onChange={(v) => setSortBy(v as typeof sortBy)}
                 options={sortOptions}
                 ariaLabel="Sort candidates"
-                className="w-44"
+                className="w-full sm:w-44"
               />
             </div>
           </div>

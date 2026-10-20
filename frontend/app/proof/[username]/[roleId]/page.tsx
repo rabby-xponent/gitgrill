@@ -132,33 +132,33 @@ export default function ProofPage() {
     <main className="page-texture min-h-screen bg-canvas text-content flex flex-col">
       {/* Minimal nav — the page is the artifact; everything else defers to it */}
       <nav className="sticky top-0 z-10 border-b border-edge bg-card/90 backdrop-blur print:hidden flex-none">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
-          <Link href="/" className="flex items-center">
+        <div className="mx-auto flex max-w-5xl items-center justify-between px-4 sm:px-6 py-3 sm:py-4">
+          <Link href="/" className="flex items-center shrink-0">
             <GitGrillLogo size="sm" />
           </Link>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2.5 sm:gap-4">
             <button
               onClick={() => window.print()}
               className="inline-flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-wider text-muted transition-colors hover:text-signal"
             >
               <Icon.Printer className="h-3 w-3" />
-              print / pdf
+              <span>print<span className="hidden xs:inline"> / pdf</span></span>
             </button>
             <Link
               href="/recruiter"
-              className="rounded-md border border-edge bg-card px-3 py-1.5 font-mono text-[11px] uppercase tracking-wider text-muted transition-colors hover:border-signal/50 hover:text-signal"
+              className="rounded-md border border-edge bg-card px-2.5 sm:px-3 py-1.5 font-mono text-[11px] uppercase tracking-wider text-muted transition-colors hover:border-signal/50 hover:text-signal"
             >
-              screen with gitgrill
+              <span className="hidden xs:inline">screen with </span>gitgrill
             </Link>
           </div>
         </div>
       </nav>
 
-      <div className="mx-auto max-w-5xl px-6 py-10 print:max-w-none print:px-0 print:py-0 flex-1 w-full flex flex-col">
+      <div className="mx-auto max-w-5xl px-4 sm:px-6 py-6 sm:py-10 print:max-w-none print:px-0 print:py-0 flex-1 w-full flex flex-col">
         {/* ── Attestation header ─────────────────────────────────────────── */}
-        <header className="fade-up mb-8 rounded-xl border border-edge bg-card p-6 shadow-card print:rounded-none print:border-0 print:p-0">
-          <div className="flex flex-wrap items-start justify-between gap-6">
-            <div className="flex items-start gap-4">
+        <header className="fade-up mb-8 rounded-xl border border-edge bg-card p-4 sm:p-6 shadow-card print:rounded-none print:border-0 print:p-0">
+          <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 sm:gap-6">
+            <div className="flex items-start gap-3 sm:gap-4">
               {/* Snapshots are file-backed artifacts that outlive code versions,
                   so a missing GitHub block must not white-screen the page. */}
               {profile.github?.avatarUrl ? (
@@ -166,10 +166,10 @@ export default function ProofPage() {
                 <img
                   src={profile.github.avatarUrl}
                   alt=""
-                  className="h-14 w-14 flex-none rounded-full border border-edge object-cover"
+                  className="h-12 w-12 sm:h-14 sm:w-14 flex-none rounded-full border border-edge object-cover"
                 />
               ) : (
-                <div className="flex h-14 w-14 flex-none items-center justify-center rounded-full border border-edge bg-well font-mono text-lg uppercase text-muted">
+                <div className="flex h-12 w-12 sm:h-14 sm:w-14 flex-none items-center justify-center rounded-full border border-edge bg-well font-mono text-base sm:text-lg uppercase text-muted">
                   {(profile.github?.name || profile.username || '?').slice(0, 2)}
                 </div>
               )}
@@ -177,13 +177,13 @@ export default function ProofPage() {
                 <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-muted">
                   Pre-flight audit · proof of evidence
                 </p>
-                <h1 className="mt-1 text-2xl font-semibold tracking-tight">
+                <h1 className="mt-1 text-xl sm:text-2xl font-semibold tracking-tight">
                   {profile.github?.name || profile.username}
-                  <span className="ml-2 font-mono text-sm font-normal text-muted">
+                  <span className="ml-2 font-mono text-xs sm:text-sm font-normal text-muted block xs:inline">
                     @{profile.username}
                   </span>
                 </h1>
-                <p className="mt-1 text-sm text-muted">
+                <p className="mt-1 text-xs sm:text-sm text-muted">
                   Assessed against:{' '}
                   <span className="font-medium text-content">{snap.roleTitle}</span>
                 </p>
@@ -191,9 +191,9 @@ export default function ProofPage() {
             </div>
 
             {fit && (
-              <div className="text-right">
+              <div className="text-left sm:text-right border-t sm:border-t-0 border-edge pt-3 sm:pt-0">
                 <div className="flex items-baseline gap-1">
-                  <span className="font-mono text-5xl font-bold leading-none text-signal">
+                  <span className="font-mono text-4xl sm:text-5xl font-bold leading-none text-signal">
                     {fit.matchScore}
                   </span>
                   <span className="font-mono text-xs text-muted">/100 fit</span>
@@ -417,7 +417,7 @@ export default function ProofPage() {
         )}
 
         {/* ── Footer CTA (hidden in print) ─────────────────────────────── */}
-        <footer className="mt-auto flex-none flex flex-wrap items-center justify-between gap-4 border-t border-edge pt-6 print:hidden">
+        <footer className="mt-auto flex-none flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-t border-edge pt-6 print:hidden">
           <p className="max-w-lg text-[13px] leading-relaxed text-muted">
             This page is a point-in-time snapshot generated by{' '}
             <span className="font-medium text-content">GitGrill</span> — the evidence layer for
@@ -425,7 +425,7 @@ export default function ProofPage() {
           </p>
           <Link
             href="/"
-            className="inline-flex items-center gap-1.5 rounded-lg bg-signal px-4 py-2 font-mono text-xs font-bold uppercase tracking-wider text-white shadow-xs transition-all hover:bg-signal/90 active:scale-95"
+            className="w-full sm:w-auto justify-center inline-flex items-center gap-1.5 rounded-lg bg-signal px-4 py-2 font-mono text-xs font-bold uppercase tracking-wider text-white shadow-xs transition-all hover:bg-signal/90 active:scale-95 text-center"
           >
             <Icon.Search className="h-3 w-3" />
             audit a candidate

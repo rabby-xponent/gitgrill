@@ -51,30 +51,30 @@ export default function DossierPage() {
     <main className="min-h-screen bg-[#faf9f5] dark:bg-[#0c0b0e] text-slate-900 dark:text-[#ece9f0] transition-colors duration-200 flex flex-col print:bg-white print:text-black">
       {/* Top Navbar */}
       <nav className="sticky top-0 z-30 border-b border-slate-200/80 dark:border-edge/80 bg-[#faf9f5]/90 dark:bg-[#0c0b0e]/90 backdrop-blur-md print:hidden">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-3.5">
-          <div className="flex items-center gap-3">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 sm:px-6 py-3 sm:py-3.5 gap-2">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
             <Link href="/" className="shrink-0">
               <GitGrillLogo size="sm" />
             </Link>
-            <span className="text-slate-300 dark:text-muted/40 font-mono text-sm">/</span>
-            <div className="flex items-center gap-2">
-              <span className="font-mono text-xs font-bold uppercase tracking-wider text-[#ea580c] dark:text-signal">
-                Build Dossier
+            <span className="text-slate-300 dark:text-muted/40 font-mono text-sm shrink-0">/</span>
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="font-mono text-xs font-bold uppercase tracking-wider text-[#ea580c] dark:text-signal truncate">
+                Dossier
               </span>
-              <span className="rounded-full bg-orange-100 dark:bg-signal/15 px-2 py-0.5 font-mono text-[10px] font-bold text-[#ea580c] dark:text-signal border border-orange-200 dark:border-signal/30">
+              <span className="rounded-full bg-orange-100 dark:bg-signal/15 px-2 py-0.5 font-mono text-[10px] font-bold text-[#ea580c] dark:text-signal border border-orange-200 dark:border-signal/30 shrink-0">
                 v2.4
               </span>
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
             <button
               onClick={handleShare}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 dark:border-edge bg-white dark:bg-surface px-3 py-1.5 font-mono text-xs text-slate-700 dark:text-muted hover:text-[#ea580c] dark:hover:text-signal transition-colors shadow-xs"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 dark:border-edge bg-white dark:bg-surface px-2.5 sm:px-3 py-1.5 font-mono text-xs text-slate-700 dark:text-muted hover:text-[#ea580c] dark:hover:text-signal transition-colors shadow-xs"
               title="Copy link to dossier"
             >
               {copiedLink ? <Icon.Check className="h-3.5 w-3.5 text-signal" /> : <Icon.Copy className="h-3.5 w-3.5" />}
-              <span>{copiedLink ? 'Copied' : 'Share URL'}</span>
+              <span>{copiedLink ? 'Copied' : 'Share'}</span>
             </button>
 
             <button
@@ -90,9 +90,9 @@ export default function DossierPage() {
 
             <Link
               href="/"
-              className="inline-flex items-center gap-1 rounded-lg bg-slate-900 dark:bg-white px-3.5 py-1.5 font-mono text-xs font-bold text-white dark:text-slate-950 hover:bg-slate-800 dark:hover:bg-slate-100 transition-colors shadow-xs"
+              className="inline-flex items-center gap-1 rounded-lg bg-slate-900 dark:bg-white px-2.5 sm:px-3.5 py-1.5 font-mono text-xs font-bold text-white dark:text-slate-950 hover:bg-slate-800 dark:hover:bg-slate-100 transition-colors shadow-xs"
             >
-              <span>Back to App</span>
+              <span>Back<span className="hidden xs:inline"> to App</span></span>
               <Icon.ArrowRight className="h-3 w-3" />
             </Link>
           </div>
@@ -100,18 +100,18 @@ export default function DossierPage() {
       </nav>
 
       {/* Hero Header */}
-      <section className="border-b border-slate-200 dark:border-edge/60 bg-white dark:bg-[#121118]/70 py-12 sm:py-16">
-        <div className="mx-auto max-w-6xl px-6">
+      <section className="border-b border-slate-200 dark:border-edge/60 bg-white dark:bg-[#121118]/70 py-8 sm:py-16">
+        <div className="mx-auto max-w-6xl px-4 sm:px-6">
           <div className="inline-flex items-center gap-2 rounded-full border border-orange-200 dark:border-edge bg-orange-50 dark:bg-surface/80 px-3.5 py-1 font-mono text-[11px] uppercase tracking-widest text-[#ea580c] dark:text-signal font-semibold">
             <span className="h-1.5 w-1.5 rounded-full bg-[#ea580c] dark:bg-signal animate-pulse" />
             Engineering Proof of Work & Systems Blueprint
           </div>
 
-          <h1 className="mt-4 font-sans text-3xl font-extrabold tracking-tight sm:text-4xl lg:text-5xl text-slate-900 dark:text-[#ece9f0]">
+          <h1 className="mt-4 font-sans text-2xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight text-slate-900 dark:text-[#ece9f0]">
             GitGrill <span className="text-[#ea580c] dark:text-signal">Engineering Build Dossier.</span>
           </h1>
 
-          <p className="mt-4 max-w-3xl font-sans text-[16px] leading-relaxed text-slate-600 dark:text-muted">
+          <p className="mt-4 max-w-3xl font-sans text-sm sm:text-[16px] leading-relaxed text-slate-600 dark:text-muted">
             Prepared specifically for Engineering Managers, Staff Engineers, and Technical Recruiters. This single document outlines the complete architectural blueprint, multi-turn ReAct agent loop, 2D visual PDF parsing engine, resilient multi-model LLM gateway, and verified production benchmarks.
           </p>
 
@@ -122,7 +122,7 @@ export default function DossierPage() {
                 key={stat.label}
                 className="rounded-xl border border-slate-200 dark:border-edge/70 bg-slate-50/70 dark:bg-[#0c0b0e]/70 p-4"
               >
-                <div className="font-mono text-2xl font-extrabold text-[#ea580c] dark:text-signal">
+                <div className="font-mono text-xl sm:text-2xl font-extrabold text-[#ea580c] dark:text-signal">
                   {stat.value}
                 </div>
                 <div className="mt-1 font-mono text-[10px] uppercase tracking-wider text-slate-500 dark:text-muted">
@@ -133,7 +133,7 @@ export default function DossierPage() {
           </div>
 
           {/* Primary Quick Links */}
-          <div className="mt-6 flex flex-wrap items-center gap-3 font-mono text-xs">
+          <div className="mt-6 flex flex-wrap items-center gap-2.5 sm:gap-3 font-mono text-xs">
             <span className="text-slate-500 dark:text-muted">Live Portals:</span>
             <Link
               href="/developer"
@@ -166,10 +166,10 @@ export default function DossierPage() {
       </section>
 
       {/* Interactive Tabs Section */}
-      <section className="flex-1 py-10 sm:py-14 bg-[#faf9f5] dark:bg-[#0c0b0e]">
-        <div className="mx-auto max-w-6xl px-6">
+      <section className="flex-1 py-8 sm:py-14 bg-[#faf9f5] dark:bg-[#0c0b0e]">
+        <div className="mx-auto max-w-6xl px-4 sm:px-6">
           {/* Tabs Navigation */}
-          <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 dark:border-edge pb-4 mb-8">
+          <div className="flex items-center gap-2 border-b border-slate-200 dark:border-edge pb-4 mb-8 overflow-x-auto no-scrollbar flex-nowrap">
             {(
               [
                 { id: 'blueprint', label: 'System Blueprint & Subsystems' },
@@ -182,7 +182,7 @@ export default function DossierPage() {
                 key={tab.id}
                 type="button"
                 onClick={() => setActiveTab(tab.id)}
-                className={`px-4 py-2 rounded-xl font-mono text-xs font-semibold transition-all ${
+                className={`px-3.5 sm:px-4 py-2 rounded-xl font-mono text-xs font-semibold transition-all shrink-0 whitespace-nowrap cursor-pointer ${
                   activeTab === tab.id
                     ? 'bg-[#ea580c] dark:bg-signal text-white dark:text-ink shadow-sm'
                     : 'border border-slate-200 dark:border-edge bg-white dark:bg-surface text-slate-600 dark:text-muted hover:text-slate-900 dark:hover:text-[#ece9f0]'
@@ -365,8 +365,8 @@ export default function DossierPage() {
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-slate-200 dark:border-edge/60 py-8 text-center font-mono text-xs text-slate-500 dark:text-muted/60 bg-[#faf9f5] dark:bg-[#0c0b0e] mt-auto">
-        <div className="mx-auto max-w-6xl px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+      <footer className="border-t border-slate-200 dark:border-edge/60 py-6 sm:py-8 text-center font-mono text-xs text-slate-500 dark:text-muted/60 bg-[#faf9f5] dark:bg-[#0c0b0e] mt-auto">
+        <div className="mx-auto max-w-6xl px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
           <span>GitGrill · Engineering Build Dossier</span>
           <span>
             developed by{' '}

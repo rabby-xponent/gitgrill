@@ -176,18 +176,18 @@ export default function JobCandidatePipelineModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-3 sm:p-5 backdrop-blur-md animate-in">
       <div className="relative flex h-[94vh] w-full max-w-7xl flex-col rounded-2xl border border-edge bg-card shadow-pop overflow-hidden">
         {/* Top Header Bar */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-edge bg-well px-6 py-4">
-          <div className="flex items-center gap-3">
-            <span className="flex h-10 w-10 items-center justify-center rounded-xl border border-edge bg-card text-muted">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-edge bg-well px-4 sm:px-6 py-3 sm:py-4">
+          <div className="flex items-center gap-3 min-w-0">
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl border border-edge bg-card text-muted shrink-0">
               <Icon.Users className="h-5 w-5" />
             </span>
-            <div>
+            <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <span className="font-mono text-[10px] uppercase tracking-wider text-signal font-bold">
-                  RecruiterOS Candidate Pipeline
+                <span className="font-mono text-[10px] uppercase tracking-wider text-signal font-bold truncate">
+                  RecruiterOS Pipeline
                 </span>
-                <span className="h-1 w-1 rounded-full bg-muted/60" />
-                <span className="font-mono text-xs text-muted">{project.department}</span>
+                <span className="h-1 w-1 rounded-full bg-muted/60 shrink-0" />
+                <span className="font-mono text-xs text-muted truncate">{project.department}</span>
               </div>
               <div className="flex items-center gap-2 mt-0.5">
                 {/* Project Switcher */}
@@ -196,29 +196,29 @@ export default function JobCandidatePipelineModal({
                   onChange={onSelectProject}
                   options={projectSelectOptions}
                   ariaLabel="Switch job project"
-                  buttonClassName="border-none bg-transparent px-0 font-mono text-base font-bold text-content shadow-none hover:text-signal focus-visible:ring-0"
+                  buttonClassName="border-none bg-transparent px-0 font-mono text-base font-bold text-content shadow-none hover:text-signal focus-visible:ring-0 truncate"
                 />
               </div>
             </div>
           </div>
 
           {/* Right Header Actions */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             <button
               type="button"
               onClick={handleExportMarkdown}
-              className="flex items-center gap-1.5 rounded-lg border border-edge bg-card px-3 py-1.5 font-mono text-xs font-semibold text-content transition-colors hover:border-signal/50 hover:text-signal outline-none focus-visible:ring-2 focus-visible:ring-signal/40"
+              className="flex items-center gap-1.5 rounded-lg border border-edge bg-card px-2.5 sm:px-3 py-1.5 font-mono text-xs font-semibold text-content transition-colors hover:border-signal/50 hover:text-signal outline-none focus-visible:ring-2 focus-visible:ring-signal/40"
               title="Copy markdown table of this pipeline to clipboard"
             >
               <Icon.Clipboard className="h-3.5 w-3.5 text-muted" />
-              <span>{copiedMd ? 'Copied' : 'Export Leaderboard'}</span>
+              <span>{copiedMd ? 'Copied' : 'Export'}<span className="hidden xs:inline"> Leaderboard</span></span>
               {copiedMd && <Icon.Check className="h-3 w-3 text-signal" />}
             </button>
 
             <button
               type="button"
               onClick={onOpenGuardrails}
-              className="flex items-center gap-1.5 rounded-lg border border-edge bg-card px-3 py-1.5 font-mono text-xs font-semibold text-content transition-colors hover:border-signal/50 hover:text-signal outline-none focus-visible:ring-2 focus-visible:ring-signal/40"
+              className="flex items-center gap-1.5 rounded-lg border border-edge bg-card px-2.5 sm:px-3 py-1.5 font-mono text-xs font-semibold text-content transition-colors hover:border-signal/50 hover:text-signal outline-none focus-visible:ring-2 focus-visible:ring-signal/40"
             >
               <Icon.Settings className="h-3.5 w-3.5 text-muted" />
               <span>Guardrails</span>
@@ -236,10 +236,10 @@ export default function JobCandidatePipelineModal({
         </div>
 
         {/* Requisition Summary Strip */}
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-edge px-6 py-2.5 font-mono text-xs">
-          <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-2.5 sm:gap-3 border-b border-edge px-4 sm:px-6 py-2.5 font-mono text-xs">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
             <div className="flex flex-wrap items-center gap-1.5">
-              <span className="text-muted/80">Must-Have Stack:</span>
+              <span className="text-muted/80">Must-Have:</span>
               {project.requisition.mustHaveSkills.map((s) => (
                 <span
                   key={s}
@@ -249,39 +249,41 @@ export default function JobCandidatePipelineModal({
                 </span>
               ))}
             </div>
-            <span className="text-edge">|</span>
+            <span className="text-edge hidden xs:inline">|</span>
             <span className="text-muted">Target: <strong className="text-content uppercase">{project.requisition.seniorityTarget}</strong></span>
           </div>
 
-          <div className="flex items-center gap-4 text-muted text-[11px]">
-            <span>Total Evaluated: <strong className="text-content">{totalCount}</strong></span>
+          <div className="flex flex-wrap items-center gap-3 sm:gap-4 text-muted text-[11px]">
+            <span>Total: <strong className="text-content">{totalCount}</strong></span>
             <span>Shortlisted: <strong className="text-content">{shortlistedCount}</strong></span>
             <span>Avg Match: <strong className="text-signal">{avgFit}%</strong></span>
           </div>
         </div>
 
         {/* Toolbar: Search, Stage Filter Pills, Sort & Quick Screen */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-edge px-6 py-3">
-          <SegmentedTabs
-            active={selectedStage}
-            onChange={setSelectedStage}
-            tabs={[
-              { value: 'all', label: 'All', count: totalCount },
-              ...stageOptions.map((st) => ({
-                value: st.value,
-                label: st.label,
-                count: project.candidates.filter((c) => c.pipelineStage === st.value).length,
-              })),
-            ]}
-          />
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 border-b border-edge px-4 sm:px-6 py-3">
+          <div className="overflow-x-auto no-scrollbar pb-1 -mb-1">
+            <SegmentedTabs
+              active={selectedStage}
+              onChange={setSelectedStage}
+              tabs={[
+                { value: 'all', label: 'All', count: totalCount },
+                ...stageOptions.map((st) => ({
+                  value: st.value,
+                  label: st.label,
+                  count: project.candidates.filter((c) => c.pipelineStage === st.value).length,
+                })),
+              ]}
+            />
+          </div>
 
           {/* Search & Sort Controls */}
-          <div className="flex items-center gap-2">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
             <SearchInput
               value={searchQuery}
               onChange={setSearchQuery}
               placeholder="Search candidate…"
-              className="w-36 sm:w-48"
+              className="w-full sm:w-48"
             />
 
             <Select
@@ -289,13 +291,13 @@ export default function JobCandidatePipelineModal({
               onChange={(v) => setSortBy(v as typeof sortBy)}
               options={sortOptions}
               ariaLabel="Sort candidates"
-              className="w-48"
+              className="w-full sm:w-48"
             />
           </div>
         </div>
 
         {/* Candidate Table Area */}
-        <div className="flex-1 overflow-y-auto thin-scroll p-6">
+        <div className="flex-1 overflow-y-auto thin-scroll p-3 sm:p-6">
           {filteredCandidates.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-center space-y-4">
               <span className="flex h-14 w-14 items-center justify-center rounded-2xl border border-edge bg-well text-muted">
@@ -644,17 +646,17 @@ export default function JobCandidatePipelineModal({
         )}
 
         {/* Footer info bar */}
-        <div className="flex items-center justify-between border-t border-edge bg-well px-6 py-3 font-mono text-xs text-muted">
-          <div className="flex items-center gap-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-t border-edge bg-well px-4 sm:px-6 py-2.5 sm:py-3 font-mono text-xs text-muted">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
             <span>Showing {filteredCandidates.length} of {project.candidates.length} candidates</span>
-            <span>·</span>
-            <span>Select 2 or 3 candidates to launch instant side-by-side calibration</span>
+            <span className="hidden sm:inline">·</span>
+            <span className="hidden sm:inline">Select 2-3 candidates to calibrate</span>
           </div>
 
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg border border-edge bg-card px-4 py-1.5 font-mono text-xs font-semibold text-content transition-colors hover:border-signal/50 hover:text-signal"
+            className="self-end sm:self-auto rounded-lg border border-edge bg-card px-4 py-1.5 font-mono text-xs font-semibold text-content transition-colors hover:border-signal/50 hover:text-signal"
           >
             Done
           </button>
