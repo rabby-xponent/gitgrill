@@ -54,6 +54,9 @@ export default function Home() {
   // Hero Right Card interactive preview mode (Developer CareerOS vs Recruiter Dossier)
   const [heroPreviewMode, setHeroPreviewMode] = useState<'developer' | 'recruiter'>('developer');
 
+  // Mobile navigation drawer state
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
   const router = useRouter();
 
   useEffect(() => {
@@ -90,8 +93,8 @@ export default function Home() {
     <main className="min-h-screen bg-[#faf9f5] dark:bg-[#0c0b0e] text-slate-900 dark:text-[#ece9f0] selection:bg-orange-500 selection:text-white dark:selection:bg-signal dark:selection:text-ink transition-colors duration-200 flex flex-col">
       {/* Top Navigation */}
       <nav className="sticky top-0 z-30 border-b border-slate-200/80 dark:border-edge/80 bg-[#faf9f5]/90 dark:bg-[#0c0b0e]/90 backdrop-blur-md">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-3.5">
-          <Link href="/" className="shrink-0">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 sm:px-6 py-3 sm:py-3.5">
+          <Link href="/" className="shrink-0 flex items-center">
             <GitGrillLogo size="sm" />
           </Link>
 
@@ -108,7 +111,7 @@ export default function Home() {
             <button
               type="button"
               onClick={() => setDossierOpen(true)}
-              className="inline-flex items-center gap-1.5 whitespace-nowrap font-mono text-xs font-semibold text-[#ea580c] dark:text-signal px-2.5 py-1 rounded-lg border border-orange-200 dark:border-signal/30 bg-orange-50/70 dark:bg-signal/10 hover:bg-orange-100 dark:hover:bg-signal/20 transition-all shadow-2xs"
+              className="inline-flex items-center gap-1.5 whitespace-nowrap font-mono text-xs font-semibold text-[#ea580c] dark:text-signal px-2.5 py-1 rounded-lg border border-orange-200 dark:border-signal/30 bg-orange-50/70 dark:bg-signal/10 hover:bg-orange-100 dark:hover:bg-signal/20 transition-all shadow-2xs cursor-pointer"
               title="Open Engineering Build Dossier"
             >
               <Icon.Terminal className="h-3 w-3" />
@@ -117,7 +120,7 @@ export default function Home() {
             </button>
           </div>
 
-          <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
             <ThemeToggle />
             {user ? (
               <AccountMenu />
@@ -126,13 +129,13 @@ export default function Home() {
                 <button
                   type="button"
                   onClick={openSignIn}
-                  className="font-mono text-xs font-medium text-slate-600 dark:text-muted hover:text-[#ea580c] dark:hover:text-signal transition-colors px-2 py-1.5"
+                  className="font-mono text-xs font-medium text-slate-600 dark:text-muted hover:text-[#ea580c] dark:hover:text-signal transition-colors px-2 py-1.5 cursor-pointer"
                 >
                   Sign in
                 </button>
                 <Link
                   href="/developer"
-                  className="inline-flex items-center gap-1.5 whitespace-nowrap shrink-0 rounded-lg bg-[#ea580c] dark:bg-signal px-3.5 py-1.5 font-mono text-xs font-bold text-white dark:text-ink hover:bg-[#ea580c]/90 dark:hover:bg-signal/90 transition-all shadow-xs"
+                  className="hidden xs:inline-flex items-center gap-1.5 whitespace-nowrap shrink-0 rounded-lg bg-[#ea580c] dark:bg-signal px-3 py-1.5 sm:px-3.5 sm:py-1.5 font-mono text-xs font-bold text-white dark:text-ink hover:bg-[#ea580c]/90 dark:hover:bg-signal/90 transition-all shadow-xs"
                 >
                   <Icon.Briefcase className="h-3.5 w-3.5 shrink-0" />
                   <span>CareerOS</span>
@@ -140,15 +143,87 @@ export default function Home() {
                 </Link>
               </>
             )}
+
+            {/* Mobile Navigation Toggle */}
+            <button
+              type="button"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="inline-flex md:hidden items-center justify-center rounded-lg border border-slate-200 dark:border-edge bg-slate-50 dark:bg-card p-1.5 text-slate-700 dark:text-muted hover:text-[#ea580c] dark:hover:text-signal transition-colors cursor-pointer"
+              aria-label={mobileMenuOpen ? 'Close navigation menu' : 'Open navigation menu'}
+            >
+              {mobileMenuOpen ? <Icon.X className="h-4 w-4" /> : <Icon.Menu className="h-4 w-4" />}
+            </button>
           </div>
         </div>
+
+        {/* Mobile Dropdown Drawer */}
+        {mobileMenuOpen && (
+          <div className="md:hidden border-t border-slate-200/80 dark:border-edge/80 bg-[#faf9f5] dark:bg-[#0c0b0e] px-4 py-4 space-y-3 font-mono text-xs shadow-lg animate-in fade-in duration-150">
+            <div className="flex flex-col space-y-1">
+              <a
+                href="#how-it-works"
+                onClick={() => setMobileMenuOpen(false)}
+                className="px-3 py-2 rounded-lg text-slate-700 dark:text-muted hover:bg-slate-100 dark:hover:bg-surface hover:text-[#ea580c] dark:hover:text-signal transition-colors font-medium"
+              >
+                How It Works
+              </a>
+              <a
+                href="#features"
+                onClick={() => setMobileMenuOpen(false)}
+                className="px-3 py-2 rounded-lg text-slate-700 dark:text-muted hover:bg-slate-100 dark:hover:bg-surface hover:text-[#ea580c] dark:hover:text-signal transition-colors font-medium"
+              >
+                Features
+              </a>
+              <a
+                href="#pricing"
+                onClick={() => setMobileMenuOpen(false)}
+                className="px-3 py-2 rounded-lg text-slate-700 dark:text-muted hover:bg-slate-100 dark:hover:bg-surface hover:text-[#ea580c] dark:hover:text-signal transition-colors font-medium"
+              >
+                Pricing & Packages
+              </a>
+              <button
+                type="button"
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  setDossierOpen(true);
+                }}
+                className="flex items-center justify-between px-3 py-2 rounded-lg text-[#ea580c] dark:text-signal bg-orange-50/70 dark:bg-signal/10 border border-orange-200 dark:border-signal/30 font-semibold text-left"
+              >
+                <span className="flex items-center gap-2">
+                  <Icon.Terminal className="h-3.5 w-3.5" />
+                  Engineering Build Dossier
+                </span>
+                <Icon.ArrowUpRight className="h-3.5 w-3.5 opacity-70" />
+              </button>
+            </div>
+
+            <div className="pt-2 border-t border-slate-200 dark:border-edge grid grid-cols-2 gap-2">
+              <Link
+                href="/developer"
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-[#ea580c] dark:bg-signal text-white dark:text-ink font-bold shadow-xs text-center"
+              >
+                <Icon.Briefcase className="h-3.5 w-3.5 shrink-0" />
+                <span>CareerOS</span>
+              </Link>
+              <Link
+                href="/recruiter"
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 dark:border-edge bg-white dark:bg-surface text-slate-800 dark:text-[#ece9f0] font-semibold shadow-2xs text-center"
+              >
+                <Icon.Building className="h-3.5 w-3.5 shrink-0" />
+                <span>RecruiterOS</span>
+              </Link>
+            </div>
+          </div>
+        )}
       </nav>
 
       {/* Hero Section */}
       <section className="grid-bg relative overflow-hidden border-b border-slate-200 dark:border-edge/60 pb-20 pt-16 sm:pb-28 sm:pt-24">
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-[#faf9f5]/30 via-[#faf9f5]/80 to-[#faf9f5] dark:from-[#0c0b0e]/30 dark:via-[#0c0b0e]/80 dark:to-[#0c0b0e]" />
 
-        <div className="relative mx-auto max-w-6xl px-6">
+        <div className="relative mx-auto max-w-6xl px-4 sm:px-6">
           <div className="grid items-center gap-12 lg:grid-cols-12 lg:gap-8">
             {/* Hero Left: Value Prop & Interactive Console */}
             <div className="lg:col-span-7">
@@ -157,22 +232,22 @@ export default function Home() {
                 Technical Talent Intelligence & Developer CareerOS
               </div>
 
-              <h1 className="mt-6 font-sans text-4xl font-extrabold leading-[1.12] tracking-tight text-slate-900 dark:text-[#ece9f0] sm:text-5xl lg:text-[56px]">
+              <h1 className="mt-6 font-sans text-3xl font-extrabold leading-[1.15] tracking-tight text-slate-900 dark:text-[#ece9f0] sm:text-5xl lg:text-[56px]">
                 Verify engineering depth{' '}
                 <span className="text-[#ea580c] dark:text-signal">& pre-flight your applications.</span>
               </h1>
 
-              <p className="mt-5 max-w-xl text-[16px] leading-relaxed text-slate-600 dark:text-muted">
+              <p className="mt-5 max-w-xl text-[15px] sm:text-[16px] leading-relaxed text-slate-600 dark:text-muted">
                 Resume keywords and vanity commit streaks lie. GitGrill cross-examines real GitHub codebases, inspects live deployed applications, and builds calibrated dossiers for hiring teams while giving developers an immutable resume vault and targeted job pre-flight.
               </p>
 
               {/* Assessment Console & Portals */}
               <div id="console" className="mt-8 max-w-xl space-y-4">
                 {/* Clean Audit Box */}
-                <div className="rounded-2xl border border-slate-200 dark:border-edge bg-white dark:bg-surface/90 p-5 shadow-xl shadow-slate-200/50 dark:shadow-2xl backdrop-blur-md space-y-3.5">
+                <div className="rounded-2xl border border-slate-200 dark:border-edge bg-white dark:bg-surface/90 p-4 sm:p-5 shadow-xl shadow-slate-200/50 dark:shadow-2xl backdrop-blur-md space-y-3.5">
                   <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center">
-                    <div className="flex flex-1 items-center gap-2 rounded-xl bg-slate-50 dark:bg-[#0c0b0e] px-3.5 py-3 border border-slate-200 dark:border-edge/80 focus-within:border-[#ea580c] dark:focus-within:border-signal transition-colors">
-                      <span className="font-mono text-sm text-[#ea580c] dark:text-signal font-bold">@</span>
+                    <div className="flex flex-1 items-center gap-2 rounded-xl bg-slate-50 dark:bg-[#0c0b0e] px-3.5 py-3 border border-slate-200 dark:border-edge/80 focus-within:border-[#ea580c] dark:focus-within:border-signal transition-colors min-w-0">
+                      <span className="font-mono text-sm text-[#ea580c] dark:text-signal font-bold shrink-0">@</span>
                       <input
                         id="hero-audit-input"
                         type="text"
@@ -180,14 +255,14 @@ export default function Home() {
                         onChange={(e) => setAuditUsername(e.target.value)}
                         onKeyDown={(e) => e.key === 'Enter' && handleAnalyze()}
                         placeholder="candidate-github-username"
-                        className="w-full bg-transparent font-mono text-sm text-slate-900 dark:text-[#ece9f0] outline-none placeholder:text-slate-400 dark:placeholder:text-muted/40"
+                        className="w-full bg-transparent font-mono text-xs sm:text-sm text-slate-900 dark:text-[#ece9f0] outline-none placeholder:text-slate-400 dark:placeholder:text-muted/40 min-w-0"
                         autoFocus
                       />
                     </div>
 
                     <button
                       onClick={() => handleAnalyze()}
-                      className="flex-none rounded-xl bg-[#ea580c] hover:bg-[#c2410c] dark:bg-signal dark:hover:bg-signal/90 px-6 py-3 font-mono text-xs font-semibold uppercase tracking-wider text-white dark:text-ink transition-all shadow-md shadow-orange-500/20"
+                      className="w-full sm:w-auto flex-none rounded-xl bg-[#ea580c] hover:bg-[#c2410c] dark:bg-signal dark:hover:bg-signal/90 px-6 py-3 font-mono text-xs font-semibold uppercase tracking-wider text-white dark:text-ink transition-all shadow-md shadow-orange-500/20 active:scale-95 text-center cursor-pointer"
                     >
                       Audit Engineer ↗
                     </button>
@@ -673,18 +748,20 @@ export default function Home() {
           </div>
 
           {/* Result Banner */}
-          <div className="mt-10 rounded-xl bg-slate-900 dark:bg-[#1c1917] p-4 text-white font-mono text-xs flex flex-wrap items-center justify-between gap-4 shadow-sm">
-            <span className="text-[#f97316] font-semibold">THE OUTCOME:</span>
-            <div className="flex flex-wrap items-center gap-2 text-stone-300">
-              <span>Blind Applications</span>
-              <span>→</span>
-              <span>False Negatives</span>
-              <span>→</span>
-              <span>Engineering Burnout</span>
-              <span>→</span>
-              <span className="text-white font-semibold">Solve Both with GitGrill ⚡</span>
+          <div className="mt-10 rounded-xl bg-slate-900 dark:bg-[#1c1917] p-4 text-white font-mono text-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-[#f97316] font-semibold">THE OUTCOME:</span>
+              <div className="flex flex-wrap items-center gap-1.5 text-stone-300 text-[11px] sm:text-xs">
+                <span>Blind Applications</span>
+                <span>→</span>
+                <span>False Negatives</span>
+                <span>→</span>
+                <span>Engineering Burnout</span>
+                <span>→</span>
+                <span className="text-white font-semibold">Solve Both with GitGrill ⚡</span>
+              </div>
             </div>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-4 w-full sm:w-auto justify-between sm:justify-end border-t sm:border-t-0 border-stone-800 pt-3 sm:pt-0">
               <Link href="/developer" className="text-[#f97316] font-semibold underline hover:text-white transition-colors">
                 Developer CareerOS →
               </Link>
@@ -693,7 +770,7 @@ export default function Home() {
                   window.scrollTo({ top: 0, behavior: 'smooth' });
                   document.querySelector('input')?.focus();
                 }}
-                className="text-stone-300 underline hover:text-white transition-colors"
+                className="text-stone-300 underline hover:text-white transition-colors cursor-pointer"
               >
                 Audit Handle ↑
               </button>
@@ -849,10 +926,10 @@ export default function Home() {
             Whether you&apos;re an engineer pre-flighting your next job application or a hiring team auditing candidate depth, GitGrill replaces buzzword guesswork with deterministic code proof.
           </p>
 
-          <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+          <div className="mt-8 flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3 w-full sm:w-auto max-w-md sm:max-w-none mx-auto">
             <Link
               href="/developer"
-              className="inline-flex items-center gap-2 rounded-xl bg-[#ea580c] hover:bg-[#c2410c] dark:bg-signal dark:hover:bg-signal/90 px-7 py-3.5 font-mono text-xs font-bold uppercase tracking-wider text-white dark:text-ink transition-all shadow-md shadow-orange-500/20 active:scale-95"
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#ea580c] hover:bg-[#c2410c] dark:bg-signal dark:hover:bg-signal/90 px-7 py-3.5 font-mono text-xs font-bold uppercase tracking-wider text-white dark:text-ink transition-all shadow-md shadow-orange-500/20 active:scale-95 text-center"
             >
               <Icon.Briefcase className="h-4 w-4" />
               <span>Launch Developer CareerOS →</span>
@@ -864,7 +941,7 @@ export default function Home() {
                 const input = document.querySelector('input');
                 input?.focus();
               }}
-              className="inline-flex items-center gap-2 rounded-xl border border-slate-200 dark:border-edge bg-white dark:bg-card hover:border-[#ea580c] hover:text-[#ea580c] dark:hover:border-signal dark:hover:text-signal px-7 py-3.5 font-mono text-xs font-semibold uppercase tracking-wider text-slate-900 dark:text-[#ece9f0] transition-colors shadow-xs"
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 dark:border-edge bg-white dark:bg-card hover:border-[#ea580c] hover:text-[#ea580c] dark:hover:border-signal dark:hover:text-signal px-7 py-3.5 font-mono text-xs font-semibold uppercase tracking-wider text-slate-900 dark:text-[#ece9f0] transition-colors shadow-xs text-center cursor-pointer"
             >
               <span>Audit Engineering Handle ↑</span>
             </button>
@@ -874,7 +951,7 @@ export default function Home() {
 
       {/* Footer */}
       <footer className="border-t border-slate-200 dark:border-edge/60 py-8 text-center font-mono text-xs text-slate-500 dark:text-muted/60 bg-[#faf9f5] dark:bg-[#0c0b0e] mt-auto flex-none">
-        <div className="mx-auto max-w-6xl px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="mx-auto max-w-6xl px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left">
           <span>GitGrill · Technical Ground-Truth Intelligence & Code Defense</span>
           <span>
             developed by{' '}

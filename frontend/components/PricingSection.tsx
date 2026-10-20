@@ -39,38 +39,38 @@ export function PricingSection() {
           </p>
 
           {/* Primary Audience Segmented Switcher */}
-          <div className="mt-8 flex justify-center">
-            <div className="inline-flex items-center p-1 rounded-2xl border border-slate-200 dark:border-edge bg-white dark:bg-surface/80 shadow-sm backdrop-blur-md">
+          <div className="mt-8 flex justify-center w-full px-2 sm:px-0">
+            <div className="flex flex-col sm:flex-row w-full max-w-lg sm:w-auto items-stretch sm:items-center p-1 rounded-2xl border border-slate-200 dark:border-edge bg-white dark:bg-surface/80 shadow-sm backdrop-blur-md gap-1">
               <button
                 type="button"
                 onClick={() => setPricingAudience('developer')}
-                className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-mono text-xs font-bold transition-all ${
+                className={`flex items-center justify-center gap-2 px-4 sm:px-5 py-2.5 rounded-xl font-mono text-xs font-bold transition-all text-center ${
                   pricingAudience === 'developer'
                     ? 'bg-[#ea580c] dark:bg-signal text-white dark:text-ink shadow-xs'
                     : 'text-slate-600 dark:text-muted hover:text-slate-900 dark:hover:text-[#ece9f0]'
                 }`}
               >
-                <Icon.Monitor className="h-3.5 w-3.5" />
-                <span>For Developers & Job Seekers</span>
+                <Icon.Monitor className="h-3.5 w-3.5 shrink-0" />
+                <span className="whitespace-normal">For Developers & Job Seekers</span>
               </button>
               <button
                 type="button"
                 onClick={() => setPricingAudience('recruiter')}
-                className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-mono text-xs font-bold transition-all ${
+                className={`flex items-center justify-center gap-2 px-4 sm:px-5 py-2.5 rounded-xl font-mono text-xs font-bold transition-all text-center ${
                   pricingAudience === 'recruiter'
                     ? 'bg-[#ea580c] dark:bg-signal text-white dark:text-ink shadow-xs'
                     : 'text-slate-600 dark:text-muted hover:text-slate-900 dark:hover:text-[#ece9f0]'
                 }`}
               >
-                <Icon.Building className="h-3.5 w-3.5" />
-                <span>For Hiring Teams & Recruiters</span>
+                <Icon.Building className="h-3.5 w-3.5 shrink-0" />
+                <span className="whitespace-normal">For Hiring Teams & Recruiters</span>
               </button>
             </div>
           </div>
 
           {/* Unified Billing Cycle Segmented Control */}
-          <div className="mt-5 flex justify-center">
-            <div className="inline-flex items-center rounded-full border border-slate-200 dark:border-edge bg-white dark:bg-surface/80 p-1 shadow-2xs backdrop-blur-md">
+          <div className="mt-5 flex justify-center w-full px-2 sm:px-0">
+            <div className="inline-flex max-w-full flex-wrap items-center justify-center rounded-full border border-slate-200 dark:border-edge bg-white dark:bg-surface/80 p-1 shadow-2xs backdrop-blur-md gap-1">
               <button
                 type="button"
                 onClick={() => setAnnual(false)}
@@ -110,7 +110,7 @@ export function PricingSection() {
         {pricingAudience === 'developer' && (
           <div className="mt-12 grid gap-8 lg:grid-cols-3 items-stretch">
             {/* Dev Plan 1: Free Starter */}
-            <div className="flex flex-col justify-between rounded-2xl border border-slate-200 dark:border-edge bg-white dark:bg-surface/60 p-7 shadow-sm hover:shadow-md transition-shadow">
+            <div className="flex flex-col justify-between rounded-2xl border border-slate-200 dark:border-edge bg-white dark:bg-surface/60 p-5 sm:p-7 shadow-sm hover:shadow-md transition-shadow">
               <div>
                 <div className="font-mono text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-muted">
                   Free Starter
@@ -174,7 +174,7 @@ export function PricingSection() {
             </div>
 
             {/* Dev Plan 2: Developer Pro (Highlighted) */}
-            <div className="relative flex flex-col justify-between rounded-2xl border-2 border-[#ea580c] dark:border-signal bg-white dark:bg-surface p-7 shadow-xl ring-4 ring-[#ea580c]/10 dark:ring-signal/15">
+            <div className="relative flex flex-col justify-between rounded-2xl border-2 border-[#ea580c] dark:border-signal bg-white dark:bg-surface p-5 sm:p-7 shadow-xl ring-4 ring-[#ea580c]/10 dark:ring-signal/15">
               <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 rounded-full bg-[#ea580c] dark:bg-signal px-3.5 py-0.5 font-mono text-[10px] font-bold uppercase tracking-widest text-white dark:text-ink shadow-sm">
                 Most Popular
               </div>
@@ -256,7 +256,7 @@ export function PricingSection() {
             </div>
 
             {/* Dev Plan 3: 90-Day Job Hunt Season Pass */}
-            <div className="flex flex-col justify-between rounded-2xl border border-slate-200 dark:border-edge bg-white dark:bg-surface/60 p-7 shadow-sm hover:shadow-md transition-shadow">
+            <div className="flex flex-col justify-between rounded-2xl border border-slate-200 dark:border-edge bg-white dark:bg-surface/60 p-5 sm:p-7 shadow-sm hover:shadow-md transition-shadow">
               <div>
                 <div className="flex items-center justify-between">
                   <span className="font-mono text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-muted">
@@ -330,7 +330,7 @@ export function PricingSection() {
         {pricingAudience === 'recruiter' && (
           <div className="mt-12 grid gap-8 lg:grid-cols-3 items-stretch">
             {/* Recruiter Plan 1: Solo Recruiter / Co-Pilot */}
-            <div className="flex flex-col justify-between rounded-2xl border border-slate-200 dark:border-edge bg-white dark:bg-surface/60 p-7 shadow-sm hover:shadow-md transition-shadow">
+            <div className="flex flex-col justify-between rounded-2xl border border-slate-200 dark:border-edge bg-white dark:bg-surface/60 p-5 sm:p-7 shadow-sm hover:shadow-md transition-shadow">
               <div>
                 <div className="flex items-center justify-between">
                   <span className="font-mono text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-muted">
@@ -397,7 +397,7 @@ export function PricingSection() {
             </div>
 
             {/* Recruiter Plan 2: Recruiter Pro (Highlighted) */}
-            <div className="relative flex flex-col justify-between rounded-2xl border-2 border-[#ea580c] dark:border-signal bg-white dark:bg-surface p-7 shadow-xl ring-4 ring-[#ea580c]/10 dark:ring-signal/15">
+            <div className="relative flex flex-col justify-between rounded-2xl border-2 border-[#ea580c] dark:border-signal bg-white dark:bg-surface p-5 sm:p-7 shadow-xl ring-4 ring-[#ea580c]/10 dark:ring-signal/15">
               <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 rounded-full bg-[#ea580c] dark:bg-signal px-3.5 py-0.5 font-mono text-[10px] font-bold uppercase tracking-widest text-white dark:text-ink shadow-sm">
                 Matches Claude Pro Cost
               </div>
@@ -467,7 +467,7 @@ export function PricingSection() {
             </div>
 
             {/* Recruiter Plan 3: Enterprise & Agency */}
-            <div className="flex flex-col justify-between rounded-2xl border border-slate-200 dark:border-edge bg-white dark:bg-surface/60 p-7 shadow-sm hover:shadow-md transition-shadow">
+            <div className="flex flex-col justify-between rounded-2xl border border-slate-200 dark:border-edge bg-white dark:bg-surface/60 p-5 sm:p-7 shadow-sm hover:shadow-md transition-shadow">
               <div>
                 <div className="font-mono text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-muted">
                   Agency & Enterprise
