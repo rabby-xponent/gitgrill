@@ -205,7 +205,7 @@ export function CareerQuotaHUD({ username }: { username?: string }) {
 
   return (
     <>
-      <section id="career-quota-hud" className="relative scroll-mt-20 overflow-hidden rounded-2xl border border-edge bg-gradient-to-b from-card via-card/95 to-canvas p-5 shadow-card transition-all">
+      <section id="career-quota-hud" className="relative scroll-mt-20 overflow-hidden rounded-2xl border border-edge bg-gradient-to-b from-card via-card/95 to-canvas p-4 sm:p-5 shadow-card transition-all">
         {/* Ambient Top Glow Accent */}
         <div
           aria-hidden
@@ -240,7 +240,7 @@ export function CareerQuotaHUD({ username }: { username?: string }) {
             </div>
 
             <div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <h2 className="font-mono text-sm font-bold tracking-tight text-content">
                   CareerOS Quota & Consumption HUD
                 </h2>
@@ -269,14 +269,14 @@ export function CareerQuotaHUD({ username }: { username?: string }) {
           </div>
 
           {/* Quick Action Badges / Controls */}
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center justify-between sm:justify-end gap-2 w-full sm:w-auto">
             {!isSuperAdmin && activeTier !== 'pro' && (
               <button
                 type="button"
                 onClick={() => handleOpenUpgrade('pro_monthly')}
-                className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-signal to-signal/90 px-3.5 py-1.5 font-mono text-xs font-bold text-white shadow-xs transition-all hover:scale-[1.02] hover:shadow-signal/20 active:scale-[0.98]"
+                className="flex flex-1 sm:flex-none items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-signal to-signal/90 px-3.5 py-1.5 font-mono text-xs font-bold text-white shadow-xs transition-all hover:scale-[1.02] hover:shadow-signal/20 active:scale-[0.98] cursor-pointer"
               >
-                <Icon.Sparkle className="h-3.5 w-3.5" />
+                <Icon.Sparkle className="h-3.5 w-3.5 shrink-0" />
                 <span>Upgrade to Pro (৳399/mo)</span>
               </button>
             )}
@@ -286,9 +286,9 @@ export function CareerQuotaHUD({ username }: { username?: string }) {
                 type="button"
                 onClick={() => handleOpenUpgrade('pro_monthly')}
                 title="Test MFS payment modal as admin"
-                className="flex items-center gap-1.5 rounded-xl border border-purple-500/30 bg-purple-500/10 px-3 py-1.5 font-mono text-xs font-semibold text-purple-300 transition-colors hover:bg-purple-500/20"
+                className="flex flex-1 sm:flex-none items-center justify-center gap-1.5 rounded-xl border border-purple-500/30 bg-purple-500/10 px-3 py-1.5 font-mono text-xs font-semibold text-purple-300 transition-colors hover:bg-purple-500/20 cursor-pointer"
               >
-                <Icon.Shield className="h-3.5 w-3.5" />
+                <Icon.Shield className="h-3.5 w-3.5 shrink-0" />
                 <span>Test MFS Drawer</span>
               </button>
             )}
@@ -296,7 +296,7 @@ export function CareerQuotaHUD({ username }: { username?: string }) {
             <button
               type="button"
               onClick={() => setIsCollapsed(!isCollapsed)}
-              className="flex items-center gap-1 rounded-xl border border-edge bg-well px-2.5 py-1.5 font-mono text-xs text-muted transition-colors hover:border-signal/50 hover:text-content"
+              className="flex items-center justify-center gap-1 rounded-xl border border-edge bg-well px-2.5 py-1.5 font-mono text-xs text-muted transition-colors hover:border-signal/50 hover:text-content cursor-pointer shrink-0"
               title={isCollapsed ? 'Expand HUD' : 'Collapse HUD'}
             >
               <span>{isCollapsed ? 'Expand' : 'Collapse'}</span>
@@ -311,14 +311,14 @@ export function CareerQuotaHUD({ username }: { username?: string }) {
 
         {/* Super Admin Unrestricted Alert Banner */}
         {isSuperAdmin && !isCollapsed && (
-          <div className="mt-4 flex items-center justify-between rounded-xl border border-purple-500/30 bg-gradient-to-r from-purple-500/10 via-purple-500/5 to-transparent px-4 py-2.5">
+          <div className="mt-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 rounded-xl border border-purple-500/30 bg-gradient-to-r from-purple-500/10 via-purple-500/5 to-transparent p-3 sm:px-4 sm:py-2.5">
             <div className="flex items-center gap-2.5">
-              <Icon.Shield className="h-4 w-4 text-purple-400" />
+              <Icon.Shield className="h-4 w-4 text-purple-400 shrink-0" />
               <div className="font-mono text-xs text-purple-200">
                 <span className="font-bold">Super Admin Privilege Active:</span> All 7 developer capabilities run in unrestricted bypass mode with infinite quota (&infin;).
               </div>
             </div>
-            <span className="hidden sm:inline font-mono text-[11px] text-purple-400/80">
+            <span className="hidden sm:inline font-mono text-[11px] text-purple-400/80 shrink-0">
               Zero quota deductions recorded
             </span>
           </div>

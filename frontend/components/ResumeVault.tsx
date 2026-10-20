@@ -670,7 +670,7 @@ export function ResumeVault() {
   return (
     <div className="space-y-6">
       {/* Top Banner & File Dropzone */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-2xl border border-edge bg-card p-5 shadow-card">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-2xl border border-edge bg-card p-4 sm:p-5 shadow-card">
         <div>
           <div className="flex items-center gap-2">
             <span className="rounded bg-signal/15 px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-signal">
@@ -693,7 +693,7 @@ export function ResumeVault() {
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
           <input
             type="file"
             ref={fileInputRef}
@@ -709,7 +709,7 @@ export function ResumeVault() {
             type="button"
             disabled={isProcessing}
             onClick={() => fileInputRef.current?.click()}
-            className="inline-flex items-center gap-1.5 rounded-xl border border-edge bg-well px-3.5 py-2 font-mono text-xs font-semibold text-content shadow-xs hover:border-signal/50 hover:text-signal transition-colors shrink-0 disabled:opacity-50"
+            className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 rounded-xl border border-edge bg-well px-3.5 py-2 font-mono text-xs font-semibold text-content shadow-xs hover:border-signal/50 hover:text-signal transition-colors shrink-0 disabled:opacity-50 cursor-pointer text-center"
             title="Upload your master CV (.docx, .pdf, .md)"
           >
             <Icon.Upload className="h-3.5 w-3.5 text-signal" />
@@ -718,7 +718,7 @@ export function ResumeVault() {
           <button
             type="button"
             onClick={handleCreateNew}
-            className="inline-flex items-center gap-1.5 rounded-xl bg-signal px-3.5 py-2 font-mono text-xs font-bold text-white shadow-xs hover:bg-signal/90 transition-all shrink-0"
+            className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 rounded-xl bg-signal px-3.5 py-2 font-mono text-xs font-bold text-white shadow-xs hover:bg-signal/90 transition-all shrink-0 cursor-pointer text-center"
           >
             <Icon.Plus className="h-3.5 w-3.5" />
             <span>New Variant</span>
@@ -1305,11 +1305,11 @@ export function ResumeVault() {
                 )}
 
                 {/* Sub-Mode Tabs */}
-                <div className="flex flex-wrap items-center gap-2 font-mono text-xs border-b border-edge pb-2">
+                <div className="flex items-center gap-2 font-mono text-xs border-b border-edge pb-2 overflow-x-auto no-scrollbar max-w-full">
                   <button
                     type="button"
                     onClick={() => setActiveViewMode('preview')}
-                    className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 font-bold transition-all ${
+                    className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 font-bold transition-all shrink-0 whitespace-nowrap cursor-pointer ${
                       activeViewMode === 'preview'
                         ? 'border border-signal/40 bg-signal/10 text-signal shadow-xs'
                         : 'text-muted hover:text-content hover:bg-well'
@@ -1321,7 +1321,7 @@ export function ResumeVault() {
                   <button
                     type="button"
                     onClick={() => setActiveViewMode('matchmaker')}
-                    className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 font-bold transition-all ${
+                    className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 font-bold transition-all shrink-0 whitespace-nowrap cursor-pointer ${
                       activeViewMode === 'matchmaker'
                         ? 'border border-signal/40 bg-signal/10 text-signal shadow-xs'
                         : 'text-muted hover:text-content hover:bg-well'
@@ -1333,7 +1333,7 @@ export function ResumeVault() {
                   <button
                     type="button"
                     onClick={() => setActiveViewMode('diagnostics')}
-                    className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 font-bold transition-all ${
+                    className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 font-bold transition-all shrink-0 whitespace-nowrap cursor-pointer ${
                       activeViewMode === 'diagnostics'
                         ? 'border border-signal/40 bg-signal/10 text-signal shadow-xs'
                         : 'text-muted hover:text-content hover:bg-well'
@@ -1345,7 +1345,7 @@ export function ResumeVault() {
                   <button
                     type="button"
                     onClick={() => setActiveViewMode('defense')}
-                    className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 font-bold transition-all ${
+                    className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 font-bold transition-all shrink-0 whitespace-nowrap cursor-pointer ${
                       activeViewMode === 'defense'
                         ? 'border border-signal/40 bg-signal/10 text-signal shadow-xs'
                         : 'text-muted hover:text-content hover:bg-well'
@@ -1357,7 +1357,7 @@ export function ResumeVault() {
                   <button
                     type="button"
                     onClick={() => setActiveViewMode('inmail')}
-                    className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 font-bold transition-all ${
+                    className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 font-bold transition-all shrink-0 whitespace-nowrap cursor-pointer ${
                       activeViewMode === 'inmail'
                         ? 'border border-signal/40 bg-signal/10 text-signal shadow-xs'
                         : 'text-muted hover:text-content hover:bg-well'
@@ -1372,12 +1372,12 @@ export function ResumeVault() {
                 {activeViewMode === 'preview' && (
                   <div className="space-y-4">
                     {/* Preview Sub-Toolbar */}
-                    <div className="flex flex-wrap items-center justify-between gap-3 p-3 rounded-xl border border-edge bg-well/50">
-                      <div className="flex items-center gap-1.5 font-mono text-xs">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 rounded-xl border border-edge bg-well/50">
+                      <div className="flex items-center gap-1.5 font-mono text-xs overflow-x-auto no-scrollbar max-w-full pb-1 sm:pb-0">
                         <button
                           type="button"
                           onClick={() => setPreviewFormat('structured')}
-                          className={`flex items-center gap-1.5 rounded-lg px-3 py-1 font-semibold transition-all ${
+                          className={`flex items-center gap-1.5 rounded-lg px-3 py-1 font-semibold transition-all shrink-0 whitespace-nowrap cursor-pointer ${
                             previewFormat === 'structured'
                               ? 'bg-card text-signal border border-edge shadow-xs'
                               : 'text-muted hover:text-content'
@@ -1389,7 +1389,7 @@ export function ResumeVault() {
                         <button
                           type="button"
                           onClick={() => setPreviewFormat('source')}
-                          className={`flex items-center gap-1.5 rounded-lg px-3 py-1 font-semibold transition-all ${
+                          className={`flex items-center gap-1.5 rounded-lg px-3 py-1 font-semibold transition-all shrink-0 whitespace-nowrap cursor-pointer ${
                             previewFormat === 'source'
                               ? 'bg-card text-signal border border-edge shadow-xs'
                               : 'text-muted hover:text-content'
@@ -1402,7 +1402,7 @@ export function ResumeVault() {
                           <button
                             type="button"
                             onClick={() => setPreviewFormat('pdf')}
-                            className={`flex items-center gap-1.5 rounded-lg px-3 py-1 font-semibold transition-all ${
+                            className={`flex items-center gap-1.5 rounded-lg px-3 py-1 font-semibold transition-all shrink-0 whitespace-nowrap cursor-pointer ${
                               previewFormat === 'pdf'
                                 ? 'bg-card text-signal border border-edge shadow-xs'
                                 : 'text-muted hover:text-content'

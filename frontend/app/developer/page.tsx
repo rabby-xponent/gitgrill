@@ -171,44 +171,45 @@ function DeveloperCareerContent() {
   return (
     <main className="page-texture min-h-screen bg-canvas text-content pb-24 transition-colors">
       {/* Top Navigation */}
-      <nav className="sticky top-0 z-30 border-b border-edge bg-card/90 backdrop-blur-md px-6 py-3.5 transition-colors">
+      <nav className="sticky top-0 z-30 border-b border-edge bg-card/90 backdrop-blur-md px-4 sm:px-6 py-3 sm:py-3.5 transition-colors">
         <div className="mx-auto flex max-w-7xl items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Link href="/" className="shrink-0">
+          <div className="flex items-center gap-2 sm:gap-4 min-w-0">
+            <Link href="/" className="shrink-0 flex items-center">
               <GitGrillLogo size="sm" />
             </Link>
             <span className="text-edge">/</span>
-            <div className="flex items-center gap-2">
-              <span className="rounded border border-signal/30 bg-signal/10 px-2 py-0.5 font-mono text-[10px] font-bold uppercase text-signal">
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="shrink-0 rounded border border-signal/30 bg-signal/10 px-2 py-0.5 font-mono text-[10px] font-bold uppercase text-signal">
                 CareerOS
               </span>
-              <span className="hidden sm:inline font-mono text-xs text-muted">
+              <span className="hidden sm:inline font-mono text-xs text-muted truncate">
                 Engineering Job Search Command Center
               </span>
             </div>
           </div>
 
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
             <QuotaMeter />
             <AccountMenu workspace="developer" />
             <ThemeToggle />
             <Link
               href="/"
-              className="rounded-lg border border-edge bg-card px-3 py-1.5 font-mono text-xs text-muted shadow-xs transition-colors hover:border-signal/50 hover:text-signal"
+              className="rounded-lg border border-edge bg-card px-2.5 sm:px-3 py-1.5 font-mono text-xs text-muted shadow-xs transition-colors hover:border-signal/50 hover:text-signal"
             >
-              ← Public Home
+              <span className="hidden xs:inline">← Public Home</span>
+              <span className="xs:hidden">← Home</span>
             </Link>
           </div>
         </div>
       </nav>
 
-      <div className="mx-auto max-w-7xl space-y-8 px-4 pt-8 sm:px-6">
+      <div className="mx-auto max-w-7xl space-y-8 px-4 pt-6 sm:pt-8 sm:px-6">
         <CheckoutNotice />
         {/* Welcome + Identity Card */}
-        <div className="relative flex flex-col justify-between gap-5 overflow-hidden rounded-2xl border border-edge bg-card p-6 shadow-card sm:p-7 md:flex-row md:items-center">
+        <div className="relative flex flex-col justify-between gap-5 overflow-hidden rounded-2xl border border-edge bg-card p-5 sm:p-7 shadow-card md:flex-row md:items-center">
           <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-signal/50 to-transparent" />
           <div className="space-y-1.5">
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <span className="inline-flex items-center gap-1.5 rounded-full border border-signal/30 bg-signal/10 px-2.5 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-signal">
                 <span className="h-1.5 w-1.5 rounded-full bg-signal" />
                 Welcome back{devProfile.githubUsername ? `, @${devProfile.githubUsername.replace(/^@/, '')}` : ''}
@@ -224,9 +225,9 @@ function DeveloperCareerContent() {
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2.5">
-            <div className="flex items-center gap-2 rounded-xl border border-edge bg-well px-3.5 py-2 transition-colors focus-within:border-signal focus-within:ring-2 focus-within:ring-signal/15">
-              <span className="font-mono text-sm font-bold text-signal">@</span>
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 w-full md:w-auto">
+            <div className="flex flex-1 sm:flex-none items-center gap-2 rounded-xl border border-edge bg-well px-3.5 py-2 transition-colors focus-within:border-signal focus-within:ring-2 focus-within:ring-signal/15 min-w-0">
+              <span className="font-mono text-sm font-bold text-signal shrink-0">@</span>
               <input
                 type="text"
                 defaultValue={devProfile.githubUsername}
@@ -240,13 +241,13 @@ function DeveloperCareerContent() {
                     saveDeveloperProfile({ githubUsername: e.target.value.trim().replace(/^@/, '') });
                   });
                 }}
-                className="w-44 bg-transparent font-mono text-sm text-content outline-none placeholder:text-muted/60"
+                className="w-full sm:w-44 bg-transparent font-mono text-xs sm:text-sm text-content outline-none placeholder:text-muted/60 min-w-0"
               />
             </div>
             <button
               onClick={handleAddRole}
               title={atRoleLimit ? roleLock.verdict.reason || undefined : undefined}
-              className="flex items-center gap-1.5 rounded-xl bg-signal px-4 py-2 font-mono text-xs font-bold text-white shadow-xs transition-colors hover:bg-signal/90 outline-none focus-visible:ring-2 focus-visible:ring-signal/40"
+              className="flex items-center justify-center gap-1.5 rounded-xl bg-signal px-4 py-2 font-mono text-xs font-bold text-white shadow-xs transition-colors hover:bg-signal/90 outline-none focus-visible:ring-2 focus-visible:ring-signal/40 cursor-pointer shrink-0"
             >
               <Icon.Plus className="h-3.5 w-3.5" />
               <span>Add Target Role</span>
@@ -259,11 +260,11 @@ function DeveloperCareerContent() {
         <CareerQuotaHUD username={devProfile.githubUsername} />
 
         {/* Workspace Mode Switcher Tabs */}
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-edge pb-3">
-          <div className="flex items-center gap-2">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-edge pb-3">
+          <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1 max-w-full">
             <button
               onClick={() => setActiveTab('roles')}
-              className={`flex items-center gap-2 rounded-xl px-4 py-2 font-mono text-xs font-bold transition-all ${
+              className={`flex items-center gap-2 rounded-xl px-3.5 sm:px-4 py-2 font-mono text-xs font-bold transition-all shrink-0 whitespace-nowrap cursor-pointer ${
                 activeTab === 'roles'
                   ? 'border border-signal/40 bg-signal/10 text-signal shadow-xs'
                   : 'border border-transparent text-muted hover:border-edge hover:bg-card hover:text-content'
@@ -278,7 +279,7 @@ function DeveloperCareerContent() {
 
             <button
               onClick={() => setActiveTab('resumes')}
-              className={`flex items-center gap-2 rounded-xl px-4 py-2 font-mono text-xs font-bold transition-all ${
+              className={`flex items-center gap-2 rounded-xl px-3.5 sm:px-4 py-2 font-mono text-xs font-bold transition-all shrink-0 whitespace-nowrap cursor-pointer ${
                 activeTab === 'resumes'
                   ? 'border border-signal/40 bg-signal/10 text-signal shadow-xs'
                   : 'border border-transparent text-muted hover:border-edge hover:bg-card hover:text-content'
@@ -293,7 +294,7 @@ function DeveloperCareerContent() {
 
             <button
               onClick={() => setActiveTab('matchmaker')}
-              className={`flex items-center gap-2 rounded-xl px-4 py-2 font-mono text-xs font-bold transition-all ${
+              className={`flex items-center gap-2 rounded-xl px-3.5 sm:px-4 py-2 font-mono text-xs font-bold transition-all shrink-0 whitespace-nowrap cursor-pointer ${
                 activeTab === 'matchmaker'
                   ? 'border border-signal/40 bg-signal/10 text-signal shadow-xs'
                   : 'border border-transparent text-muted hover:border-edge hover:bg-card hover:text-content'
@@ -307,7 +308,7 @@ function DeveloperCareerContent() {
             </button>
           </div>
 
-          <div className="hidden sm:flex items-center gap-2 font-mono text-[11px] text-muted">
+          <div className="hidden lg:flex items-center gap-2 font-mono text-[11px] text-muted shrink-0">
             <Icon.Sparkle className="h-3.5 w-3.5 text-signal" />
             <span>Positioning & Evidence for Private & NDA Developers</span>
           </div>
@@ -380,17 +381,17 @@ function DeveloperCareerContent() {
 
         {/* Target Roles Board */}
         <div className="space-y-3">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-2">
               <h2 className="font-mono text-lg font-bold text-content">Target Roles</h2>
               <span className="font-mono text-xs text-muted">({roles.length})</span>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
               <SearchInput
                 value={searchQuery}
                 onChange={setSearchQuery}
                 placeholder="Search roles…"
-                className="w-44"
+                className="w-full sm:w-44"
               />
               <Select
                 value={statusFilter}
@@ -400,7 +401,7 @@ function DeveloperCareerContent() {
                   ...STATUS_SELECT_OPTIONS,
                 ]}
                 ariaLabel="Filter by status"
-                className="w-40"
+                className="w-full sm:w-40"
               />
             </div>
           </div>
@@ -480,23 +481,23 @@ function DeveloperCareerContent() {
                       </div>
                     </div>
 
-                    <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-edge pt-2.5">
+                    <div className="mt-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 border-t border-edge pt-2.5">
                       <Select
                         value={role.status}
                         onChange={(v) => handleStatusChange(role.id, v as ApplicationStatus)}
                         options={STATUS_SELECT_OPTIONS}
                         ariaLabel={`Status for ${role.title}`}
                         buttonClassName="py-0.5 text-[10px]"
-                        className="w-36"
+                        className="w-full sm:w-36"
                       />
-                      <div className="flex items-center gap-1.5">
+                      <div className="flex flex-wrap items-center justify-between sm:justify-end gap-1.5 w-full sm:w-auto">
                         {role.proofUrl && (
                           <a
                             href={role.proofUrl}
                             target="_blank"
                             rel="noreferrer"
                             onClick={(e) => e.stopPropagation()}
-                            className="flex h-[26px] w-[26px] items-center justify-center rounded-lg border border-signal/35 bg-signal/10 text-signal transition-colors hover:bg-signal/20"
+                            className="flex h-[28px] w-[28px] items-center justify-center rounded-lg border border-signal/35 bg-signal/10 text-signal transition-colors hover:bg-signal/20 shrink-0"
                             title={`Proof page live · snapshot v${role.proofVersion || 1}`}
                           >
                             <Icon.Link className="h-3 w-3" />
@@ -521,11 +522,11 @@ function DeveloperCareerContent() {
                             e.stopPropagation();
                             handlePreFlight(role);
                           }}
-                          className="flex items-center gap-1 rounded-lg border border-edge bg-well px-2.5 py-1 font-mono text-[11px] font-semibold text-content transition-colors hover:border-signal/60 hover:text-signal"
+                          className="flex items-center gap-1 rounded-lg border border-edge bg-well px-2.5 py-1 font-mono text-[11px] font-semibold text-content transition-colors hover:border-signal/60 hover:text-signal cursor-pointer"
                           title="Run pre-flight audit against this role"
                         >
                           <Icon.Zap className="h-3 w-3" />
-                          Pre-Flight
+                          <span>Pre-Flight</span>
                         </button>
                         <button
                           type="button"
@@ -533,7 +534,7 @@ function DeveloperCareerContent() {
                             e.stopPropagation();
                             handleRemoveRole(role.id, role.title);
                           }}
-                          className="flex h-[26px] w-[26px] items-center justify-center rounded-lg border border-edge bg-card text-muted transition-colors hover:border-rose-400/60 hover:text-rose-500"
+                          className="flex h-[28px] w-[28px] items-center justify-center rounded-lg border border-edge bg-card text-muted transition-colors hover:border-rose-400/60 hover:text-rose-500 cursor-pointer shrink-0"
                           title="Remove role"
                         >
                           <Icon.X className="h-3 w-3" />

@@ -128,25 +128,25 @@ export default function DefenseHub({ cards }: { cards: DefenseCard[] }) {
               <div className="text-center font-mono text-[10px] uppercase tracking-wider text-muted">
                 Grade yourself honestly — it schedules your next rep
               </div>
-              <div className="mt-2.5 grid grid-cols-3 gap-2">
+              <div className="mt-2.5 grid grid-cols-1 sm:grid-cols-3 gap-2">
                 <button
                   type="button"
                   onClick={() => handleGrade('never_seen')}
-                  className="rounded-xl border border-edge bg-well px-3 py-2.5 font-mono text-xs font-semibold text-muted transition-colors hover:border-signal/50 hover:text-content"
+                  className="rounded-xl border border-edge bg-well px-3 py-2.5 font-mono text-xs font-semibold text-muted transition-colors hover:border-signal/50 hover:text-content text-center cursor-pointer"
                 >
                   Didn&apos;t know it
                 </button>
                 <button
                   type="button"
                   onClick={() => handleGrade('shaky')}
-                  className="rounded-xl border border-signal/35 bg-signal/10 px-3 py-2.5 font-mono text-xs font-semibold text-signal transition-colors hover:bg-signal/20"
+                  className="rounded-xl border border-signal/35 bg-signal/10 px-3 py-2.5 font-mono text-xs font-semibold text-signal transition-colors hover:bg-signal/20 text-center cursor-pointer"
                 >
                   Shaky
                 </button>
                 <button
                   type="button"
                   onClick={() => handleGrade('solid')}
-                  className="rounded-xl border border-signal/40 bg-signal px-3 py-2.5 font-mono text-xs font-bold text-white transition-colors hover:bg-signal/90"
+                  className="rounded-xl border border-signal/40 bg-signal px-3 py-2.5 font-mono text-xs font-bold text-white transition-colors hover:bg-signal/90 text-center cursor-pointer"
                 >
                   Solid
                 </button>
@@ -162,7 +162,7 @@ export default function DefenseHub({ cards }: { cards: DefenseCard[] }) {
   /*  Idle state: queue summary + start button + full bank list        */
   /* ---------------------------------------------------------------- */
   return (
-    <div className="rounded-2xl border border-edge bg-card p-6 shadow-card">
+    <div className="rounded-2xl border border-edge bg-card p-4 sm:p-6 shadow-card">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-edge pb-4">
         <div>
           <h2 className="font-mono text-base font-bold text-content">
@@ -172,7 +172,7 @@ export default function DefenseHub({ cards }: { cards: DefenseCard[] }) {
             Every question the agent flagged for your target roles, accumulated into one practice deck.
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center justify-between sm:justify-end gap-3 w-full sm:w-auto">
           <div className="text-right font-mono text-[10px] text-muted">
             <div>
               <span className="text-content font-bold">{due.length}</span> due
@@ -193,7 +193,7 @@ export default function DefenseHub({ cards }: { cards: DefenseCard[] }) {
               setPracticeIndex(0);
               setRevealed(false);
             }}
-            className={`flex items-center gap-1.5 rounded-xl px-4 py-2 font-mono text-xs font-bold uppercase tracking-wider transition-colors outline-none focus-visible:ring-2 focus-visible:ring-signal/40 ${
+            className={`flex items-center justify-center gap-1.5 rounded-xl px-4 py-2 font-mono text-xs font-bold uppercase tracking-wider transition-colors outline-none focus-visible:ring-2 focus-visible:ring-signal/40 cursor-pointer ${
               due.length > 0 && !practiceLocked
                 ? 'bg-signal text-white shadow-xs hover:bg-signal/90'
                 : 'cursor-not-allowed border border-edge bg-well text-muted/60'

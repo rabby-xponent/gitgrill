@@ -207,11 +207,11 @@ export function JDResumeMatchmaker({
   return (
     <div className="space-y-6">
       {/* Matchmaker Banner Header */}
-      <div className="rounded-2xl border border-edge bg-card p-5 sm:p-6 shadow-card">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-edge pb-4">
+      <div className="rounded-2xl border border-edge bg-card p-4 sm:p-6 shadow-card">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-edge pb-4">
           <div>
             <div className="flex items-center gap-2">
-              <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-signal/15 text-signal">
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-signal/15 text-signal">
                 <Icon.Sparkle className="h-4 w-4" />
               </span>
               <h2 className="font-mono text-base sm:text-lg font-bold text-content">
@@ -224,28 +224,28 @@ export function JDResumeMatchmaker({
             </p>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 w-full sm:w-auto">
             <button
               type="button"
               onClick={handleOpenTailor}
-              className="inline-flex items-center gap-1.5 rounded-xl bg-signal px-4 py-2 font-mono text-xs font-bold text-white shadow-xs hover:bg-signal/90 transition-all cursor-pointer"
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 rounded-xl bg-signal px-4 py-2 font-mono text-xs font-bold text-white shadow-xs hover:bg-signal/90 transition-all cursor-pointer text-center"
             >
-              <Icon.Sparkle className="h-3.5 w-3.5" />
+              <Icon.Sparkle className="h-3.5 w-3.5 shrink-0" />
               <span>⚡ 1-Click Tailor for {activeRole.company}</span>
             </button>
           </div>
         </div>
 
         {/* Deterministic Selectors: Choose JD and Choose Resume */}
-        <div className="mt-5 grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="mt-5 grid grid-cols-1 lg:grid-cols-2 gap-4">
           {/* DOMAIN 1: Target JD Selector */}
           <div className="rounded-xl border border-edge bg-well/40 p-4 space-y-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2 font-mono text-xs font-bold text-content">
-                <Icon.Target className="h-4 w-4 text-signal" />
+                <Icon.Target className="h-4 w-4 text-signal shrink-0" />
                 <span>1. Select Target Job Description (JD)</span>
               </div>
-              <span className="rounded bg-signal/15 px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-signal">
+              <span className="rounded bg-signal/15 px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-signal shrink-0">
                 {activeRole.status}
               </span>
             </div>
@@ -258,12 +258,12 @@ export function JDResumeMatchmaker({
               className="w-full"
             />
 
-            <div className="flex items-center justify-between text-[11px] font-mono text-muted pt-1">
-              <span>{activeRole.company} · {activeRole.title}</span>
+            <div className="flex flex-wrap items-center justify-between gap-1 text-[11px] font-mono text-muted pt-1">
+              <span className="truncate max-w-[200px] sm:max-w-none">{activeRole.company} · {activeRole.title}</span>
               <button
                 type="button"
                 onClick={() => setShowRawJd(!showRawJd)}
-                className="text-signal hover:underline flex items-center gap-1 cursor-pointer"
+                className="text-signal hover:underline flex items-center gap-1 cursor-pointer shrink-0"
               >
                 <Icon.FileText className="h-3 w-3" />
                 <span>{showRawJd ? 'Hide Full JD Text' : 'View Full JD Text'}</span>
@@ -303,12 +303,12 @@ export function JDResumeMatchmaker({
               className="w-full"
             />
 
-            <div className="flex items-center justify-between text-[11px] font-mono text-muted pt-1">
-              <span>{activeResume.fullName} · {activeResume.targetRoleType}</span>
+            <div className="flex flex-wrap items-center justify-between gap-1 text-[11px] font-mono text-muted pt-1">
+              <span className="truncate max-w-[200px] sm:max-w-none">{activeResume.fullName} · {activeResume.targetRoleType}</span>
               <button
                 type="button"
                 onClick={() => setShowRawResume(!showRawResume)}
-                className="text-signal hover:underline flex items-center gap-1 cursor-pointer"
+                className="text-signal hover:underline flex items-center gap-1 cursor-pointer shrink-0"
               >
                 <Icon.Eye className="h-3 w-3" />
                 <span>{showRawResume ? 'Hide Text' : 'Inspect Clean Text'}</span>
@@ -542,8 +542,8 @@ export function JDResumeMatchmaker({
           </span>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left font-mono text-xs">
+        <div className="overflow-x-auto -mx-1 sm:mx-0">
+          <table className="w-full min-w-[620px] text-left font-mono text-xs">
             <thead>
               <tr className="border-b border-edge text-muted text-[11px] uppercase tracking-wider">
                 <th className="pb-2.5 font-bold">Rank</th>
@@ -832,11 +832,11 @@ export function JDResumeMatchmaker({
             </div>
 
             {/* Actions */}
-            <div className="flex items-center justify-end gap-3 pt-4 border-t border-edge">
+            <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2 sm:gap-3 pt-4 border-t border-edge">
               <button
                 type="button"
                 onClick={() => setIsTailorOpen(false)}
-                className="rounded-xl border border-edge px-4 py-2 font-mono text-xs text-muted hover:text-content hover:bg-well transition-colors cursor-pointer"
+                className="w-full sm:w-auto text-center rounded-xl border border-edge px-4 py-2 font-mono text-xs text-muted hover:text-content hover:bg-well transition-colors cursor-pointer"
               >
                 Cancel
               </button>
@@ -844,7 +844,7 @@ export function JDResumeMatchmaker({
                 type="button"
                 disabled={savingVariant}
                 onClick={handleConfirmTailoredVariant}
-                className="flex items-center gap-1.5 rounded-xl bg-signal px-5 py-2 font-mono text-xs font-bold text-white shadow-xs hover:bg-signal/90 transition-all cursor-pointer disabled:opacity-50"
+                className="w-full sm:w-auto justify-center flex items-center gap-1.5 rounded-xl bg-signal px-5 py-2 font-mono text-xs font-bold text-white shadow-xs hover:bg-signal/90 transition-all cursor-pointer disabled:opacity-50 text-center"
               >
                 <Icon.Sparkle className="h-3.5 w-3.5" />
                 <span>{savingVariant ? 'Saving Variant…' : `Confirm & Save Variant for ${activeRole.company}`}</span>
