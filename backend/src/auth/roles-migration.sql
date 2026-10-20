@@ -58,3 +58,24 @@ drop trigger if exists on_auth_user_created_role on auth.users;
 create trigger on_auth_user_created_role
   after insert on auth.users
   for each row execute function public.handle_new_user_role();
+
+-- 7. Automatic Sync: When `role` is updated in `public.users` table (via Table Editor),
+-- immediately reflect it into `auth.users.raw_app_meta_data` so the JWT token automatically has role: admin.
+create or replace function public.sync_user_role_to_auth()
+returns trigger
+language plpgsql
+security definer
+as $$
+begin
+  update auth.users
+  set raw_app_meta_data = coalesce(raw_app_meta_data, '{}'::jsonb) || jsonb_build_object('role', new.role)
+  where id = new.id;
+  return new;
+end;
+$$;
+
+drop trigger if exists on_public_user_role_updated on public.users;
+create trigger on_public_user_role_updated
+  after insert or update of role on public.users
+  for each row execute function public.sync_user_role_to_auth();
+
