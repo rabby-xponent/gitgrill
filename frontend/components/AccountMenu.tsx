@@ -207,7 +207,7 @@ export function AccountMenu({ workspace }: { workspace?: 'developer' | 'recruite
         {open && (
           <div
             role="menu"
-            className="fade-up absolute right-0 top-full z-40 mt-2 w-64 overflow-hidden rounded-xl border border-edge bg-card shadow-card"
+            className="fade-up absolute right-0 top-full z-40 mt-2 w-64 max-w-[calc(100vw-24px)] overflow-hidden rounded-xl border border-edge bg-card shadow-card"
           >
             {/* Signed-in identity chip */}
             <div className="border-b border-edge px-3.5 py-2.5">

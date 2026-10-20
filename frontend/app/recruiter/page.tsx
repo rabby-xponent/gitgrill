@@ -278,82 +278,74 @@ Live Evidence Dossier: ${window.location.origin}/profile/${cand.username}?jobId=
   return (
     <main className="page-texture min-h-screen bg-canvas text-content pb-24 transition-colors">
       {/* Top Navigation */}
-      <nav className="sticky top-0 z-30 border-b border-edge bg-card/90 backdrop-blur-md px-4 sm:px-6 py-3 sm:py-3.5 transition-colors">
-        <div className="mx-auto flex max-w-7xl items-center justify-between">
-          <div className="flex items-center gap-2 sm:gap-4 min-w-0">
-            <Link href="/" className="flex items-center shrink-0">
+      <nav className="sticky top-0 z-30 border-b border-edge bg-card/90 backdrop-blur-md px-3 sm:px-6 py-2.5 sm:py-3.5 transition-colors">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-2 min-w-0">
+          <div className="flex items-center gap-1.5 sm:gap-3 min-w-0 shrink">
+            <Link href="/" className="flex items-center shrink-0" title="GitGrill Home">
               <GitGrillLogo size="sm" />
             </Link>
-            <span className="text-edge">/</span>
-            <div className="flex items-center gap-2 min-w-0">
+            <span className="text-edge shrink-0">/</span>
+            <div className="flex items-center gap-1.5 min-w-0">
               <span className="shrink-0 rounded border border-signal/30 bg-signal/10 px-2 py-0.5 font-mono text-[10px] font-bold uppercase text-signal">
                 RecruiterOS
               </span>
-              <span className="hidden sm:inline font-mono text-xs text-muted truncate">
+              <span className="hidden lg:inline font-mono text-xs text-muted truncate">
                 Enterprise Talent Intelligence
               </span>
             </div>
           </div>
 
           {/* Recruiter Identity & Actions */}
-          <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
-            <AccountMenu workspace="recruiter" />
-            {!sessionLoading && !sessionUser && (
-              <span
-                className="hidden lg:inline-flex items-center gap-1.5 rounded-lg border border-edge bg-well px-2.5 py-1.5 font-mono text-[10px] uppercase tracking-wider text-muted"
-                title="Your requisitions and screenings stay in this browser until you sign in."
-              >
-                <Icon.Info className="h-3 w-3" />
-                Local-only demo mode
-              </span>
-            )}
-            <ThemeToggle />
-
-            {/* Recruiter Profile Card Trigger */}
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+            {/* Recruiter Profile / Settings Trigger */}
             <button
               onClick={() => setShowAccountModal(true)}
-              className="flex items-center gap-2 rounded-xl border border-edge bg-card px-2 sm:px-3 py-1.5 shadow-xs transition-colors hover:border-signal/50 cursor-pointer text-left outline-none focus-visible:ring-2 focus-visible:ring-signal/40"
-              title="Edit recruiter identity and default guardrails"
+              className="flex items-center gap-1.5 rounded-xl border border-edge bg-card p-1 sm:px-2.5 sm:py-1.5 shadow-xs transition-colors hover:border-signal/50 cursor-pointer text-left outline-none focus-visible:ring-2 focus-visible:ring-signal/40 shrink-0"
+              title="Edit recruiter workspace settings & guardrails"
             >
-              <div className="h-7 w-7 rounded-full border border-signal/30 bg-signal/10 flex items-center justify-center overflow-hidden shrink-0">
+              <div className="h-6 w-6 sm:h-7 sm:w-7 rounded-full border border-signal/30 bg-signal/10 flex items-center justify-center overflow-hidden shrink-0">
                 {account.avatarUrl ? (
                   <img src={account.avatarUrl} alt={account.name} className="h-full w-full object-cover" />
                 ) : (
-                  <span className="font-mono text-xs font-bold text-signal">
+                  <span className="font-mono text-[10px] sm:text-xs font-bold text-signal">
                     {account.name.slice(0, 2).toUpperCase()}
                   </span>
                 )}
               </div>
-              <div className="hidden md:block">
-                <div className="font-mono text-xs font-bold text-content leading-tight">
+              <div className="hidden xl:block">
+                <div className="font-mono text-xs font-bold text-content leading-tight truncate max-w-[120px]">
                   {account.name}
                 </div>
-                <div className="font-mono text-[10px] text-muted truncate max-w-[130px]">
+                <div className="font-mono text-[10px] text-muted truncate max-w-[120px]">
                   {account.company}
                 </div>
               </div>
-              <span className="rounded border border-signal/25 bg-signal/10 px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase text-signal">
-                {isAdmin(sessionUser) ? 'Super Admin · Unlimited' : account.planTier}
+              <span className="hidden sm:inline-block rounded border border-signal/25 bg-signal/10 px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase text-signal whitespace-nowrap">
+                {isAdmin(sessionUser) ? 'Admin' : account.planTier}
               </span>
             </button>
+
+            <AccountMenu workspace="recruiter" />
+            <ThemeToggle />
 
             {isAdmin(sessionUser) && (
               <Link
                 href="/developer"
-                className="hidden sm:inline-flex items-center gap-1.5 rounded-lg border border-signal/30 bg-signal/10 px-2.5 sm:px-3 py-1.5 font-mono text-xs font-semibold text-signal hover:bg-signal/20 transition-colors shadow-2xs"
+                className="hidden md:inline-flex items-center gap-1 rounded-lg border border-signal/30 bg-signal/10 px-2 sm:px-2.5 py-1.5 font-mono text-xs font-semibold text-signal hover:bg-signal/20 transition-colors shadow-2xs whitespace-nowrap"
                 title="Super Admin: Return to Developer CareerOS"
               >
-                <Icon.Github className="h-3.5 w-3.5" />
+                <Icon.Github className="h-3 w-3" />
                 <span>CareerOS</span>
               </Link>
             )}
 
             <Link
               href="/"
-              className="rounded-lg border border-edge bg-card px-2.5 sm:px-3 py-1.5 font-mono text-xs text-muted shadow-xs transition-colors hover:border-signal/50 hover:text-signal"
+              className="rounded-lg border border-edge bg-card px-2 sm:px-2.5 py-1.5 font-mono text-xs text-muted shadow-xs transition-colors hover:border-signal/50 hover:text-signal shrink-0"
+              title="Return to Public Home"
             >
-              <span className="hidden xs:inline">← Public Home</span>
-              <span className="xs:hidden">← Home</span>
+              <span className="hidden xs:inline">← Home</span>
+              <span className="xs:hidden">←</span>
             </Link>
           </div>
         </div>
