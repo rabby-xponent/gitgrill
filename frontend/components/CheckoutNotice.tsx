@@ -18,7 +18,7 @@ import { useEntitlements } from '@/hooks/useEntitlements';
 const POLL_INTERVAL_MS = 2000;
 const MAX_POLLS = 8; // ~16s, then we stop nagging and leave the meter to speak
 
-export function CheckoutNotice() {
+function CheckoutNoticeInner() {
   const params = useSearchParams();
   const checkout = params.get('checkout');
   const { entitlements, refresh } = useEntitlements();
@@ -60,5 +60,13 @@ export function CheckoutNotice() {
         ? 'Payment received — your Pro limits are live. Nothing you built changed.'
         : 'Payment received. Confirming your plan… your meter updates the moment it lands.'}
     </div>
+  );
+}
+
+export function CheckoutNotice() {
+  return (
+    <React.Suspense fallback={null}>
+      <CheckoutNoticeInner />
+    </React.Suspense>
   );
 }
