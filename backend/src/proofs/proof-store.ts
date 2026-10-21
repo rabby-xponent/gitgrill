@@ -1,18 +1,13 @@
 import { promises as fs } from 'fs';
 import path from 'path';
 import { DevProfile } from '../types/profile';
+import { getAdmin, isDbConfigured } from '../db/supabase';
 
 /**
- * Published Proof Page snapshots.
+ * Published Proof Page snapshots (Milestone 24D / 25B).
  *
- * A Proof Page is the developer's shareable, recruiter-legible evidence
- * artifact (see DEVELOPER_CAREER_OS_IDEATION.md §2.3). When a developer
- * publishes, we snapshot the exact audit they vetted — not a link into the
- * 24h profile cache — so the public URL is stable, survives cache expiry,
- * and can never silently change under a recruiter's feet.
- *
- * File-backed for now (mirrors cache.service.ts); the shape maps 1:1 onto a
- * future `proofs` table once accounts ship (Milestone 24/25).
+ * Persisted in Supabase `public.proofs` table for permanent multi-instance
+ * availability, with local disk cache mirror for sub-millisecond hot reads.
  */
 
 export interface ProofSnapshot {
@@ -30,15 +25,9 @@ export interface ProofSnapshot {
   roleTitle: string;
   /** Freeform note from the developer, shown on the page */
   note?: string;
-  /**
-   * Free-tier attribution (§11 decision 12): the public page renders its
-   * "Built with GitGrill" footer line while this is true. Stamped at publish
-   * time from the tier registry, so a Pro publish is unbranded forever even if
-   * the plan changes later. Absent (pre-registry snapshots) means branded —
-   * those pages were published before paid plans existed.
-   */
+  /** Free-tier attribution flag */
   branded?: boolean;
-  /** The full vetted audit (claim matrix, live app audit, fit, panel…) */
+  /** The full vetted audit */
   profile: DevProfile;
 }
 
@@ -52,24 +41,65 @@ const VALID_ID = /^[a-zA-Z0-9_-]+$/;
 
 export async function readProof(username: string, roleId: string): Promise<ProofSnapshot | null> {
   if (!VALID_ID.test(username) || !VALID_ID.test(roleId)) return null;
+  const id = proofId(username, roleId);
+
+  // 1. Try Supabase cloud proofs table first
+  if (isDbConfigured()) {
+    try {
+      const admin = getAdmin();
+      if (admin) {
+        const { data, error } = await admin
+          .from('proofs')
+          .select('data')
+          .eq('id', id)
+          .maybeSingle();
+        if (!error && data?.data) {
+          return data.data as ProofSnapshot;
+        }
+      }
+    } catch {
+      // Fall through to disk cache
+    }
+  }
+
+  // 2. Read from local disk cache
   try {
-    const raw = await fs.readFile(proofPath(proofId(username, roleId)), 'utf-8');
+    const raw = await fs.readFile(proofPath(id), 'utf-8');
     return JSON.parse(raw) as ProofSnapshot;
   } catch {
     return null;
   }
 }
 
-/** Remove a published snapshot — public access must actually go away (red line §4.3). */
+/** Remove a published snapshot — public access must actually go away. */
 export async function deleteProof(username: string, roleId: string): Promise<boolean> {
   if (!VALID_ID.test(username) || !VALID_ID.test(roleId)) return false;
-  try {
-    await fs.unlink(proofPath(proofId(username, roleId)));
-    return true;
-  } catch (err: any) {
-    if (err.code === 'ENOENT') return false;
-    throw err;
+  const id = proofId(username, roleId);
+
+  let removed = false;
+
+  // 1. Delete from Supabase
+  if (isDbConfigured()) {
+    try {
+      const admin = getAdmin();
+      if (admin) {
+        const { error } = await admin.from('proofs').delete().eq('id', id);
+        if (!error) removed = true;
+      }
+    } catch {
+      // Non-blocking
+    }
   }
+
+  // 2. Delete from disk cache
+  try {
+    await fs.unlink(proofPath(id));
+    removed = true;
+  } catch (err: any) {
+    if (err.code !== 'ENOENT') throw err;
+  }
+
+  return removed;
 }
 
 export async function writeProof(
@@ -90,8 +120,37 @@ export async function writeProof(
     updatedAt: now,
   };
 
-  await fs.mkdir(PROOFS_DIR, { recursive: true });
-  await fs.writeFile(proofPath(id), JSON.stringify(snapshot, null, 2), 'utf-8');
+  // 1. Persist to Supabase DB
+  if (isDbConfigured()) {
+    try {
+      const admin = getAdmin();
+      if (admin) {
+        await admin.from('proofs').upsert({
+          id,
+          username: snapshot.username.toLowerCase(),
+          role_id: snapshot.roleId,
+          role_title: snapshot.roleTitle,
+          version: snapshot.version,
+          published_at: new Date(snapshot.publishedAt).toISOString(),
+          updated_at: new Date(snapshot.updatedAt).toISOString(),
+          branded: snapshot.branded ?? true,
+          note: snapshot.note || null,
+          data: snapshot,
+        });
+      }
+    } catch (err) {
+      console.warn('[proof-store] Failed to save proof to Supabase:', err);
+    }
+  }
+
+  // 2. Write to local disk cache
+  try {
+    await fs.mkdir(PROOFS_DIR, { recursive: true });
+    await fs.writeFile(proofPath(id), JSON.stringify(snapshot, null, 2), 'utf-8');
+  } catch (err) {
+    console.warn('[proof-store] Failed to write local cache:', err);
+  }
+
   return snapshot;
 }
 
@@ -100,6 +159,32 @@ export async function listProofs(username: string): Promise<
   Pick<ProofSnapshot, 'roleId' | 'roleTitle' | 'updatedAt' | 'version'>[]
 > {
   if (!VALID_ID.test(username)) return [];
+
+  // 1. Try Supabase cloud proofs table
+  if (isDbConfigured()) {
+    try {
+      const admin = getAdmin();
+      if (admin) {
+        const { data, error } = await admin
+          .from('proofs')
+          .select('role_id, role_title, updated_at, version')
+          .eq('username', username.toLowerCase())
+          .order('updated_at', { ascending: false });
+        if (!error && Array.isArray(data) && data.length > 0) {
+          return data.map((row: any) => ({
+            roleId: row.role_id,
+            roleTitle: row.role_title,
+            updatedAt: new Date(row.updated_at).getTime(),
+            version: row.version,
+          }));
+        }
+      }
+    } catch {
+      // Fall through to disk cache
+    }
+  }
+
+  // 2. Fall back to reading files from disk cache
   try {
     const files = await fs.readdir(PROOFS_DIR);
     const out: ProofSnapshot[] = [];
@@ -108,16 +193,22 @@ export async function listProofs(username: string): Promise<
       try {
         const raw = await fs.readFile(path.join(PROOFS_DIR, file), 'utf-8');
         const snap = JSON.parse(raw) as ProofSnapshot;
-        if (snap.username.toLowerCase() === username.toLowerCase()) out.push(snap);
+        if (snap.username?.toLowerCase() === username.toLowerCase()) {
+          out.push(snap);
+        }
       } catch {
-        /* skip unreadable entries */
+        // Skip corrupt files
       }
     }
     return out
       .sort((a, b) => b.updatedAt - a.updatedAt)
-      .map(({ roleId, roleTitle, updatedAt, version }) => ({ roleId, roleTitle, updatedAt, version }));
-  } catch (err: any) {
-    if (err.code === 'ENOENT') return [];
-    throw err;
+      .map((p) => ({
+        roleId: p.roleId,
+        roleTitle: p.roleTitle,
+        updatedAt: p.updatedAt,
+        version: p.version,
+      }));
+  } catch {
+    return [];
   }
 }

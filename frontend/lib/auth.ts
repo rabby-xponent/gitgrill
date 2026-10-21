@@ -156,6 +156,9 @@ export async function getSessionUser(): Promise<AuthUser | null> {
         };
         if (typeof window !== 'undefined') {
           localStorage.setItem('gitgrill_current_user_id', enrichedUser.id);
+          import('./workspace-sync').then(({ checkAndSyncWorkspace }) => {
+            checkAndSyncWorkspace(enrichedUser.id).catch(() => {});
+          });
         }
         return enrichedUser;
       }
@@ -168,6 +171,9 @@ export async function getSessionUser(): Promise<AuthUser | null> {
   if (typeof window !== 'undefined') {
     if (clientUser?.id) {
       localStorage.setItem('gitgrill_current_user_id', clientUser.id);
+      import('./workspace-sync').then(({ checkAndSyncWorkspace }) => {
+        checkAndSyncWorkspace(clientUser.id).catch(() => {});
+      });
     } else {
       localStorage.removeItem('gitgrill_current_user_id');
     }

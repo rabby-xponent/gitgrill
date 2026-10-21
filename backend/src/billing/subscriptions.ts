@@ -325,7 +325,7 @@ export async function claimEvent(eventId: string, type: string): Promise<boolean
 }
 
 /**
- * Release a claimed event after a failed apply, so Stripe's retry is allowed to
+ * Release a claimed event after a failed apply, so retry is allowed to
  * do the work. Without this a transient DB error would silently lose a payment.
  */
 export async function releaseEvent(eventId: string): Promise<void> {

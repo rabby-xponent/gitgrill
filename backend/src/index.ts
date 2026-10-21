@@ -8,7 +8,7 @@ import { attachAuth } from './auth/middleware';
 import { usageRouter } from './security/usage-ledger';
 import { entitlementsRouter } from './security/entitlements';
 import workspaceRoutes from './workspace/routes';
-import billingRoutes, { stripeWebhookHandler } from './billing/billing.routes';
+import billingRoutes from './billing/billing.routes';
 import adminRoutes from './admin/admin.routes';
 
 const app = express();
@@ -75,10 +75,6 @@ app.use(
     credentials: true, // EventSource/fetch from the frontend must be able to carry the demo cookie
   })
 );
-// Stripe signs the exact bytes it sent, so the webhook must see the RAW body.
-// This mount therefore has to come before express.json().
-app.post('/api/billing/webhook', express.raw({ type: 'application/json' }), stripeWebhookHandler);
-
 app.use(express.json());
 app.use(attachAuth); // resolve req.auth from Bearer/x-gitgrill-session (or x-devscope-session) when present
 

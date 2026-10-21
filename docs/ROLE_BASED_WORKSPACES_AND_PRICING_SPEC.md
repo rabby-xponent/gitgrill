@@ -13,7 +13,7 @@ Previously, GitGrill treated all authenticated accounts as generic users. This r
 1. **Context Pollution:** Developers logging in to audit their GitHub profile were greeted with recruiter workspace switchers and internal platform admin links (`MFS Payments Admin`).
 2. **Pricing Misalignment:** A single pricing catalogue was shared across developer individuals and hiring organizations. Displaying consumer developer pricing ($4/mo or ৳399/mo) to recruiters severely under-monetizes enterprise hiring workflows, while displaying corporate pricing to junior engineers repels individual developers.
 3. **Security & Information Leaks:** Administrative links (`/admin/billing`) were rendered unconditionally in client-side navigation without role verification.
-4. **Stale Billing Copy:** Legacy placeholder pricing strings (e.g. `$14/mo`) contradicted live local pricing (৳399/mo) and failed on unconfigured Stripe checkout attempts instead of routing through our unified bKash/Nagad & Card modal.
+4. **Stale Billing Copy:** Legacy placeholder pricing strings (e.g. `$14/mo`) contradicted live local pricing (৳399/mo) instead of routing through our unified bKash & Nagad MFS modal.
 
 ### 1.2 The Two-Space Model: Developer CareerOS vs Recruiter TalentOS
 

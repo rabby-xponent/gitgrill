@@ -2,7 +2,7 @@
 
 > Real-time tracker of implemented features, bug fixes, schema evolutions, and upcoming roadmap milestones.  
 > **Current Version:** `v1.3.0` (Complete Rebrand to GitGrill, Deep Code Defense & Dual Monetization)  
-> **Status:** All core intelligence, code defense, local/Stripe billing, and branding hardened.
+> **Status:** All core intelligence, code defense, Bangladesh MFS (bKash & Nagad) billing, and branding hardened.
 
 ---
 
@@ -459,7 +459,7 @@ pie title Roadmap Milestone Status
 - [ ] **Milestone 25 — Quota & Billing Enforcement:**
   * `usage_events` ledger; `/api/agent/stream` as the single enforcement point
     (quota check → signed analysis token → SSE allowed).
-  * Stripe Checkout + webhook plan state cached in session.
+  * Bangladesh MFS (bKash & Nagad) flow with 24-hr provisional access and async ledger.
   * Tier gates: Free = 3 audits/month + 1 target role + 1 branded Proof Page;
     Pro = unlimited everything + simulated screens + priority queue;
     RecruiterOS Team = per-seat batch/cloud features.
@@ -569,7 +569,7 @@ pie title Roadmap Milestone Status
 * **Backend Overhaul:**
   - Renamed package definitions to `gitgrill-backend` and service name in `render.yaml`.
   - Updated User-Agent identifiers to `GitGrill/1.0` and `GitGrill-Bot/1.0`.
-  - Updated Stripe and session metadata to support `gitgrill_user_id` and `x-gitgrill-session` with seamless backward compatibility.
+  - Updated billing and session metadata to support `gitgrill_user_id` and `x-gitgrill-session` with seamless backward compatibility.
   - System prompt in Tier 2 ReAct agent calibrated to *"GitGrill's Staff Technical Auditor"*.
 * **Documentation:**
   - Standardized all architecture guides, roadmaps, and specs to GitGrill.

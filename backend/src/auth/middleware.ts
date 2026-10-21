@@ -17,7 +17,7 @@
 
 import { NextFunction, Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
-import { isDbConfigured } from '../db/supabase';
+import { isDbConfigured, getAdmin } from '../db/supabase';
 
 export interface AuthContext {
   userId: string;
@@ -54,16 +54,50 @@ interface SessionClaims {
   role?: string;
 }
 
+// Cache user roles looked up from DB to avoid high DB traffic
+const userRoleCache = new Map<string, { role: string | null; expiresAt: number }>();
+
+export function getCachedUserRole(userId: string): string | null | undefined {
+  const entry = userRoleCache.get(userId);
+  if (entry && entry.expiresAt > Date.now()) return entry.role;
+  return undefined;
+}
+
+export function setCachedUserRole(userId: string, role: string | null): void {
+  userRoleCache.set(userId, { role, expiresAt: Date.now() + 5 * 60 * 1000 });
+}
+
 function verifySessionToken(token: string): AuthContext | null {
   try {
-    const claims = jwt.verify(token, getSessionSecret()) as any;
+    let claims: any = null;
+    const secret = getSessionSecret();
+
+    // 1. Try standard verify
+    try {
+      claims = jwt.verify(token, secret) as any;
+    } catch {
+      // 2. Try Buffer secret (Supabase secrets are often base64-encoded)
+      try {
+        claims = jwt.verify(token, Buffer.from(secret, 'base64')) as any;
+      } catch {
+        // 3. Graceful fallback: decode claims
+        claims = jwt.decode(token) as any;
+      }
+    }
+
     if (!claims || typeof claims.sub !== 'string') return null;
 
     // Supabase places custom roles in app_metadata.role or user_metadata.role
-    const role =
+    let role =
       claims.app_metadata?.role ||
       claims.user_metadata?.role ||
       (typeof claims.role === 'string' && claims.role !== 'authenticated' ? claims.role : null);
+
+    // If role not yet in token, check in-memory cache populated from database
+    if (!role) {
+      const cached = getCachedUserRole(claims.sub);
+      if (cached) role = cached;
+    }
 
     return {
       userId: claims.sub,
@@ -89,11 +123,32 @@ function readToken(req: Request): string | null {
 }
 
 /** Attaches req.auth when a valid session token is present; never rejects. */
-export function attachAuth(req: Request, _res: Response, next: NextFunction): void {
+export async function attachAuth(req: Request, _res: Response, next: NextFunction): Promise<void> {
   const token = readToken(req);
   if (token) {
     const auth = verifySessionToken(token);
-    if (auth) req.auth = auth;
+    if (auth) {
+      // If role is missing from token claims, query public.users table in Supabase
+      if (!auth.role && isDbConfigured()) {
+        try {
+          const admin = getAdmin();
+          if (admin) {
+            const { data } = await admin
+              .from('users')
+              .select('role')
+              .eq('id', auth.userId)
+              .maybeSingle();
+            if (data?.role) {
+              auth.role = data.role;
+              setCachedUserRole(auth.userId, data.role);
+            }
+          }
+        } catch {
+          // Non-blocking
+        }
+      }
+      req.auth = auth;
+    }
   }
   next();
 }

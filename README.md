@@ -99,7 +99,7 @@ GitGrill separates high-frequency stateless aggregations from deep autonomous re
 - **Two-Phase Agent (No Token Blowup)**: Raw tool executions are buffered in-memory; only structured summaries (~2KB) remain in the active LLM context. Synthesis runs as an isolated final step, eliminating context exhaustion and keeping per-run costs minimal.
 - **Multi-Model Failover Gateway**: Zero vendor lock-in. The backend cascade attempts ultra-fast inference (Groq Llama-3.3-70B), automatically failing over to OpenRouter, DeepSeek-V3, and Gemini 2.5 Flash on rate limits or outages.
 - **2D Coordinate PDF Reconstruction**: Resolves multi-column PDFs by sorting text runs by vertical baseline ($y$) and horizontal offset ($x$), eliminating column blending that breaks standard PDF text extractors.
-- **Dual Monetization Rail**: Enterprise team seats and solo recruiter tiers integrated with Stripe (USD) and bKash MFS (BDT) for cross-border SaaS operation.
+- **Bangladesh MFS Monetization Rail**: Enterprise team seats and solo recruiter tiers integrated with bKash and Nagad MFS (BDT) with 24-hr instant provisional access for seamless SaaS operations.
 
 ---
 
@@ -146,7 +146,7 @@ devscope/
     ├── DEVSCOPE_SPEC.md            # Foundational system architecture & agent loop
     ├── DEVELOPER_CAREER_OS_SPEC.md # CareerOS specification, AST schemas & workflows
     ├── ROLE_BASED_WORKSPACES...    # Dual workspace & monetization specification
-    ├── MONETIZATION_ARCHITECTURE.md# Stripe & bKash MFS payment workflows
+    ├── MONETIZATION_ARCHITECTURE.md# Bangladesh MFS (bKash & Nagad) payment workflows
     └── ROADMAP.md                  # Product roadmap & feature milestones
 ```
 
@@ -243,7 +243,7 @@ The engineering decisions behind GitGrill are documented in detail within the [`
 | [**System Specification**](./docs/DEVSCOPE_SPEC.md) | Two-tier ReAct agent, tool execution protocols, synthesis pipeline |
 | [**Developer CareerOS Spec**](./docs/DEVELOPER_CAREER_OS_SPEC.md) | Deterministic Resume AST, 2D PDF coordinates, Mammoth DOCX, Variant Studio |
 | [**Workspaces & Pricing**](./docs/ROLE_BASED_WORKSPACES_AND_PRICING_SPEC.md) | Dual workspace architecture (Recruiter vs Developer) & pricing models |
-| [**Monetization Architecture**](./docs/MONETIZATION_ARCHITECTURE.md) | Stripe & bKash MFS payment workflows, entitlement enforcement |
+| [**Monetization Architecture**](./docs/MONETIZATION_ARCHITECTURE.md) | Bangladesh MFS (bKash & Nagad) payment workflows, entitlement enforcement |
 | [**Product Roadmap**](./docs/ROADMAP.md) | Milestone history, technical achievements, and upcoming capabilities |
 
 ---

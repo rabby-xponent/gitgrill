@@ -238,10 +238,10 @@ candidate tier deliberately overlaps with the recruiter acquisition loop (Proof 
 3. **Account & workspace separation.** Postgres (or hosted equivalent — Supabase fits the
    existing stack signals) with: `users`, `workspaces` (`type: individual | team`),
    `memberships`, `target_roles`, `applications`, `audits`, `usage_events`, `subscriptions`
-   (Stripe). Local-storage schemas migrate into user rows on first login — nothing the early
+   (MFS). Local-storage schemas migrate into user rows on first login — nothing the early
    users built is lost.
-4. **Payments.** Stripe Checkout + webhooks; plan state cached in the session token so the
-   hot path (SSE check) never blocks on Stripe.
+4. **Payments.** Bangladesh MFS (bKash & Nagad) with 24-hr instant provisional access; plan state cached in the session token so the
+   hot path (SSE check) never blocks on remote payment lookups.
 5. **Cache policy under accounts.** Today's public 24h profile cache becomes user-scoped
    re-verify; the recruiter's "fresh run" button consumes *their* quota — this closes the
    current loophole where unlimited anonymous regeneration = unlimited cost.
@@ -291,7 +291,7 @@ D5 defense hub → D7 application tracker → D8 task generator → D6 Proof Pag
 Exit: weekly-return product; the "companion" promise is real.
 
 **Phase 6a — Accounts & Monetization (can start in parallel on backend)**
-Magic-link auth, quota ledger, Stripe, tier enforcement, data migration from localStorage.
+Magic-link auth, quota ledger, Bangladesh MFS (bKash & Nagad), tier enforcement, data migration from localStorage.
 Exit: free tier + Pro live; landing page boundary messaging shipped.
 
 **Phase 6b — AI-era Bets**

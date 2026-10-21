@@ -13,7 +13,7 @@ import { Icon } from '@/components/icons';
 import { useSession } from '@/components/SessionProvider';
 import { useEntitlements } from '@/hooks/useEntitlements';
 import { createPortal } from 'react-dom';
-import { PLANS, startPortal, BillingError } from '@/lib/billing';
+import { PLANS } from '@/lib/billing';
 import { isAdmin } from '@/lib/admin';
 import { updatePassword, signInWithPassword, resetPassword } from '@/lib/auth';
 import { BkashNagadModal } from '@/components/BkashNagadModal';
@@ -114,28 +114,10 @@ export function AccountMenu({ workspace }: { workspace?: 'developer' | 'recruite
     }
   }
 
-  /** Self-serve billing: the portal handles cancel, plan change for existing paid users. */
-  async function handleBilling() {
-    if (!paid) {
-      setShowPaymentModal(true);
-      setOpen(false);
-      return;
-    }
-    setBillingBusy(true);
-    setBillingNote(null);
-    try {
-      const { url } = await startPortal();
-      window.location.href = url;
-    } catch (err) {
-      setBillingNote(
-        err instanceof BillingError && err.notConfigured
-          ? 'Billing portal is not configured on this deployment.'
-          : err instanceof Error
-            ? err.message
-            : 'Billing unavailable.'
-      );
-      setBillingBusy(false);
-    }
+  /** Open MFS payment modal to upgrade, extend, or view subscription */
+  function handleBilling() {
+    setShowPaymentModal(true);
+    setOpen(false);
   }
 
   useEffect(() => {

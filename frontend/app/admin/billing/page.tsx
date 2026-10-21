@@ -330,12 +330,22 @@ export default function AdminBillingPage() {
     }
   };
 
-  const handleSaveMfsConfig = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSaveMfsConfig = async (
+    e?: React.FormEvent,
+    section: 'all' | 'bkash' | 'nagad' = 'all'
+  ) => {
+    if (e) e.preventDefault();
     setConfigSaving(true);
     setConfigSuccess(false);
     try {
-      const res = await updateAdminMfsConfig(mfsConfig, adminKey || undefined);
+      const payload: Partial<MfsAccountConfig> =
+        section === 'all'
+          ? mfsConfig
+          : section === 'bkash'
+            ? { bkash: mfsConfig.bkash, noticeMessage: mfsConfig.noticeMessage }
+            : { nagad: mfsConfig.nagad, noticeMessage: mfsConfig.noticeMessage };
+
+      const res = await updateAdminMfsConfig(payload as any, adminKey || undefined);
       if (res.config) setMfsConfig(res.config);
       setConfigSuccess(true);
       setTimeout(() => setConfigSuccess(false), 3000);
@@ -661,7 +671,6 @@ export default function AdminBillingPage() {
                       }
                       placeholder="017XXXXXXXX"
                       className="w-full rounded-xl border border-edge bg-well px-3.5 py-2 font-mono text-sm text-content focus:border-signal focus:outline-hidden"
-                      required
                     />
                   </div>
 
@@ -701,6 +710,17 @@ export default function AdminBillingPage() {
                     placeholder="e.g. Send Money অপশন ব্যবহার করুন। রেফারেন্সে গিটহাব হ্যান্ডেল দিন।"
                     className="w-full rounded-xl border border-edge bg-well px-3.5 py-2 font-mono text-xs text-content focus:border-signal focus:outline-hidden"
                   />
+                </div>
+
+                <div className="flex justify-end pt-1">
+                  <button
+                    type="button"
+                    disabled={configSaving}
+                    onClick={() => handleSaveMfsConfig(undefined, 'bkash')}
+                    className="rounded-lg bg-[#e2136e] hover:bg-[#c2105e] text-white px-3.5 py-1.5 font-mono text-xs font-bold transition-all disabled:opacity-50 cursor-pointer shadow-xs"
+                  >
+                    {configSaving ? 'Saving...' : 'Save bKash Settings'}
+                  </button>
                 </div>
               </div>
 
@@ -745,7 +765,6 @@ export default function AdminBillingPage() {
                       }
                       placeholder="018XXXXXXXX"
                       className="w-full rounded-xl border border-edge bg-well px-3.5 py-2 font-mono text-sm text-content focus:border-signal focus:outline-hidden"
-                      required
                     />
                   </div>
 
@@ -785,6 +804,17 @@ export default function AdminBillingPage() {
                     placeholder="e.g. Send Money অপশন ব্যবহার করুন।"
                     className="w-full rounded-xl border border-edge bg-well px-3.5 py-2 font-mono text-xs text-content focus:border-signal focus:outline-hidden"
                   />
+                </div>
+
+                <div className="flex justify-end pt-1">
+                  <button
+                    type="button"
+                    disabled={configSaving}
+                    onClick={() => handleSaveMfsConfig(undefined, 'nagad')}
+                    className="rounded-lg bg-[#f7941d] hover:bg-[#d97c12] text-white px-3.5 py-1.5 font-mono text-xs font-bold transition-all disabled:opacity-50 cursor-pointer shadow-xs"
+                  >
+                    {configSaving ? 'Saving...' : 'Save Nagad Settings'}
+                  </button>
                 </div>
               </div>
 

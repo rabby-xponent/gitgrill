@@ -18,7 +18,7 @@ import { Icon } from '@/components/icons';
 import { Capability, ruleFor } from '@backend/config/tiers';
 import type { EntitlementEntry } from '@/lib/entitlements';
 import { useSession } from '@/components/SessionProvider';
-import { PLANS, PlanId, startCheckout, startPortal, BillingError } from '@/lib/billing';
+import { PLANS, PlanId } from '@/lib/billing';
 import { BkashNagadModal } from '@/components/BkashNagadModal';
 
 /** What Pro adds over Free, read straight from the registry. */
@@ -52,9 +52,6 @@ export function UpgradeModal({
 }) {
   const { user, openSignIn } = useSession();
   const [plan, setPlan] = useState<PlanId>('pro_monthly');
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [unavailable, setUnavailable] = useState(false);
   const [showBkashModal, setShowBkashModal] = useState(false);
   const onPaidTier = verdict.tier === 'pro' || verdict.tier === 'team';
 
@@ -66,35 +63,6 @@ export function UpgradeModal({
     return () => document.removeEventListener('keydown', onKey);
   }, [onClose]);
 
-  async function handleCheckout() {
-    setBusy(true);
-    setError(null);
-    try {
-      const { url } = await startCheckout(plan);
-      // Gateway hosts the payment step; our webhook decides the plan afterwards.
-      window.location.href = url;
-    } catch (err) {
-      if (err instanceof BillingError && err.notConfigured) {
-        setUnavailable(true);
-      } else {
-        setError(err instanceof Error ? err.message : 'Checkout failed. Try again in a moment.');
-      }
-      setBusy(false);
-    }
-  }
-
-  async function handlePortal() {
-    setBusy(true);
-    setError(null);
-    try {
-      const { url } = await startPortal();
-      window.location.href = url;
-    } catch (err) {
-      if (err instanceof BillingError && err.notConfigured) setUnavailable(true);
-      else setError(err instanceof Error ? err.message : 'Billing portal unavailable.');
-      setBusy(false);
-    }
-  }
 
   return (
     <div
@@ -162,11 +130,10 @@ export function UpgradeModal({
           ) : onPaidTier ? (
             <button
               type="button"
-              onClick={handlePortal}
-              disabled={busy}
-              className="flex items-center justify-center gap-1.5 rounded-xl bg-signal px-4 py-2.5 font-mono text-xs font-bold uppercase tracking-wider text-white shadow-xs transition-all hover:bg-signal/90 disabled:opacity-60"
+              onClick={() => setShowBkashModal(true)}
+              className="flex items-center justify-center gap-1.5 rounded-xl bg-signal px-4 py-2.5 font-mono text-xs font-bold uppercase tracking-wider text-white shadow-xs transition-all hover:bg-signal/90"
             >
-              {busy ? 'Opening…' : 'Manage billing'}
+              <span>Manage Subscription & Extend Plan</span>
             </button>
           ) : (
             <>

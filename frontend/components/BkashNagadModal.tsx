@@ -38,6 +38,12 @@ export function BkashNagadModal({
       fetchMfsConfig().then((res) => {
         if (res) {
           setAccounts(res);
+          // If bkash is inactive but nagad is active, default to nagad
+          if (!res.bkash?.isActive && res.nagad?.isActive) {
+            setProvider('nagad');
+          } else if (res.bkash?.isActive) {
+            setProvider('bkash');
+          }
         }
       });
     }
@@ -54,7 +60,9 @@ export function BkashNagadModal({
   if (!isOpen) return null;
 
   const planInfo = PLANS[selectedPlan];
-  const activeAccount = accounts[provider] || accounts.bkash;
+  const isBkashActive = accounts.bkash?.isActive !== false && Boolean(accounts.bkash?.number);
+  const isNagadActive = accounts.nagad?.isActive !== false && Boolean(accounts.nagad?.number);
+  const activeAccount = (provider === 'nagad' && isNagadActive) ? accounts.nagad : accounts.bkash;
 
   const handleCopyNumber = () => {
     navigator.clipboard.writeText(activeAccount.number.replace(/[^\d]/g, ''));
@@ -219,28 +227,32 @@ export function BkashNagadModal({
                 <span>1. {activeAccount.type === 'merchant' ? 'Make Payment' : 'Send Money'} ({planInfo.displayBdt})</span>
                 {/* Method selector pills */}
                 <div className="flex gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => setProvider('bkash')}
-                    className={`px-3 py-1 rounded text-xs font-bold font-mono transition-all ${
-                      provider === 'bkash'
-                        ? 'bg-[#e2136e] text-white shadow-xs'
-                        : 'border border-edge bg-card text-muted hover:text-content'
-                    }`}
-                  >
-                    bKash
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setProvider('nagad')}
-                    className={`px-3 py-1 rounded text-xs font-bold font-mono transition-all ${
-                      provider === 'nagad'
-                        ? 'bg-[#f7941d] text-white shadow-xs'
-                        : 'border border-edge bg-card text-muted hover:text-content'
-                    }`}
-                  >
-                    Nagad
-                  </button>
+                  {isBkashActive && (
+                    <button
+                      type="button"
+                      onClick={() => setProvider('bkash')}
+                      className={`px-3 py-1 rounded text-xs font-bold font-mono transition-all cursor-pointer ${
+                        provider === 'bkash'
+                          ? 'bg-[#e2136e] text-white shadow-xs'
+                          : 'border border-edge bg-card text-muted hover:text-content'
+                      }`}
+                    >
+                      bKash
+                    </button>
+                  )}
+                  {isNagadActive && (
+                    <button
+                      type="button"
+                      onClick={() => setProvider('nagad')}
+                      className={`px-3 py-1 rounded text-xs font-bold font-mono transition-all cursor-pointer ${
+                        provider === 'nagad'
+                          ? 'bg-[#f7941d] text-white shadow-xs'
+                          : 'border border-edge bg-card text-muted hover:text-content'
+                      }`}
+                    >
+                      Nagad
+                    </button>
+                  )}
                 </div>
               </div>
 

@@ -17,7 +17,7 @@ What exists today is a **great demo**:
 | Identity | None. Recruiter identity is a hardcoded local persona (`recruiter-auth.ts` — "Sarah Chen, Pro seat"); developer identity is a bare `githubUsername` string in localStorage | Real accounts, one per human, switchable contexts |
 | Metering | None. `GET /api/agent/stream` is anonymous and unmetered; `force`/`jd` runs always hit the LLM | Usage ledger; every expensive run recorded and attributable |
 | Gating | None. Every capability is available to everyone | Capability/tier registry; limits per tier |
-| Billing | None | Stripe subscriptions + seat plans |
+| Billing | None | Bangladesh MFS (bKash & Nagad) + 24h provisional activation |
 | Isolation | None. All state is one browser's localStorage | Per-user workspaces with enforced red lines |
 
 The demo itself is an asset — it is the top of funnel. The goal is **not** to remove it but
@@ -87,8 +87,7 @@ alternative if vendor independence is required. *Needs sign-off before M24B (see
 **Session mechanics:**
 - Supabase issues a JWT; the Express backend verifies the signature with the project secret
   (**no DB hit on the hot path**).
-- Plan/tier claims are cached with a short TTL (60s) server-side and refreshed by Stripe
-  webhooks — the stream path never blocks on Stripe or on a plan lookup query.
+- Plan/tier claims are cached with a short TTL (60s) server-side and refreshed upon MFS transaction submission and verification — the stream path never blocks on external network lookups.
 - The fake `recruiter-auth.ts` persona is replaced by the real session; its preferences
   schema is migrated into `users.preferences`.
 
@@ -115,7 +114,7 @@ interfaces map 1:1 into `data jsonb` columns, so nothing is lost and normalizati
 | `requisitions` / `job_projects` | `id`, `workspace_id`, `data jsonb` | recruiter-side |
 | `proofs` | `username`, `role_id`, `owner_user_id`, `profile jsonb`, `version`, `published_at` | **public reads by design**; file store already matches this shape |
 | `usage_events` | `id`, `user_id?`, `kind`, `target`, `cache_hit`, `cost_est_cents`, `created_at` | the meter (§5) |
-| `subscriptions` | `user_id`/`workspace_id`, `plan`, `status`, `current_period_end` | Stripe mirror |
+| `subscriptions` | `user_id`/`workspace_id`, `plan`, `status`, `current_period_end` | MFS & platform accounts ledger |
 
 **Red lines — enforced at the API layer, not the UI:**
 1. **User↔user isolation:** my audits, roles, and practice data are never readable by another user.
@@ -208,19 +207,14 @@ features*; they never hide the user's own existing self-assessment (ideation §2
 
 ---
 
-## 8. Billing (Stripe)
+## 8. Billing (Bangladesh MFS: bKash & Nagad)
 
-- **Checkout:** subscription mode (Pro monthly/annual; Team per-seat quantity).
-- **Webhooks → `subscriptions` table:** `checkout.session.completed`,
-  `customer.subscription.updated/deleted`, `invoice.payment_failed`. Signature verified;
-  idempotent upserts. Webhook is the only writer of plan state.
-- **Hot path:** plan read from a 60s-TTL server cache; never a Stripe call inside SSE.
-- **Self-serve:** Stripe Customer Portal for upgrade/cancel/payment method.
-- **Dunning:** `past_due` keeps access for a grace window (7d), then downgrades to Free —
-  never deletes data.
-- **Local dev:** `stripe listen --forward-to localhost:4000/api/billing/webhook`.
-- **Price points (§11 decisions 13/14):** $14/mo or $120/yr annual-anchor for Pro;
-  $29/seat/mo for Team.
+- **Checkout & Instant Activation:** users submit their bKash or Nagad Transaction ID (TrxID) via the checkout modal.
+- **24-Hour Provisional Access:** instant Pro access is granted immediately upon TrxID submission so candidates never experience friction or waiting.
+- **Asynchronous Admin Verification:** Super Admin reviews submissions inside the Admin Console (`/admin/billing`). Approving confirms permanent 30/365-day access.
+- **Dynamic Configuration:** Super Admin dynamically updates bKash/Nagad phone numbers, account types (Personal/Merchant), and user notices live without redeployments.
+- **Hot path:** plan read from a 60s-TTL server cache; zero blocking external API calls inside SSE.
+- **Local BDT Price points:** ৳399/mo or ৳3,490/yr for Developer Pro; ৳1,999/mo or ৳18,990/yr for Recruiter Team.
 
 ---
 
@@ -305,7 +299,7 @@ M24B  Accounts & auth                (GitHub OAuth + magic link, contexts)
 M24C  Usage ledger + chokepoint      (the meter + atomic enforcement)
 M24D  Workspace storage + import     (server-side stores, localStorage migration)
 M25A  Tier registry + gating UX      (limits as data, meters, upsell surfaces)
-M25B  Stripe billing                 (checkout, webhooks, plan cache)
+M25B  Bangladesh MFS billing         (bKash & Nagad, 24h provisional access, verification ledger)
 M25C  Team seats                     (defer detail; pilot-informed)
 ```
 

@@ -39,7 +39,7 @@ export const DOSSIER_STATS: DossierStat[] = [
   { value: '2-Tier', label: 'agentic audit engine' },
   { value: '2D-Grid', label: 'coordinate pdf parser' },
   { value: '6', label: 'LLM providers with failover' },
-  { value: 'Dual', label: 'Stripe + bKash/Nagad MFS' },
+  { value: 'MFS', label: 'bKash & Nagad instant access' },
 ];
 
 export const DOSSIER_SYSTEM_MAP: SubsystemMap[] = [
@@ -201,14 +201,14 @@ export const DOSSIER_DECISIONS: DossierDecision[] = [
     verifiedBy: 'Race-tested: 6 parallel requests sent concurrently; exactly 3 granted on Free, 3 rejected with 402.',
   },
   {
-    id: 'webhook-only',
+    id: 'mfs-verification-engine',
     icon: 'lock',
-    title: 'Webhooks as the Single Writer of Plan State',
+    title: 'Zero-Wait Provisional Access with Asynchronous Verification Ledger',
     decision:
-      'Frontend checkout redirects grant nothing. Tier flips occur strictly upon signature-verified webhook events; redelivery is idempotent via claimed event IDs, and the audit hot path reads a local mirrored DB — never Stripe APIs.',
+      'TrxID submission instantly unlocks a 24-hour provisional Pro tier window. Tier promotions to permanent 30/365-day access occur strictly upon Super Admin verification in the audit console, protecting against forgery while eliminating payment drop-off.',
     why:
-      'Protects against client tampering and API outage coupling. Verified with SDK-signed events: forged timestamps, missing signatures, and tampered bodies are all rejected.',
-    verifiedBy: 'Verified: 5 SSE audits completed with the Stripe SDK pointed at a dead host, proving zero hot-path dependency.',
+      'Bangladeshi developers use mobile financial services (bKash & Nagad). Requiring synchronous manual admin approval before giving access causes high churn; 24-hr provisional access provides delight with zero financial risk.',
+    verifiedBy: 'Verified: TrxID submission triggers immediate provisional tier flip; ledger approves persist permanent access.',
   },
   {
     id: 'model-resilience',
@@ -325,8 +325,8 @@ export const DOSSIER_STACK: Record<string, string[]> = {
     'Candidate vs Recruiter Boundary',
   ],
   'Fintech & Monetization': [
-    'Stripe Webhooks (Global Cards)',
-    'Bangladesh MFS Engine (bKash/Nagad)',
+    'Bangladesh MFS Engine (bKash & Nagad)',
+    'Dynamic Account Numbers & Instructions',
     '24h Provisional Access Ledger',
     'Admin Verification Console (/admin/billing)',
   ],

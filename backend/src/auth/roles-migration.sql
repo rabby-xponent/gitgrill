@@ -79,3 +79,47 @@ create trigger on_public_user_role_updated
   after insert or update of role on public.users
   for each row execute function public.sync_user_role_to_auth();
 
+-- 8. Target Roles & Defense Cards Cloud Sync (M24D)
+create table if not exists public.target_roles (
+  id text not null,
+  user_id uuid not null references public.users (id) on delete cascade,
+  data jsonb not null,
+  created_at timestamptz not null default now(),
+  primary key (user_id, id)
+);
+
+create table if not exists public.defense_cards (
+  id text not null,
+  user_id uuid not null references public.users (id) on delete cascade,
+  data jsonb not null,
+  created_at timestamptz not null default now(),
+  primary key (user_id, id)
+);
+
+-- 9. Permanent Published Proof Pages (M24D / M25)
+create table if not exists public.proofs (
+  id text primary key,
+  username text not null,
+  role_id text not null,
+  role_title text not null,
+  version integer not null default 1,
+  published_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  branded boolean not null default true,
+  note text,
+  data jsonb not null
+);
+
+create index if not exists proofs_username_idx on public.proofs (username);
+
+-- 10. Enable Row Level Security (RLS)
+alter table public.target_roles enable row level security;
+alter table public.defense_cards enable row level security;
+alter table public.proofs enable row level security;
+
+-- Public can read published proofs (they are shared with recruiters)
+drop policy if exists "Public read for proofs" on public.proofs;
+create policy "Public read for proofs" on public.proofs
+  for select using (true);
+
+

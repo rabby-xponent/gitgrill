@@ -19,7 +19,7 @@ A stranger can complete this journey end-to-end, and an existing user loses noth
 1. Land → run **1 free demo audit** (no signup) → hit the demo wall.
 2. Create an account (GitHub OAuth / magic link, no card) → their demo work is still there.
 3. Get **3 audits/month** free, with a live meter; hit the wall → clear upgrade path.
-4. Pay (Stripe test mode) → limits lift immediately; cancel → graceful downgrade.
+4. Pay (bKash/Nagad MFS) → limits lift immediately; cancel → graceful downgrade.
 5. An existing localStorage user logs in → target roles, defense cards, proofs all present.
 6. Candidate campaign data is provably unreadable from the recruiter context (API test).
 
@@ -254,12 +254,11 @@ modal, and a branded public proof page.
 
 ---
 
-## M25B — Stripe billing
+## M25B — Bangladesh MFS billing (bKash & Nagad)
 
-**Aim:** self-serve payment. Pro (individual) and Team (per seat) via Stripe Checkout;
-webhooks are the only writer of plan state.
+**Aim:** native self-serve payment for Bangladeshi developers and recruiters. Pro (individual: ৳399/mo) and Team (৳1,999/mo) via bKash & Nagad MFS with instant 24-hour provisional access and an async admin verification ledger.
 
-**Depends on:** §11 decisions 13/14 — **signed off** ($14/mo + $120/yr Pro, $29/seat/mo Team).
+**Depends on:** §11 decisions 13/14 — **signed off** (৳399/mo + ৳3,490/yr Pro, ৳1,999/mo + ৳18,990/yr Team).
 
 **Scope:**
 - Checkout (subscription mode), Customer Portal, webhook handler with signature verification.
@@ -330,7 +329,7 @@ workspace-shared pipelines/notes, ATS export entitlements.
 ```
 M24A (cost hole)  →  M24B (identity)  →  M24C (meter)  →  M24D (workspaces)
                                                               ↓
-                                        M25A (registry/UX) → M25B (Stripe) → M25C (seats)
+                                        M25A (registry/UX) → M25B (MFS) → M25C (seats)
 ```
 
 Each step independently shippable. **Cost protection first, billing last** — there is
