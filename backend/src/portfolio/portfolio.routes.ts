@@ -77,10 +77,36 @@ router.get('/', requireAuth, async (req: Request, res: Response) => {
       productsByCompany.get(p.company_id)!.push(enrichedProduct);
     }
 
-    const structuredCompanies = companies.map((c: any) => ({
-      ...c,
-      products: productsByCompany.get(c.id) || [],
-    }));
+    // Fetch user preferences for fallback metadata (role_title & company_domains)
+    let userCompanyRoles: Record<string, string> = {};
+    let userCompanyDomains: Record<string, string> = {};
+    try {
+      const { data: userRow } = await admin
+        .from('users')
+        .select('preferences')
+        .eq('id', userId)
+        .single();
+      if (userRow?.preferences && typeof userRow.preferences === 'object') {
+        const p = userRow.preferences as Record<string, any>;
+        userCompanyRoles = p.company_roles || {};
+        userCompanyDomains = p.company_domains || {};
+      }
+    } catch (errPrefs) {
+      console.warn('[portfolio] Error reading user preferences for company metadata:', errPrefs);
+    }
+
+    const structuredCompanies = companies.map((c: any) => {
+      const compProducts = productsByCompany.get(c.id) || [];
+      const inferredRole = c.role_title || userCompanyRoles[c.id] || compProducts.find((p: any) => p.role_title)?.role_title || null;
+      const resolvedDomain = c.domain || c.website_url || userCompanyDomains[c.id] || null;
+      return {
+        ...c,
+        role_title: inferredRole,
+        domain: resolvedDomain,
+        website_url: resolvedDomain,
+        products: compProducts,
+      };
+    });
 
     const structuredProjects = projects.map((p: any) => ({
       ...p,
@@ -205,7 +231,7 @@ router.post('/companies', requireAuth, async (req: Request, res: Response) => {
   if (!isDbConfigured()) return serviceUnavailable(res);
   const admin = getAdmin()!;
   const userId = req.auth!.userId;
-  const { id, name, location, website_url, domain, start_date, end_date, is_current, display_order } = req.body || {};
+  const { id, name, location, website_url, domain, role_title, start_date, end_date, is_current, display_order } = req.body || {};
 
   if (!name || !name.trim()) {
     res.status(400).json({ error: 'Company name is required.' });
@@ -229,16 +255,97 @@ router.post('/companies', requireAuth, async (req: Request, res: Response) => {
       display_order: typeof display_order === 'number' ? display_order : 0,
       updated_at: new Date().toISOString(),
     };
+    if (role_title !== undefined) {
+      payload.role_title = role_title?.trim() || null;
+    }
     if (id) payload.id = id;
 
+    let savedCompany: any = null;
     const { data, error } = await admin
       .from('portfolio_companies')
       .upsert(payload)
       .select()
       .single();
 
-    if (error) throw new Error(error.message);
-    res.json({ ok: true, company: data });
+    if (error) {
+      if (error.message?.includes('role_title') || (error as any).code === '42703') {
+        // DB column role_title not yet added via SQL, retry without role_title so company is saved
+        delete payload.role_title;
+        const retry = await admin
+          .from('portfolio_companies')
+          .upsert(payload)
+          .select()
+          .single();
+        if (retry.error) throw new Error(retry.error.message);
+        savedCompany = { ...retry.data, role_title: role_title?.trim() || null };
+      } else {
+        throw new Error(error.message);
+      }
+    } else {
+      savedCompany = data;
+    }
+
+    // Sync role_title to child products
+    if (role_title?.trim() && savedCompany?.id) {
+      try {
+        await admin
+          .from('portfolio_products')
+          .update({ role_title: role_title.trim() })
+          .eq('company_id', savedCompany.id)
+          .eq('user_id', userId);
+      } catch {}
+    }
+
+    // Persist company metadata (role_title & company_domains) directly in user preferences
+    // guaranteeing 100% persistence in Supabase even when role_title column is not yet on portfolio_companies
+    const domainVal = (website_url || domain)?.trim() || null;
+    if (savedCompany?.id) {
+      try {
+        const { data: userRow } = await admin
+          .from('users')
+          .select('preferences')
+          .eq('id', userId)
+          .single();
+        const prefs = (userRow?.preferences && typeof userRow.preferences === 'object')
+          ? (userRow.preferences as Record<string, any>)
+          : {};
+        const companyRoles = { ...(prefs.company_roles || {}) };
+        const companyDomains = { ...(prefs.company_domains || {}) };
+
+        if (role_title !== undefined) {
+          companyRoles[savedCompany.id] = role_title?.trim() || null;
+        }
+        if (domainVal !== undefined) {
+          companyDomains[savedCompany.id] = domainVal;
+        }
+
+        await admin
+          .from('users')
+          .update({
+            preferences: {
+              ...prefs,
+              company_roles: companyRoles,
+              company_domains: companyDomains,
+            },
+          })
+          .eq('id', userId);
+      } catch (errPref) {
+        console.warn('[portfolio] Error persisting company meta to users.preferences:', errPref);
+      }
+    }
+
+    const finalRole = role_title?.trim() || savedCompany?.role_title || null;
+    const finalDomain = domainVal || savedCompany?.website_url || null;
+
+    res.json({
+      ok: true,
+      company: {
+        ...savedCompany,
+        role_title: finalRole,
+        domain: finalDomain,
+        website_url: finalDomain,
+      },
+    });
   } catch (err: any) {
     console.error('[Portfolio] Company save error:', err);
     res.status(500).json({ error: formatPortfolioError(err, 'Failed to save company.') });
@@ -259,6 +366,33 @@ router.delete('/companies/:id', requireAuth, async (req: Request, res: Response)
       .eq('id', id);
 
     if (error) throw new Error(error.message);
+
+    // Clean up role and domain from user preferences
+    try {
+      const { data: userRow } = await admin
+        .from('users')
+        .select('preferences')
+        .eq('id', userId)
+        .single();
+      if (userRow?.preferences && typeof userRow.preferences === 'object') {
+        const prefs = userRow.preferences as Record<string, any>;
+        const companyRoles = { ...(prefs.company_roles || {}) };
+        const companyDomains = { ...(prefs.company_domains || {}) };
+        delete companyRoles[id];
+        delete companyDomains[id];
+        await admin
+          .from('users')
+          .update({
+            preferences: {
+              ...prefs,
+              company_roles: companyRoles,
+              company_domains: companyDomains,
+            },
+          })
+          .eq('id', userId);
+      }
+    } catch {}
+
     res.json({ ok: true, deleted: id });
   } catch (err: any) {
     res.status(500).json({ error: err?.message || 'Failed to delete company.' });

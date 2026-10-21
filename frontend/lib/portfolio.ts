@@ -39,6 +39,7 @@ export interface PortfolioProduct {
   architecture_type?: string | null;
   repo_url?: string | null;
   live_url?: string | null;
+  tech_stack?: string[];
   display_order?: number;
   bullets?: MasterBullet[];
   created_at?: string;
@@ -50,6 +51,7 @@ export interface PortfolioCompany {
   user_id?: string;
   name: string;
   domain?: string | null;
+  website_url?: string | null;
   role_title?: string | null;
   start_date?: string | null;
   end_date?: string | null;
@@ -68,6 +70,7 @@ export interface PortfolioProject {
   headline?: string | null;
   repo_url?: string | null;
   live_url?: string | null;
+  tech_stack?: string[];
   display_order?: number;
   bullets?: MasterBullet[];
   created_at?: string;
@@ -81,6 +84,39 @@ export interface PortfolioSSOT {
 }
 
 const LOCAL_STORAGE_KEY = 'gitgrill_portfolio_ssot_local_v1';
+const COMPANY_ROLES_MAP_KEY = 'gitgrill_company_roles_map_v1';
+
+export function getStoredCompanyRoles(): Record<string, string> {
+  if (typeof window === 'undefined') return {};
+  try {
+    const raw = localStorage.getItem(COMPANY_ROLES_MAP_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+export function setStoredCompanyRole(companyId: string, roleTitle: string | null | undefined): void {
+  if (typeof window === 'undefined' || !companyId) return;
+  try {
+    const roles = getStoredCompanyRoles();
+    if (roleTitle && roleTitle.trim()) {
+      roles[companyId] = roleTitle.trim();
+    } else {
+      delete roles[companyId];
+    }
+    localStorage.setItem(COMPANY_ROLES_MAP_KEY, JSON.stringify(roles));
+  } catch {}
+}
+
+export function deleteStoredCompanyRole(companyId: string): void {
+  if (typeof window === 'undefined' || !companyId) return;
+  try {
+    const roles = getStoredCompanyRoles();
+    delete roles[companyId];
+    localStorage.setItem(COMPANY_ROLES_MAP_KEY, JSON.stringify(roles));
+  } catch {}
+}
 
 export function getLocalPortfolio(): PortfolioSSOT {
   if (typeof window === 'undefined') {
@@ -131,9 +167,9 @@ export async function fetchPortfolio(): Promise<PortfolioSSOT> {
       });
       if (res.ok) {
         const data = await res.json();
-        const normalizedCompanies: PortfolioCompany[] = (data.companies || []).map((c: any) => ({
-          ...c,
-          products: (c.products || []).map((p: any) => {
+        const localRoles = getStoredCompanyRoles();
+        const normalizedCompanies: PortfolioCompany[] = (data.companies || []).map((c: any) => {
+          const products = (c.products || []).map((p: any) => {
             const name = p.name || p.title || '';
             const architecture_type = p.architecture_type || p.architectural_notes || null;
             let live_url = p.live_url || null;
@@ -150,14 +186,30 @@ export async function fetchPortfolio(): Promise<PortfolioSSOT> {
               architecture_type,
               live_url,
               repo_url,
+              tech_stack: Array.isArray(p.tech_stack) ? p.tech_stack : [],
               bullets: Array.isArray(p.bullets) ? p.bullets : [],
             };
-          }),
-        }));
+          });
+          // Prioritize: explicit user role saved for this company > c.role_title from DB > child product fallback
+          const explicitRole = localRoles[c.id];
+          const inferredRole = explicitRole || c.role_title || products.find((p: any) => p.role_title)?.role_title || null;
+          const resolvedDomain = c.domain || c.website_url || null;
+          return {
+            ...c,
+            domain: resolvedDomain,
+            website_url: resolvedDomain,
+            role_title: inferredRole,
+            products,
+          };
+        });
 
         const ssot: PortfolioSSOT = {
           companies: normalizedCompanies,
-          standalone_projects: data.standalone_projects || [],
+          standalone_projects: (data.standalone_projects || []).map((pr: any) => ({
+            ...pr,
+            tech_stack: Array.isArray(pr.tech_stack) ? pr.tech_stack : [],
+            bullets: Array.isArray(pr.bullets) ? pr.bullets : [],
+          })),
           unattached_bullets: data.unattached_bullets || [],
         };
         // Update local cache
@@ -303,12 +355,41 @@ export async function saveCompany(
       throw new Error(humanizePortfolioError(errJson.error, 'Failed to save company.'));
     }
     const data = await res.json();
-    return data.company;
+    const resolvedDomain = data.company?.domain || data.company?.website_url || payload.domain || payload.website_url || null;
+    const finalRoleId = data.company?.id || company.id;
+    if (finalRoleId) {
+      setStoredCompanyRole(finalRoleId, payload.role_title);
+    }
+    const finalComp: PortfolioCompany = {
+      ...data.company,
+      domain: resolvedDomain,
+      website_url: resolvedDomain,
+      role_title: payload.role_title ?? (data.company?.role_title || null),
+    };
+    // Update local cache immediately so it's always in sync
+    try {
+      const local = getLocalPortfolio();
+      const existingIdx = local.companies.findIndex((c) => c.id === finalComp.id);
+      if (existingIdx >= 0) {
+        local.companies[existingIdx] = {
+          ...local.companies[existingIdx],
+          ...finalComp,
+          products: finalComp.products || local.companies[existingIdx].products || [],
+        };
+      } else {
+        local.companies.unshift(finalComp);
+      }
+      saveLocalPortfolio(local);
+    } catch {}
+    return finalComp;
   }
 
   // Local fallback
   const local = getLocalPortfolio();
   const id = company.id || `comp_${Date.now()}`;
+  if (id) {
+    setStoredCompanyRole(id, payload.role_title);
+  }
   const existingIdx = local.companies.findIndex((c) => c.id === id);
   const now = new Date().toISOString();
 
@@ -352,6 +433,7 @@ export async function deleteCompany(id: string): Promise<void> {
     }
   }
 
+  deleteStoredCompanyRole(id);
   const local = getLocalPortfolio();
   local.companies = local.companies.filter((c) => c.id !== id);
   saveLocalPortfolio(local);
@@ -376,6 +458,7 @@ export async function saveProduct(
     role_title: resolvedRole,
     description: (product as any).description || (product.live_url ? `Live: ${product.live_url}` : null),
     architectural_notes: product.architecture_type || null,
+    tech_stack: Array.isArray(product.tech_stack) ? product.tech_stack : [],
     repo_links: product.repo_url ? [{ name: resolvedTitle, provider: 'github', url: product.repo_url }] : [],
   };
 
@@ -401,6 +484,7 @@ export async function saveProduct(
       architecture_type: prod?.architectural_notes || product.architecture_type || null,
       live_url: product.live_url || null,
       repo_url: product.repo_url || null,
+      tech_stack: Array.isArray(prod?.tech_stack) ? prod.tech_stack : (product.tech_stack || []),
     };
   }
 
@@ -420,6 +504,7 @@ export async function saveProduct(
     architecture_type: product.architecture_type || null,
     repo_url: product.repo_url || null,
     live_url: product.live_url || null,
+    tech_stack: Array.isArray(product.tech_stack) ? product.tech_stack : [],
     display_order: product.display_order ?? company.products.length,
     bullets: existingIdx >= 0 ? company.products[existingIdx].bullets : [],
     created_at: existingIdx >= 0 ? company.products[existingIdx].created_at : now,
@@ -496,6 +581,7 @@ export async function saveProject(
     headline: project.headline || null,
     repo_url: project.repo_url || null,
     live_url: project.live_url || null,
+    tech_stack: Array.isArray(project.tech_stack) ? project.tech_stack : [],
     display_order: project.display_order ?? local.standalone_projects.length,
     bullets: existingIdx >= 0 ? local.standalone_projects[existingIdx].bullets : [],
     created_at: existingIdx >= 0 ? local.standalone_projects[existingIdx].created_at : now,

@@ -23,6 +23,9 @@ create table if not exists public.portfolio_companies (
   updated_at timestamptz not null default now()
 );
 
+-- Ensure role_title exists on portfolio_companies
+alter table if exists public.portfolio_companies add column if not exists role_title text;
+
 -- 2. Products / Sub-systems owned within a company
 create table if not exists public.portfolio_products (
   id uuid primary key default gen_random_uuid(),

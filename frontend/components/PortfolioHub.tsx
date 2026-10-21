@@ -22,6 +22,7 @@ import {
   normalizeDateToISO,
   formatISODateToDisplay,
   humanizePortfolioError,
+  getStoredCompanyRoles,
 } from '@/lib/portfolio';
 import { getResumes, ResumeProfile } from '@/lib/resumes';
 import {
@@ -90,6 +91,62 @@ export function PortfolioHub() {
     title: '',
     description: '',
   });
+
+  // Capabilities & Workflow Guide state (persisted dismiss, re-openable anytime)
+  const GUIDE_DISMISSED_KEY = 'gitgrill_portfolio_capabilities_guide_dismissed_v1';
+  const [showCapabilitiesGuide, setShowCapabilitiesGuide] = useState(false);
+
+  useEffect(() => {
+    try {
+      const isDismissed = localStorage.getItem(GUIDE_DISMISSED_KEY);
+      if (!isDismissed) {
+        setShowCapabilitiesGuide(true);
+      }
+    } catch {}
+  }, []);
+
+  const handleDismissGuide = () => {
+    setShowCapabilitiesGuide(false);
+    try {
+      localStorage.setItem(GUIDE_DISMISSED_KEY, 'true');
+    } catch {}
+  };
+
+  // Collapsible hierarchy states for companies, products & projects
+  const [collapsedCompanies, setCollapsedCompanies] = useState<Record<string, boolean>>({});
+  const [collapsedProducts, setCollapsedProducts] = useState<Record<string, boolean>>({});
+  const [collapsedProjects, setCollapsedProjects] = useState<Record<string, boolean>>({});
+
+  const toggleCompany = (id: string) => {
+    setCollapsedCompanies((prev) => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  const toggleProduct = (id: string) => {
+    setCollapsedProducts((prev) => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  const toggleProject = (id: string) => {
+    setCollapsedProjects((prev) => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  const allProductIds = useMemo(() => {
+    return portfolio.companies.flatMap((c) => (c.products || []).map((p) => p.id));
+  }, [portfolio.companies]);
+
+  const areAllProductsCollapsed = useMemo(() => {
+    if (allProductIds.length === 0) return false;
+    return allProductIds.every((id) => collapsedProducts[id]);
+  }, [allProductIds, collapsedProducts]);
+
+  const toggleAllProducts = () => {
+    if (areAllProductsCollapsed) {
+      setCollapsedProducts({});
+    } else {
+      const next: Record<string, boolean> = {};
+      allProductIds.forEach((id) => { next[id] = true; });
+      setCollapsedProducts(next);
+    }
+  };
 
   const loadData = async () => {
     setLoading(true);
@@ -233,6 +290,19 @@ export function PortfolioHub() {
 
           <div className="flex flex-wrap items-center gap-2.5 shrink-0">
             <button
+              type="button"
+              onClick={() => setShowCapabilitiesGuide((prev) => !prev)}
+              className={`inline-flex items-center gap-1.5 rounded-xl border px-3.5 py-2 font-mono text-xs font-semibold transition-all shadow-xs cursor-pointer ${
+                showCapabilitiesGuide
+                  ? 'border-signal bg-signal/15 text-signal font-bold'
+                  : 'border-edge bg-card text-muted hover:text-content hover:bg-muted/10'
+              }`}
+              title="Toggle Portfolio Capabilities Guide"
+            >
+              <Icon.Sparkle className="h-3.5 w-3.5 text-signal" />
+              <span>Capabilities</span>
+            </button>
+            <button
               onClick={() => setImportModal({ isOpen: true })}
               className="inline-flex items-center gap-2 rounded-xl border border-signal/40 bg-signal/10 hover:bg-signal/20 px-4 py-2 font-mono text-xs font-bold text-signal transition-all shadow-xs cursor-pointer"
             >
@@ -255,6 +325,108 @@ export function PortfolioHub() {
             </button>
           </div>
         </div>
+
+        {/* 3-Pillar Superpowers & Capabilities Interactive Banner */}
+        {showCapabilitiesGuide && (
+          <div className="mt-5 rounded-2xl border border-signal/30 bg-signal/5 p-4 sm:p-5 relative animate-in fade-in slide-in-from-top-2 duration-200">
+            <div className="flex items-center justify-between pb-3 border-b border-signal/20">
+              <div className="flex items-center gap-2">
+                <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-signal/15 text-signal font-mono text-xs font-bold">
+                  ⚡
+                </span>
+                <span className="font-mono text-xs font-bold uppercase tracking-wider text-content">
+                  Portfolio Superpowers — How Your Master SSOT Powers Your Career
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={handleDismissGuide}
+                className="rounded-lg px-2 py-1 text-muted hover:text-content text-xs font-mono inline-flex items-center gap-1 cursor-pointer transition-colors hover:bg-signal/10"
+              >
+                <span>Dismiss</span>
+                <Icon.X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+
+            <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3.5">
+              {/* Pillar 1 */}
+              <div className="rounded-xl border border-edge/80 bg-card/85 p-4 space-y-2">
+                <div className="flex items-center gap-2">
+                  <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-well text-signal font-mono text-xs font-bold">
+                    01
+                  </div>
+                  <span className="font-mono text-xs font-bold text-content">
+                    Hierarchical SSOT
+                  </span>
+                </div>
+                <p className="font-sans text-xs text-muted leading-relaxed">
+                  Structure your experience hierarchically: <span className="font-mono text-content font-semibold">Company</span> → <span className="font-mono text-content font-semibold">Products & Modules</span> owned → <span className="font-mono text-content font-semibold">Atomic Bullets</span>.
+                </p>
+                <div className="pt-1 flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setCompanyModal({ isOpen: true })}
+                    className="text-[11px] font-mono text-signal hover:underline font-semibold flex items-center gap-1 cursor-pointer"
+                  >
+                    <span>+ Add Company</span>
+                  </button>
+                  <span className="text-muted text-[10px]">•</span>
+                  <button
+                    type="button"
+                    onClick={() => setImportModal({ isOpen: true })}
+                    className="text-[11px] font-mono text-muted hover:text-content font-semibold cursor-pointer"
+                  >
+                    Import CV
+                  </button>
+                </div>
+              </div>
+
+              {/* Pillar 2 */}
+              <div className="rounded-xl border border-edge/80 bg-card/85 p-4 space-y-2">
+                <div className="flex items-center gap-2">
+                  <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-well text-signal font-mono text-xs font-bold">
+                    02
+                  </div>
+                  <span className="font-mono text-xs font-bold text-content">
+                    Metric Bullets & Defense
+                  </span>
+                </div>
+                <p className="font-sans text-xs text-muted leading-relaxed">
+                  Record battle-tested engineering bullets with action verbs, quantifiable metrics, and architectural trade-off context for technical interviews.
+                </p>
+                <div className="pt-1">
+                  <span className="text-[11px] font-mono text-muted">
+                    Click <span className="text-signal font-semibold">+ Add Bullet</span> on any product
+                  </span>
+                </div>
+              </div>
+
+              {/* Pillar 3 */}
+              <div className="rounded-xl border border-edge/80 bg-card/85 p-4 space-y-2">
+                <div className="flex items-center gap-2">
+                  <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-well text-signal font-mono text-xs font-bold">
+                    03
+                  </div>
+                  <span className="font-mono text-xs font-bold text-content">
+                    Dynamic Resume Branching
+                  </span>
+                </div>
+                <p className="font-sans text-xs text-muted leading-relaxed">
+                  Never write a CV from scratch. Your verified master bullets are queried and assembled into role-tailored variants in the Resume Vault.
+                </p>
+                <div className="pt-1">
+                  <a
+                    href="/developer/resumes"
+                    className="text-[11px] font-mono text-signal hover:underline font-semibold inline-flex items-center gap-1 cursor-pointer"
+                  >
+                    <span>Open Resume Vault</span>
+                    <Icon.ExternalLink className="h-3 w-3" />
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* 4-Dimension Metric Stats Strip */}
         <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4 pt-5 border-t border-edge/60">
@@ -377,18 +549,31 @@ export function PortfolioHub() {
         <div className="space-y-6">
           {/* Companies Hierarchy */}
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between flex-wrap gap-2">
               <h2 className="font-mono text-sm font-bold uppercase tracking-wider text-muted flex items-center gap-2">
                 <Icon.Building className="h-4 w-4 text-signal" />
                 <span>Companies & Products Hierarchy ({filteredCompanies.length})</span>
               </h2>
-              <button
-                onClick={() => setCompanyModal({ isOpen: true })}
-                className="font-mono text-xs text-signal hover:underline flex items-center gap-1 cursor-pointer"
-              >
-                <Icon.Plus className="h-3.5 w-3.5" />
-                <span>Add Company</span>
-              </button>
+              <div className="flex items-center gap-3">
+                {allProductIds.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={toggleAllProducts}
+                    className="font-mono text-xs text-muted hover:text-signal transition-colors flex items-center gap-1 cursor-pointer"
+                    title="Toggle all products expanded or collapsed"
+                  >
+                    <Icon.ChevronDown className={`h-3.5 w-3.5 transition-transform ${areAllProductsCollapsed ? '-rotate-90' : ''}`} />
+                    <span>{areAllProductsCollapsed ? 'Expand All Products' : 'Collapse All Products'}</span>
+                  </button>
+                )}
+                <button
+                  onClick={() => setCompanyModal({ isOpen: true })}
+                  className="font-mono text-xs text-signal hover:underline flex items-center gap-1 cursor-pointer"
+                >
+                  <Icon.Plus className="h-3.5 w-3.5" />
+                  <span>Add Company</span>
+                </button>
+              </div>
             </div>
 
             {filteredCompanies.length === 0 ? (
@@ -396,169 +581,253 @@ export function PortfolioHub() {
                 No companies match your search or filter.
               </div>
             ) : (
-              filteredCompanies.map((company) => (
-                <div
-                  key={company.id}
-                  className="rounded-2xl border border-edge bg-card overflow-hidden shadow-card transition-all"
-                >
-                  {/* Company Header */}
-                  <div className="p-5 border-b border-edge/60 bg-surface/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-mono text-base sm:text-lg font-black text-content">
-                          {company.name}
-                        </span>
-                        {company.is_current && (
-                          <span className="rounded-full bg-signal/20 px-2 py-0.5 font-mono text-[10px] font-bold text-signal uppercase tracking-wider">
-                            Present
-                          </span>
-                        )}
-                        {company.domain && (
-                          <a
-                            href={company.domain.startsWith('http') ? company.domain : `https://${company.domain}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="font-mono text-xs text-muted hover:text-signal flex items-center gap-1"
+              filteredCompanies.map((company) => {
+                const isCompanyCollapsed = Boolean(collapsedCompanies[company.id]);
+                const compBulletsCount = (company.products || []).reduce((sum, p) => sum + (p.bullets?.length || 0), 0);
+
+                return (
+                  <div
+                    key={company.id}
+                    className="rounded-2xl border border-edge bg-card overflow-hidden shadow-card transition-all"
+                  >
+                    {/* Company Header */}
+                    <div className="p-4 sm:p-5 border-b border-edge/60 bg-surface/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div
+                        onClick={() => toggleCompany(company.id)}
+                        className="space-y-1 cursor-pointer select-none flex-1 group"
+                      >
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <button
+                            type="button"
+                            className="text-muted group-hover:text-signal transition-colors p-0.5"
+                            title={isCompanyCollapsed ? 'Expand company' : 'Collapse company'}
                           >
-                            <span>{company.domain.replace(/^https?:\/\//, '')}</span>
-                            <Icon.ExternalLink className="h-3 w-3" />
-                          </a>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2 text-xs text-muted font-mono flex-wrap">
-                        {company.role_title && <span className="text-content font-medium">{company.role_title}</span>}
-                        {(company.start_date || company.end_date) && (
-                          <span>· {formatISODateToDisplay(company.start_date)} — {company.is_current ? 'Present' : formatISODateToDisplay(company.end_date)}</span>
-                        )}
-                        {company.location && <span>· {company.location}</span>}
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2 shrink-0">
-                      <button
-                        onClick={() => setProductModal({ isOpen: true, companyId: company.id })}
-                        className="inline-flex items-center gap-1.5 rounded-lg border border-edge bg-surface hover:border-signal hover:text-signal px-3 py-1.5 font-mono text-xs font-semibold text-content transition-all cursor-pointer"
-                      >
-                        <Icon.Plus className="h-3.5 w-3.5" />
-                        <span>Add Product</span>
-                      </button>
-                      <button
-                        onClick={() => setCompanyModal({ isOpen: true, company })}
-                        className="rounded-lg border border-edge bg-surface hover:border-edge/80 p-1.5 text-muted hover:text-content transition-all cursor-pointer"
-                        title="Edit Company"
-                      >
-                        <Icon.Pencil className="h-3.5 w-3.5" />
-                      </button>
-                      <button
-                        onClick={() => setItemToDelete({ type: 'company', id: company.id, title: company.name })}
-                        className="rounded-lg border border-edge bg-surface hover:border-red-500/40 hover:text-red-400 p-1.5 text-muted transition-all cursor-pointer"
-                        title="Delete Company"
-                      >
-                        <Icon.Trash className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Company Products */}
-                  <div className="p-5 space-y-4">
-                    {!company.products || company.products.length === 0 ? (
-                      <div className="rounded-xl border border-dashed border-edge/60 p-4 text-center">
-                        <p className="font-mono text-xs text-muted">No products or sub-systems recorded for this company yet.</p>
-                        <button
-                          onClick={() => setProductModal({ isOpen: true, companyId: company.id })}
-                          className="mt-2 font-mono text-xs text-signal font-semibold hover:underline inline-flex items-center gap-1 cursor-pointer"
-                        >
-                          <Icon.Plus className="h-3.5 w-3.5" />
-                          <span>Define First Product / Module</span>
-                        </button>
-                      </div>
-                    ) : (
-                      company.products.map((product) => (
-                        <div
-                          key={product.id}
-                          className="rounded-xl border border-edge/70 bg-card/60 p-4 space-y-3"
-                        >
-                          {/* Product Header */}
-                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2.5 border-b border-edge/50">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <span className="font-mono text-sm font-bold text-content">
-                                {product.name || (product as any).title || 'Untitled Subsystem'}
-                              </span>
-                              {(product.architecture_type || (product as any).architectural_notes) && (
-                                <span className="rounded-md border border-edge bg-surface px-2 py-0.5 font-mono text-[10px] font-bold text-muted uppercase">
-                                  {String(product.architecture_type || (product as any).architectural_notes).replace(/_/g, ' ')}
-                                </span>
-                              )}
-                              {(product.repo_url || (Array.isArray((product as any).repo_links) && (product as any).repo_links[0]?.url)) && (
-                                <a
-                                  href={product.repo_url || (product as any).repo_links[0].url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="text-muted hover:text-signal p-0.5"
-                                  title="Repository"
-                                >
-                                  <Icon.Github className="h-3.5 w-3.5" />
-                                </a>
-                              )}
-                              {(product.live_url || (typeof (product as any).description === 'string' && (product as any).description.startsWith('Live: ') ? (product as any).description.slice(6) : null)) && (
-                                <a
-                                  href={product.live_url || (product as any).description.slice(6)}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="text-muted hover:text-signal p-0.5"
-                                  title="Live URL"
-                                >
-                                  <Icon.ExternalLink className="h-3.5 w-3.5" />
-                                </a>
-                              )}
-                            </div>
-
-                            <div className="flex items-center gap-1.5 shrink-0">
-                              <button
-                                onClick={() => setBulletModal({ isOpen: true, productId: product.id })}
-                                className="inline-flex items-center gap-1 rounded-md border border-signal/30 bg-signal/5 hover:bg-signal/15 px-2.5 py-1 font-mono text-[11px] font-semibold text-signal transition-all cursor-pointer"
-                              >
-                                <Icon.Plus className="h-3 w-3" />
-                                <span>Add Bullet</span>
-                              </button>
-                              <button
-                                onClick={() => setProductModal({ isOpen: true, companyId: company.id, product })}
-                                className="rounded-md p-1 text-muted hover:text-content hover:bg-surface transition-all cursor-pointer"
-                                title="Edit Product"
-                              >
-                                <Icon.Pencil className="h-3.5 w-3.5" />
-                              </button>
-                              <button
-                                onClick={() => setItemToDelete({ type: 'product', id: product.id, title: product.name })}
-                                className="rounded-md p-1 text-muted hover:text-red-400 hover:bg-surface transition-all cursor-pointer"
-                                title="Delete Product"
-                              >
-                                <Icon.Trash className="h-3.5 w-3.5" />
-                              </button>
-                            </div>
-                          </div>
-
-                          {/* Bullets List */}
-                          {!product.bullets || product.bullets.length === 0 ? (
-                            <p className="font-mono text-xs text-muted/70 italic">No bullets added yet.</p>
-                          ) : (
-                            <div className="space-y-2.5 pt-1">
-                              {product.bullets.map((b) => (
-                                <BulletItem
-                                  key={b.id}
-                                  bullet={b}
-                                  onEdit={() => setBulletModal({ isOpen: true, productId: product.id, bullet: b })}
-                                  onDelete={() => setItemToDelete({ type: 'bullet', id: b.id, title: 'bullet' })}
-                                />
-                              ))}
-                            </div>
+                            <Icon.ChevronDown className={`h-4 w-4 transition-transform ${isCompanyCollapsed ? '-rotate-90' : ''}`} />
+                          </button>
+                          <span className="font-mono text-base sm:text-lg font-black text-content group-hover:text-signal transition-colors">
+                            {company.name}
+                          </span>
+                          {company.is_current && (
+                            <span className="rounded-full bg-signal/20 px-2 py-0.5 font-mono text-[10px] font-bold text-signal uppercase tracking-wider">
+                              Present
+                            </span>
+                          )}
+                          <span className="rounded-md border border-edge bg-surface/80 px-2 py-0.5 font-mono text-[10px] text-muted font-medium">
+                            {company.products?.length || 0} {company.products?.length === 1 ? 'product' : 'products'} · {compBulletsCount} {compBulletsCount === 1 ? 'bullet' : 'bullets'}
+                          </span>
+                          {(company.domain || company.website_url) && (
+                            <a
+                              href={(company.domain || company.website_url)!.startsWith('http') ? (company.domain || company.website_url)! : `https://${company.domain || company.website_url}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                              className="font-mono text-xs text-muted hover:text-signal flex items-center gap-1"
+                            >
+                              <span>{(company.domain || company.website_url)!.replace(/^https?:\/\//, '')}</span>
+                              <Icon.ExternalLink className="h-3 w-3" />
+                            </a>
                           )}
                         </div>
-                      ))
+                        <div className="flex items-center gap-2 text-xs text-muted font-mono flex-wrap pl-6">
+                          {company.role_title && <span className="text-content font-medium">{company.role_title}</span>}
+                          {(company.start_date || company.end_date) && (
+                            <span>{company.role_title ? '· ' : ''}{formatISODateToDisplay(company.start_date)} — {company.is_current ? 'Present' : formatISODateToDisplay(company.end_date)}</span>
+                          )}
+                          {company.location && <span>· {company.location}</span>}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0">
+                        <button
+                          onClick={() => setProductModal({ isOpen: true, companyId: company.id })}
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-edge bg-surface hover:border-signal hover:text-signal px-3 py-1.5 font-mono text-xs font-semibold text-content transition-all cursor-pointer"
+                        >
+                          <Icon.Plus className="h-3.5 w-3.5" />
+                          <span>Add Product</span>
+                        </button>
+                        <button
+                          onClick={() => setCompanyModal({ isOpen: true, company })}
+                          className="rounded-lg border border-edge bg-surface hover:border-edge/80 p-1.5 text-muted hover:text-content transition-all cursor-pointer"
+                          title="Edit Company"
+                        >
+                          <Icon.Pencil className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          onClick={() => setItemToDelete({ type: 'company', id: company.id, title: company.name })}
+                          className="rounded-lg border border-edge bg-surface hover:border-red-500/40 hover:text-red-400 p-1.5 text-muted transition-all cursor-pointer"
+                          title="Delete Company"
+                        >
+                          <Icon.Trash className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Company Products */}
+                    {!isCompanyCollapsed && (
+                      <div className="p-4 sm:p-5 space-y-3">
+                        {!company.products || company.products.length === 0 ? (
+                          <div className="rounded-xl border border-dashed border-edge/60 p-4 text-center">
+                            <p className="font-mono text-xs text-muted">No products or sub-systems recorded for this company yet.</p>
+                            <button
+                              onClick={() => setProductModal({ isOpen: true, companyId: company.id })}
+                              className="mt-2 font-mono text-xs text-signal font-semibold hover:underline inline-flex items-center gap-1 cursor-pointer"
+                            >
+                              <Icon.Plus className="h-3.5 w-3.5" />
+                              <span>Define First Product / Module</span>
+                            </button>
+                          </div>
+                        ) : (
+                          company.products.map((product) => {
+                            const isProdCollapsed = Boolean(collapsedProducts[product.id]);
+                            const bulletCount = product.bullets?.length || 0;
+
+                            return (
+                              <div
+                                key={product.id}
+                                className="rounded-xl border border-edge/70 bg-card/60 overflow-hidden shadow-xs transition-all"
+                              >
+                                {/* Product Header Row (Click to toggle collapse) */}
+                                <div
+                                  onClick={() => toggleProduct(product.id)}
+                                  className={`p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 cursor-pointer select-none hover:bg-surface/40 transition-colors ${
+                                    !isProdCollapsed ? 'border-b border-edge/50 bg-surface/20' : ''
+                                  }`}
+                                >
+                                  <div className="space-y-1.5 flex-1 min-w-0">
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                      <button
+                                        type="button"
+                                        className="text-muted hover:text-signal transition-colors p-0.5"
+                                        title={isProdCollapsed ? 'Expand product bullets' : 'Collapse product bullets'}
+                                      >
+                                        <Icon.ChevronDown className={`h-3.5 w-3.5 transition-transform ${isProdCollapsed ? '-rotate-90' : ''}`} />
+                                      </button>
+                                      <span className="font-mono text-sm font-bold text-content">
+                                        {product.name || (product as any).title || 'Untitled Subsystem'}
+                                      </span>
+                                      {(product.architecture_type || (product as any).architectural_notes) && (
+                                        <span className="rounded-md border border-edge bg-surface px-2 py-0.5 font-mono text-[10px] font-bold text-muted uppercase">
+                                          {String(product.architecture_type || (product as any).architectural_notes).replace(/_/g, ' ')}
+                                        </span>
+                                      )}
+                                      <span className="rounded-full bg-signal/15 px-2 py-0.5 font-mono text-[10px] font-bold text-signal">
+                                        {bulletCount} {bulletCount === 1 ? 'bullet' : 'bullets'}
+                                      </span>
+                                      {(product.repo_url || (Array.isArray((product as any).repo_links) && (product as any).repo_links[0]?.url)) && (
+                                        <a
+                                          href={product.repo_url || (product as any).repo_links[0].url}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          onClick={(e) => e.stopPropagation()}
+                                          className="text-muted hover:text-signal p-0.5"
+                                          title="Repository"
+                                        >
+                                          <Icon.Github className="h-3.5 w-3.5" />
+                                        </a>
+                                      )}
+                                      {(product.live_url || (typeof (product as any).description === 'string' && (product as any).description.startsWith('Live: ') ? (product as any).description.slice(6) : null)) && (
+                                        <a
+                                          href={product.live_url || (product as any).description.slice(6)}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          onClick={(e) => e.stopPropagation()}
+                                          className="text-muted hover:text-signal p-0.5"
+                                          title="Live URL"
+                                        >
+                                          <Icon.ExternalLink className="h-3.5 w-3.5" />
+                                        </a>
+                                      )}
+                                    </div>
+
+                                    {/* Core Tech Stack Badges */}
+                                    {product.tech_stack && product.tech_stack.length > 0 && (
+                                      <div className="flex items-center gap-1.5 flex-wrap pt-0.5 pl-5">
+                                        {product.tech_stack.map((tech) => (
+                                          <span
+                                            key={tech}
+                                            className="rounded bg-edge/40 px-1.5 py-0.5 font-mono text-[10px] text-content/85 font-medium border border-edge/60"
+                                          >
+                                            {tech}
+                                          </span>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
+
+                                  <div
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="flex items-center gap-1.5 shrink-0 pt-0.5"
+                                  >
+                                    <button
+                                      onClick={() => setBulletModal({ isOpen: true, productId: product.id })}
+                                      className="inline-flex items-center gap-1 rounded-md border border-signal/30 bg-signal/5 hover:bg-signal/15 px-2.5 py-1 font-mono text-[11px] font-semibold text-signal transition-all cursor-pointer"
+                                    >
+                                      <Icon.Plus className="h-3 w-3" />
+                                      <span>Add Bullet</span>
+                                    </button>
+                                    <button
+                                      onClick={() => setProductModal({ isOpen: true, companyId: company.id, product })}
+                                      className="rounded-md p-1 text-muted hover:text-content hover:bg-surface transition-all cursor-pointer"
+                                      title="Edit Product"
+                                    >
+                                      <Icon.Pencil className="h-3.5 w-3.5" />
+                                    </button>
+                                    <button
+                                      onClick={() => setItemToDelete({ type: 'product', id: product.id, title: product.name })}
+                                      className="rounded-md p-1 text-muted hover:text-red-400 hover:bg-surface transition-all cursor-pointer"
+                                      title="Delete Product"
+                                    >
+                                      <Icon.Trash className="h-3.5 w-3.5" />
+                                    </button>
+                                  </div>
+                                </div>
+
+                                {/* Bullets List (Rendered when expanded) */}
+                                {!isProdCollapsed && (
+                                  <div className="p-3.5 space-y-2.5">
+                                    {!product.bullets || product.bullets.length === 0 ? (
+                                      <div className="rounded-xl border border-dashed border-edge/80 bg-surface/30 p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-in fade-in">
+                                        <div className="space-y-0.5">
+                                          <div className="flex items-center gap-1.5">
+                                            <Icon.Sparkle className="h-3.5 w-3.5 text-signal" />
+                                            <span className="font-mono text-xs font-bold text-content">No atomic bullets added yet</span>
+                                          </div>
+                                          <p className="font-sans text-[11px] text-muted max-w-lg leading-relaxed">
+                                            Quantify contributions for <span className="font-mono text-content font-semibold">{product.name || (product as any).title}</span> with metrics, action verbs, and interview defense rationale.
+                                          </p>
+                                        </div>
+                                        <button
+                                          type="button"
+                                          onClick={() => setBulletModal({ isOpen: true, productId: product.id })}
+                                          className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-signal/10 hover:bg-signal/20 text-signal border border-signal/30 px-3 py-1 font-mono text-xs font-bold transition-all shadow-xs cursor-pointer shrink-0"
+                                        >
+                                          <Icon.Plus className="h-3 w-3" />
+                                          <span>Add First Bullet</span>
+                                        </button>
+                                      </div>
+                                    ) : (
+                                      <div className="space-y-2.5 pt-1">
+                                        {product.bullets.map((b) => (
+                                          <BulletItem
+                                            key={b.id}
+                                            bullet={b}
+                                            onEdit={() => setBulletModal({ isOpen: true, productId: product.id, bullet: b })}
+                                            onDelete={() => setItemToDelete({ type: 'bullet', id: b.id, title: 'bullet' })}
+                                          />
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })
+                        )}
+                      </div>
                     )}
                   </div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
 
@@ -583,85 +852,145 @@ export function PortfolioHub() {
                 <p className="font-mono text-xs text-muted">No standalone or open-source projects recorded.</p>
               </div>
             ) : (
-              filteredProjects.map((proj) => (
-                <div
-                  key={proj.id}
-                  className="rounded-2xl border border-edge bg-card p-5 space-y-3 shadow-card"
-                >
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-edge/60">
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-mono text-base font-bold text-content">{proj.name}</span>
-                        {proj.repo_url && (
-                          <a
-                            href={proj.repo_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-muted hover:text-signal p-0.5"
-                            title="GitHub Repository"
+              filteredProjects.map((proj) => {
+                const isProjCollapsed = Boolean(collapsedProjects[proj.id]);
+                const projBulletCount = proj.bullets?.length || 0;
+
+                return (
+                  <div
+                    key={proj.id}
+                    className="rounded-2xl border border-edge bg-card overflow-hidden shadow-card transition-all"
+                  >
+                    {/* Project Header Row (Click to toggle collapse) */}
+                    <div
+                      onClick={() => toggleProject(proj.id)}
+                      className={`p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 cursor-pointer select-none hover:bg-surface/30 transition-colors ${
+                        !isProjCollapsed ? 'border-b border-edge/60 bg-surface/20' : ''
+                      }`}
+                    >
+                      <div className="space-y-1 flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <button
+                            type="button"
+                            className="text-muted hover:text-signal transition-colors p-0.5"
+                            title={isProjCollapsed ? 'Expand project bullets' : 'Collapse project bullets'}
                           >
-                            <Icon.Github className="h-4 w-4" />
-                          </a>
+                            <Icon.ChevronDown className={`h-4 w-4 transition-transform ${isProjCollapsed ? '-rotate-90' : ''}`} />
+                          </button>
+                          <span className="font-mono text-base font-bold text-content">{proj.name}</span>
+                          <span className="rounded-full bg-signal/15 px-2 py-0.5 font-mono text-[10px] font-bold text-signal">
+                            {projBulletCount} {projBulletCount === 1 ? 'bullet' : 'bullets'}
+                          </span>
+                          {proj.repo_url && (
+                            <a
+                              href={proj.repo_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                              className="text-muted hover:text-signal p-0.5"
+                              title="GitHub Repository"
+                            >
+                              <Icon.Github className="h-4 w-4" />
+                            </a>
+                          )}
+                          {proj.live_url && (
+                            <a
+                              href={proj.live_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                              className="text-muted hover:text-signal p-0.5"
+                              title="Live Project URL"
+                            >
+                              <Icon.ExternalLink className="h-4 w-4" />
+                            </a>
+                          )}
+                        </div>
+                        {proj.headline && (
+                          <p className="font-sans text-xs text-muted pl-6">{proj.headline}</p>
                         )}
-                        {proj.live_url && (
-                          <a
-                            href={proj.live_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-muted hover:text-signal p-0.5"
-                            title="Live Project URL"
-                          >
-                            <Icon.ExternalLink className="h-4 w-4" />
-                          </a>
+                        {proj.tech_stack && proj.tech_stack.length > 0 && (
+                          <div className="flex items-center gap-1.5 flex-wrap pt-0.5 pl-6">
+                            {proj.tech_stack.map((tech) => (
+                              <span
+                                key={tech}
+                                className="rounded bg-edge/40 px-1.5 py-0.5 font-mono text-[10px] text-content/85 font-medium border border-edge/60"
+                              >
+                                {tech}
+                              </span>
+                            ))}
+                          </div>
                         )}
                       </div>
-                      {proj.headline && (
-                        <p className="font-sans text-xs text-muted">{proj.headline}</p>
-                      )}
+
+                      <div
+                        onClick={(e) => e.stopPropagation()}
+                        className="flex items-center gap-2 shrink-0"
+                      >
+                        <button
+                          onClick={() => setBulletModal({ isOpen: true, projectId: proj.id })}
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-signal/30 bg-signal/5 hover:bg-signal/15 px-3 py-1 font-mono text-xs font-semibold text-signal transition-all cursor-pointer"
+                        >
+                          <Icon.Plus className="h-3.5 w-3.5" />
+                          <span>Add Bullet</span>
+                        </button>
+                        <button
+                          onClick={() => setProjectModal({ isOpen: true, project: proj })}
+                          className="rounded-lg border border-edge bg-surface hover:border-edge/80 p-1.5 text-muted hover:text-content transition-all cursor-pointer"
+                          title="Edit Project"
+                        >
+                          <Icon.Pencil className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          onClick={() => setItemToDelete({ type: 'project', id: proj.id, title: proj.name })}
+                          className="rounded-lg border border-edge bg-surface hover:border-red-500/40 hover:text-red-400 p-1.5 text-muted transition-all cursor-pointer"
+                          title="Delete Project"
+                        >
+                          <Icon.Trash className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
                     </div>
 
-                    <div className="flex items-center gap-2 shrink-0">
-                      <button
-                        onClick={() => setBulletModal({ isOpen: true, projectId: proj.id })}
-                        className="inline-flex items-center gap-1.5 rounded-lg border border-signal/30 bg-signal/5 hover:bg-signal/15 px-3 py-1 font-mono text-xs font-semibold text-signal transition-all cursor-pointer"
-                      >
-                        <Icon.Plus className="h-3.5 w-3.5" />
-                        <span>Add Bullet</span>
-                      </button>
-                      <button
-                        onClick={() => setProjectModal({ isOpen: true, project: proj })}
-                        className="rounded-lg border border-edge bg-surface hover:border-edge/80 p-1.5 text-muted hover:text-content transition-all cursor-pointer"
-                        title="Edit Project"
-                      >
-                        <Icon.Pencil className="h-3.5 w-3.5" />
-                      </button>
-                      <button
-                        onClick={() => setItemToDelete({ type: 'project', id: proj.id, title: proj.name })}
-                        className="rounded-lg border border-edge bg-surface hover:border-red-500/40 hover:text-red-400 p-1.5 text-muted transition-all cursor-pointer"
-                        title="Delete Project"
-                      >
-                        <Icon.Trash className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
+                    {/* Bullets List (Rendered when expanded) */}
+                    {!isProjCollapsed && (
+                      <div className="p-4 sm:p-5 space-y-3">
+                        {!proj.bullets || proj.bullets.length === 0 ? (
+                          <div className="rounded-xl border border-dashed border-edge/80 bg-surface/30 p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-in fade-in">
+                            <div className="space-y-0.5">
+                              <div className="flex items-center gap-1.5">
+                                <Icon.Sparkle className="h-3.5 w-3.5 text-signal" />
+                                <span className="font-mono text-xs font-bold text-content">No project bullets added yet</span>
+                              </div>
+                              <p className="font-sans text-[11px] text-muted max-w-lg leading-relaxed">
+                                Highlight technical architectural choices, starred repos, or performance optimizations for <span className="font-mono text-content font-semibold">{proj.name}</span>.
+                              </p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => setBulletModal({ isOpen: true, projectId: proj.id })}
+                              className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-signal/10 hover:bg-signal/20 text-signal border border-signal/30 px-3 py-1 font-mono text-xs font-bold transition-all shadow-xs cursor-pointer shrink-0"
+                            >
+                              <Icon.Plus className="h-3 w-3" />
+                              <span>Add First Bullet</span>
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="space-y-2.5 pt-1">
+                            {proj.bullets.map((b) => (
+                              <BulletItem
+                                key={b.id}
+                                bullet={b}
+                                onEdit={() => setBulletModal({ isOpen: true, projectId: proj.id, bullet: b })}
+                                onDelete={() => setItemToDelete({ type: 'bullet', id: b.id, title: 'bullet' })}
+                              />
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
-
-                  {/* Bullets List */}
-                  {!proj.bullets || proj.bullets.length === 0 ? (
-                    <p className="font-mono text-xs text-muted/70 italic">No bullets added yet.</p>
-                  ) : (
-                    <div className="space-y-2.5 pt-1">
-                      {proj.bullets.map((b) => (
-                        <BulletItem
-                          key={b.id}
-                          bullet={b}
-                          onEdit={() => setBulletModal({ isOpen: true, projectId: proj.id, bullet: b })}
-                          onDelete={() => setItemToDelete({ type: 'bullet', id: b.id, title: 'bullet' })}
-                        />
-                      ))}
-                    </div>
-                  )}
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         </div>
@@ -712,6 +1041,16 @@ export function PortfolioHub() {
         <BulletEditModal
           productId={bulletModal.productId}
           projectId={bulletModal.projectId}
+          parentProduct={
+            bulletModal.productId
+              ? portfolio.companies.flatMap((c) => c.products || []).find((p) => p.id === bulletModal.productId)
+              : undefined
+          }
+          parentProject={
+            bulletModal.projectId
+              ? portfolio.standalone_projects.find((p) => p.id === bulletModal.projectId)
+              : undefined
+          }
           bullet={bulletModal.bullet}
           onClose={() => setBulletModal(null)}
           onSaved={async () => {
@@ -904,9 +1243,10 @@ function CompanyEditModal({
   const DRAFT_KEY = 'gitgrill_company_draft_v1';
   const [hasRestoredDraft, setHasRestoredDraft] = useState(false);
 
+  const initialRole = company?.role_title || (company?.id ? getStoredCompanyRoles()[company.id] : '') || '';
   const [name, setName] = useState(company?.name || '');
-  const [roleTitle, setRoleTitle] = useState(company?.role_title || '');
-  const [domain, setDomain] = useState(company?.domain || '');
+  const [roleTitle, setRoleTitle] = useState(initialRole);
+  const [domain, setDomain] = useState(company?.domain || company?.website_url || '');
   const [location, setLocation] = useState(company?.location || '');
   const [startDate, setStartDate] = useState(company?.start_date ? formatISODateToDisplay(company.start_date) : '');
   const [endDate, setEndDate] = useState(company?.end_date ? formatISODateToDisplay(company.end_date) : '');
@@ -1179,6 +1519,7 @@ function ProductEditModal({
   const [architectureType, setArchitectureType] = useState(
     product?.architecture_type || 'Event-Driven Microservices'
   );
+  const [techStackStr, setTechStackStr] = useState(product?.tech_stack?.join(', ') || '');
   const [liveUrl, setLiveUrl] = useState(product?.live_url || '');
   const [repoUrl, setRepoUrl] = useState(product?.repo_url || '');
   const [saving, setSaving] = useState(false);
@@ -1191,8 +1532,9 @@ function ProductEditModal({
       const raw = localStorage.getItem(DRAFT_KEY);
       if (raw) {
         const d = JSON.parse(raw);
-        if (d.name || d.liveUrl || d.repoUrl || d.architectureType) {
+        if (d.name || d.liveUrl || d.repoUrl || d.architectureType || d.techStackStr) {
           setName(d.name || '');
+          if (d.techStackStr) setTechStackStr(d.techStackStr);
           if (d.architectureType) {
             setArchitectureType(d.architectureType);
             if (d.isCustomArch !== undefined) {
@@ -1214,11 +1556,11 @@ function ProductEditModal({
   useEffect(() => {
     if (product) return;
     try {
-      if (name || liveUrl || repoUrl || architectureType) {
-        localStorage.setItem(DRAFT_KEY, JSON.stringify({ name, architectureType, isCustomArch, liveUrl, repoUrl }));
+      if (name || liveUrl || repoUrl || architectureType || techStackStr) {
+        localStorage.setItem(DRAFT_KEY, JSON.stringify({ name, architectureType, isCustomArch, techStackStr, liveUrl, repoUrl }));
       }
     } catch {}
-  }, [product, DRAFT_KEY, name, architectureType, isCustomArch, liveUrl, repoUrl]);
+  }, [product, DRAFT_KEY, name, architectureType, isCustomArch, techStackStr, liveUrl, repoUrl]);
 
   const handleDiscardDraft = () => {
     try {
@@ -1227,6 +1569,7 @@ function ProductEditModal({
     setName('');
     setIsCustomArch(false);
     setArchitectureType('Event-Driven Microservices');
+    setTechStackStr('');
     setLiveUrl('');
     setRepoUrl('');
     setHasRestoredDraft(false);
@@ -1242,6 +1585,11 @@ function ProductEditModal({
     setSaving(true);
     setError('');
     try {
+      const techStack = techStackStr
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean);
+
       await saveProduct({
         id: product?.id,
         company_id: companyId,
@@ -1249,6 +1597,7 @@ function ProductEditModal({
         title: name.trim(),
         role_title: companyRole || 'Software Engineer',
         architecture_type: architectureType.trim() || null,
+        tech_stack: techStack,
         live_url: liveUrl.trim() || null,
         repo_url: repoUrl.trim() || null,
       });
@@ -1390,6 +1739,37 @@ function ProductEditModal({
             )}
           </FormField>
 
+          <FormField
+            label="Core Tech Stack & Config"
+            hint="The primary languages, frameworks, databases & infrastructure for this product"
+          >
+            <div className="space-y-2">
+              <TextInput
+                value={techStackStr}
+                onChange={(e) => setTechStackStr(e.target.value)}
+                placeholder="e.g. Next.js, TypeScript, PostgreSQL, Redis, Docker, Tailwind"
+              />
+              <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                <span className="font-mono text-[10px] text-muted">Quick add:</span>
+                {['TypeScript', 'Next.js', 'React', 'Node.js', 'PostgreSQL', 'Redis', 'Python', 'Go', 'Docker', 'AWS', 'GraphQL', 'Kafka', 'Tailwind'].map((tech) => (
+                  <button
+                    key={tech}
+                    type="button"
+                    onClick={() => {
+                      const current = techStackStr.split(',').map((s) => s.trim()).filter(Boolean);
+                      if (!current.includes(tech)) {
+                        setTechStackStr(current.length > 0 ? `${current.join(', ')}, ${tech}` : tech);
+                      }
+                    }}
+                    className="rounded-md border border-edge bg-surface/60 hover:border-signal/40 hover:text-signal px-2 py-0.5 font-mono text-[10px] text-muted transition-all cursor-pointer"
+                  >
+                    +{tech}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </FormField>
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <FormField label="Repository Link (optional)">
               <TextInput
@@ -1445,6 +1825,7 @@ function ProjectEditModal({
 
   const [name, setName] = useState(project?.name || '');
   const [headline, setHeadline] = useState(project?.headline || '');
+  const [techStackStr, setTechStackStr] = useState(project?.tech_stack?.join(', ') || '');
   const [repoUrl, setRepoUrl] = useState(project?.repo_url || '');
   const [liveUrl, setLiveUrl] = useState(project?.live_url || '');
   const [saving, setSaving] = useState(false);
@@ -1457,9 +1838,10 @@ function ProjectEditModal({
       const raw = localStorage.getItem(DRAFT_KEY);
       if (raw) {
         const d = JSON.parse(raw);
-        if (d.name || d.headline || d.repoUrl || d.liveUrl) {
+        if (d.name || d.headline || d.techStackStr || d.repoUrl || d.liveUrl) {
           setName(d.name || '');
           setHeadline(d.headline || '');
+          if (d.techStackStr) setTechStackStr(d.techStackStr);
           setRepoUrl(d.repoUrl || '');
           setLiveUrl(d.liveUrl || '');
           setHasRestoredDraft(true);
@@ -1472,11 +1854,11 @@ function ProjectEditModal({
   useEffect(() => {
     if (project) return;
     try {
-      if (name || headline || repoUrl || liveUrl) {
-        localStorage.setItem(DRAFT_KEY, JSON.stringify({ name, headline, repoUrl, liveUrl }));
+      if (name || headline || techStackStr || repoUrl || liveUrl) {
+        localStorage.setItem(DRAFT_KEY, JSON.stringify({ name, headline, techStackStr, repoUrl, liveUrl }));
       }
     } catch {}
-  }, [project, name, headline, repoUrl, liveUrl]);
+  }, [project, name, headline, techStackStr, repoUrl, liveUrl]);
 
   const handleDiscardDraft = () => {
     try {
@@ -1484,6 +1866,7 @@ function ProjectEditModal({
     } catch {}
     setName('');
     setHeadline('');
+    setTechStackStr('');
     setRepoUrl('');
     setLiveUrl('');
     setHasRestoredDraft(false);
@@ -1499,10 +1882,16 @@ function ProjectEditModal({
     setSaving(true);
     setError('');
     try {
+      const techStack = techStackStr
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean);
+
       await saveProject({
         id: project?.id,
         name: name.trim(),
         headline: headline.trim() || null,
+        tech_stack: techStack,
         repo_url: repoUrl.trim() || null,
         live_url: liveUrl.trim() || null,
       });
@@ -1597,6 +1986,37 @@ function ProjectEditModal({
             />
           </FormField>
 
+          <FormField
+            label="Tech Stack & Config"
+            hint="Primary technologies and tools powering this project"
+          >
+            <div className="space-y-2">
+              <TextInput
+                value={techStackStr}
+                onChange={(e) => setTechStackStr(e.target.value)}
+                placeholder="e.g. Go, Raft, gRPC, Docker, Prometheus"
+              />
+              <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                <span className="font-mono text-[10px] text-muted">Quick add:</span>
+                {['Go', 'Rust', 'TypeScript', 'Python', 'React', 'Node.js', 'PostgreSQL', 'Redis', 'Docker', 'AWS'].map((tech) => (
+                  <button
+                    key={tech}
+                    type="button"
+                    onClick={() => {
+                      const current = techStackStr.split(',').map((s) => s.trim()).filter(Boolean);
+                      if (!current.includes(tech)) {
+                        setTechStackStr(current.length > 0 ? `${current.join(', ')}, ${tech}` : tech);
+                      }
+                    }}
+                    className="rounded-md border border-edge bg-surface/60 hover:border-signal/40 hover:text-signal px-2 py-0.5 font-mono text-[10px] text-muted transition-all cursor-pointer"
+                  >
+                    +{tech}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </FormField>
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <FormField label="Repository Link">
               <TextInput
@@ -1641,12 +2061,16 @@ function ProjectEditModal({
 function BulletEditModal({
   productId,
   projectId,
+  parentProduct,
+  parentProject,
   bullet,
   onClose,
   onSaved,
 }: {
   productId?: string;
   projectId?: string;
+  parentProduct?: PortfolioProduct;
+  parentProject?: PortfolioProject;
   bullet?: MasterBullet;
   onClose: () => void;
   onSaved: () => Promise<void>;
@@ -1730,7 +2154,7 @@ function BulletEditModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!bulletText.trim()) {
-      setError('Bullet text is required.');
+      setError('Accomplishment sentence is required.');
       return;
     }
     setSaving(true);
@@ -1785,6 +2209,9 @@ function BulletEditModal({
 
   if (!mounted) return null;
 
+  const parentStack = parentProduct?.tech_stack || parentProject?.tech_stack || [];
+  const parentName = parentProduct?.name || parentProject?.name;
+
   return createPortal(
     <div
       role="dialog"
@@ -1799,16 +2226,43 @@ function BulletEditModal({
         <div className="flex items-center justify-between pb-4 border-b border-edge">
           <div className="space-y-0.5">
             <h3 className="font-mono text-base font-bold text-content">
-              {bullet ? 'Edit Master Bullet' : 'Add Atomic Master Bullet'}
+              {bullet ? 'Edit Accomplishment Sentence' : 'Add Accomplishment Sentence'}
             </h3>
             <p className="font-sans text-xs text-muted">
-              Define the measurable impact and defense rationale for this contribution.
+              Add a concrete, metric-driven contribution for this subsystem.
             </p>
           </div>
           <button onClick={onClose} className="rounded-lg p-1 text-muted hover:text-content">
             <Icon.X className="h-4 w-4" />
           </button>
         </div>
+
+        {/* Product / Project Context Banner */}
+        {parentName && (
+          <div className="mt-3 rounded-xl border border-edge/80 bg-surface/50 p-3 space-y-1.5 font-mono text-xs">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <div className="flex items-center gap-1.5 font-bold text-content">
+                <Icon.Layers className="h-3.5 w-3.5 text-signal" />
+                <span>{parentProduct ? `Product: ${parentName}` : `Project: ${parentName}`}</span>
+              </div>
+              {parentProduct?.architecture_type && (
+                <span className="rounded bg-edge/60 px-2 py-0.5 text-[10px] uppercase font-bold text-muted">
+                  {parentProduct.architecture_type.replace(/_/g, ' ')}
+                </span>
+              )}
+            </div>
+            {parentStack.length > 0 && (
+              <div className="flex items-center gap-1.5 flex-wrap pt-0.5 text-[11px] text-muted">
+                <span className="text-[10px] uppercase font-bold text-muted/80">Inherited Stack:</span>
+                {parentStack.map((t) => (
+                  <span key={t} className="rounded bg-edge/40 px-1.5 py-0.2 text-[10px] text-content/85 font-medium border border-edge/50">
+                    {t}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {hasRestoredDraft && !bullet && (
           <div className="mt-3 flex items-center justify-between rounded-xl border border-signal/30 bg-signal/10 px-3.5 py-2 text-xs font-mono text-signal animate-in fade-in">
@@ -1833,7 +2287,10 @@ function BulletEditModal({
         )}
 
         <form onSubmit={handleSubmit} className="mt-4 space-y-4">
-          <FormField label="Contribution Bullet Text *">
+          <FormField
+            label="Accomplishment Sentence *"
+            hint="1-2 sentences capturing what you built, scaled, or optimized with measurable impact"
+          >
             <TextArea
               rows={3}
               value={bulletText}
@@ -1844,14 +2301,14 @@ function BulletEditModal({
           </FormField>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <FormField label="Action Verb">
+            <FormField label="Action Verb" hint="Auto-extracted from sentence">
               <TextInput
                 value={actionVerb}
                 onChange={(e) => setActionVerb(e.target.value)}
-                placeholder="Architected, Scaled, Streamlined"
+                placeholder="Architected, Scaled, Optimized"
               />
             </FormField>
-            <FormField label="Primary Metric">
+            <FormField label="Primary Metric" hint="Auto-extracted metric">
               <TextInput
                 value={metricPrimary}
                 onChange={(e) => setMetricPrimary(e.target.value)}
@@ -1860,31 +2317,77 @@ function BulletEditModal({
             </FormField>
           </div>
 
-          <FormField label="Technologies & Tools (comma separated)">
-            <TextInput
-              value={techStackStr}
-              onChange={(e) => setTechStackStr(e.target.value)}
-              placeholder="PostgreSQL, Apache Kafka, Go, Redis, Docker"
-            />
+          <FormField
+            label="Specific Skills / Tools Highlight (Optional)"
+            hint={parentName ? `Inherits core stack from ${parentName}. Tag specific tools only if relevant to this sentence.` : 'Optional specific skills or tools for this bullet'}
+          >
+            <div className="space-y-2">
+              <TextInput
+                value={techStackStr}
+                onChange={(e) => setTechStackStr(e.target.value)}
+                placeholder="e.g. Apache Kafka, Redis, Docker"
+              />
+              {parentStack.length > 0 && (
+                <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                  <span className="font-mono text-[10px] text-muted">Tag from product stack:</span>
+                  {parentStack.map((tech) => {
+                    const current = techStackStr.split(',').map((s) => s.trim()).filter(Boolean);
+                    const isSelected = current.includes(tech);
+                    return (
+                      <button
+                        key={tech}
+                        type="button"
+                        onClick={() => {
+                          if (isSelected) {
+                            setTechStackStr(current.filter((t) => t !== tech).join(', '));
+                          } else {
+                            setTechStackStr([...current, tech].join(', '));
+                          }
+                        }}
+                        className={`rounded-md border px-2 py-0.5 font-mono text-[10px] transition-all cursor-pointer ${
+                          isSelected
+                            ? 'border-signal/50 bg-signal/15 text-signal font-bold'
+                            : 'border-edge bg-surface/60 hover:border-signal/40 hover:text-signal text-muted'
+                        }`}
+                      >
+                        {isSelected ? `✓ ${tech}` : `+${tech}`}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           </FormField>
 
-          <FormField label="Engineering Challenge (The Problem)">
-            <TextArea
-              rows={2}
-              value={contextChallenge}
-              onChange={(e) => setContextChallenge(e.target.value)}
-              placeholder="Legacy polling architecture was overwhelming the primary database and failing under traffic spikes."
-            />
-          </FormField>
+          {/* Optional Collapsible Technical Context & Defense */}
+          <details className="group rounded-xl border border-edge/70 bg-surface/30 p-3.5 space-y-3">
+            <summary className="font-mono text-xs font-bold text-muted hover:text-content cursor-pointer flex items-center justify-between list-none">
+              <span className="flex items-center gap-1.5">
+                <Icon.Shield className="h-3.5 w-3.5 text-signal" />
+                <span>Interview Defense & Technical Context (Optional)</span>
+              </span>
+              <Icon.ChevronDown className="h-3.5 w-3.5 transition-transform group-open:rotate-180" />
+            </summary>
+            <div className="pt-2 space-y-3">
+              <FormField label="Engineering Challenge (The Problem)" hint="What was broken, slow, or bottlenecked?">
+                <TextArea
+                  rows={2}
+                  value={contextChallenge}
+                  onChange={(e) => setContextChallenge(e.target.value)}
+                  placeholder="Legacy polling architecture was overwhelming the primary database and failing under traffic spikes."
+                />
+              </FormField>
 
-          <FormField label="Defense Notes & Trade-offs (The 'Why')">
-            <TextArea
-              rows={2}
-              value={defenseNotes}
-              onChange={(e) => setDefenseNotes(e.target.value)}
-              placeholder="Chose partitioned Kafka logs over RabbitMQ due to strict ordering guarantees and replayability requirements."
-            />
-          </FormField>
+              <FormField label="Defense Notes & Trade-offs (The 'Why')" hint="Why did you choose this architecture over alternatives?">
+                <TextArea
+                  rows={2}
+                  value={defenseNotes}
+                  onChange={(e) => setDefenseNotes(e.target.value)}
+                  placeholder="Chose partitioned Kafka logs over RabbitMQ due to strict ordering guarantees and replayability requirements."
+                />
+              </FormField>
+            </div>
+          </details>
 
           <FormField label="Review Status">
             <Select
@@ -1908,7 +2411,7 @@ function BulletEditModal({
               className="inline-flex items-center gap-2 rounded-xl bg-signal hover:bg-signal-hover text-surface px-4 py-2 font-mono text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
             >
               {saving && <Icon.Spinner className="h-3.5 w-3.5 animate-spin" />}
-              <span>{saving ? 'Saving...' : 'Save Bullet'}</span>
+              <span>{saving ? 'Saving...' : 'Save Sentence'}</span>
             </button>
           </div>
         </form>
