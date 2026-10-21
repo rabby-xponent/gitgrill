@@ -399,11 +399,30 @@ gantt
     Public Proof Page Integration          :2027-02-20, 10d
 ```
 
-- **Phase 1: The Living Portfolio SSOT (Manual Entry First)**
-  - Execute non-breaking PostgreSQL migration (`portfolio-migration.sql`).
-  - Deploy `/developer/portfolio` for company, product, and bullet hierarchy management.
-  - One-click migration: import existing `ResumeVault` items into the SSOT.
-- **Phase 2: Multi-Resume Studio & A/B JD Benchmarking**
+- **Phase 1: The Living Portfolio SSOT (Manual Entry First) — [COMPLETED ✅]**
+  - **Database DDL Executed & Verified:** Live migration executed in Supabase SQL editor via [`backend/src/auth/portfolio-migration.sql`](file:///e:/rabby-xponent/Projects/devscope/backend/src/auth/portfolio-migration.sql). Verified 7 tables with zero regression to existing tables:
+    * `portfolio_companies`
+    * `portfolio_products`
+    * `portfolio_projects`
+    * `master_bullets`
+    * `resume_documents`
+    * `resume_sections`
+    * `resume_section_items`
+  - **Backend API Deployed:** Created [`backend/src/portfolio/portfolio.routes.ts`](file:///e:/rabby-xponent/Projects/devscope/backend/src/portfolio/portfolio.routes.ts) and mounted at `/api/portfolio` in [`backend/src/index.ts`](file:///e:/rabby-xponent/Projects/devscope/backend/src/index.ts):
+    * `GET /api/portfolio`: Full company/product/bullet hierarchy query.
+    * `POST /api/portfolio/companies` & `DELETE /api/portfolio/companies/:id`
+    * `POST /api/portfolio/products` & `DELETE /api/portfolio/products/:id`
+    * `POST /api/portfolio/projects` & `DELETE /api/portfolio/projects/:id`
+    * `POST /api/portfolio/bullets` & `DELETE /api/portfolio/bullets/:id`
+    * `POST /api/portfolio/bootstrap-from-resume`: 1-click import from Resume Vault.
+  - **Frontend Client & UI Layer:**
+    * Created [`frontend/lib/portfolio.ts`](file:///e:/rabby-xponent/Projects/devscope/frontend/lib/portfolio.ts): Strongly typed SSOT client with automatic offline/guest fallback.
+    * Built [`frontend/components/PortfolioHub.tsx`](file:///e:/rabby-xponent/Projects/devscope/frontend/components/PortfolioHub.tsx): Living Portfolio SSOT workspace with company hierarchy, product architectures, master bullets with quantifiable metric highlights, expandable technical trade-off drawers, and 1-click resume import modal.
+    * Mounted tab in [`frontend/app/developer/page.tsx`](file:///e:/rabby-xponent/Projects/devscope/frontend/app/developer/page.tsx).
+    * Enhanced [`frontend/components/icons.tsx`](file:///e:/rabby-xponent/Projects/devscope/frontend/components/icons.tsx) with `Trash` and `ExternalLink` icons.
+  - **Verification:** Both backend and frontend compiled with 0 errors (`npx tsc --noEmit`).
+
+- **Phase 2: Multi-Resume Studio & A/B JD Benchmarking — [NEXT UP 🚀]**
   - Compose dynamic resume variants by tagging and assembling master bullets.
   - Multi-Resume Benchmarking in [`JDResumeMatchmaker.tsx`](file:///e:/rabby-xponent/Projects/devscope/frontend/components/JDResumeMatchmaker.tsx) showing comparative scorecards.
   - ATS-compliant Markdown and styled DOCX export.

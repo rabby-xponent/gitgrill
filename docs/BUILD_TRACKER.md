@@ -1,8 +1,8 @@
 # GitGrill (formerly DevScope) — Build Tracker & Technical Changelog
 
 > Real-time tracker of implemented features, bug fixes, schema evolutions, and upcoming roadmap milestones.  
-> **Current Version:** `v1.3.0` (Complete Rebrand to GitGrill, Deep Code Defense & Dual Monetization)  
-> **Status:** All core intelligence, code defense, Bangladesh MFS (bKash & Nagad) billing, and branding hardened.
+> **Current Version:** `v1.4.0` (Living Portfolio SSOT & Decoupled CareerOS Architecture)  
+> **Status:** Portfolio SSOT live, non-breaking multi-resume database migration verified, guest sandbox hardened.
 
 ---
 
@@ -10,10 +10,11 @@
 
 | Subsystem | Health | Current Model / Tech | Key Changes |
 |---|---|---|---|
+| **Portfolio SSOT** | 🟢 Healthy | Supabase PostgreSQL + Local-First Fallback | 7 decoupled tables live; Express CRUD endpoints mounted at `/api/portfolio`; 1-click bootstrap from Resume Vault. |
 | **LLM Gateway** | 🟢 Healthy | `gemini-3.8-flash` (Primary), Groq & OpenRouter failovers | Model slugs updated; auto-failover on empty/reasoning responses; JSON mode enforced. |
 | **Synthesis Agent** | 🟢 Healthy | ReAct + Two-phase compression (Cache v5) | Private/corporate developer bias removed; 15-minute phone screen guide generated. |
 | **Investigation Tools** | 🟢 Healthy | 11 deterministic pre-fetch tools | Fast parallel pre-fetch (~1.6s execution). |
-| **Frontend UI** | 🟢 Healthy | Next.js 14 (App Router) + Tailwind CSS | 3-tier Pricing Section; 6-digit Email OTP Auth; drop-up Selects; solid sticky subnavs. |
+| **Frontend UI** | 🟢 Healthy | Next.js 14 (App Router) + Tailwind CSS | Living Portfolio Hub tab mounted; guest sandbox banners; drop-up Selects; solid sticky subnavs. |
 | **Cache & Performance**| 🟢 Healthy | File-based JSON (`./cache/profiles/`) + Memory LRU | Sub-10ms response on cached profiles; fixed query param cache bypass bug. |
 | **Auth & Workspace** | 🟢 Healthy | Supabase Auth + Resilient Local Fallback | Dual-mode GitHub OAuth & 6-digit Email OTP with zero 403 blocks during local testing. |
 | **Quality Contract** | 🟢 Healthy | `profile-schema.ts` + `npm run agent:eval` | Typed validation post-synthesis; one bounded repair pass; offline fixture regression. |
@@ -573,6 +574,39 @@ pie title Roadmap Milestone Status
   - System prompt in Tier 2 ReAct agent calibrated to *"GitGrill's Staff Technical Auditor"*.
 * **Documentation:**
   - Standardized all architecture guides, roadmaps, and specs to GitGrill.
+
+---
+
+### Milestone 31 — Developer CareerOS: Living Portfolio SSOT & Decoupled Architecture (Phase 1 Complete) 🔥
+
+* **The Core Problem Solved:**
+  - Solved the *"Contribution Articulation Gap"* and *"Fragmented Work History Problem"* where complex engineering contributions flatten into generic resume bullets across fragmented files.
+  - Decoupled the **Living Portfolio SSOT** (Single Source of Truth) from dynamic, role-targeted resume views/branches.
+* **Non-Breaking Database Migration ([`portfolio-migration.sql`](file:///e:/rabby-xponent/Projects/devscope/backend/src/auth/portfolio-migration.sql)):**
+  - Executed idempotent DDL on live Supabase (`ppvjeacgtgoiqizdibrt.supabase.co`).
+  - Created 7 normalized tables preserving all existing schemas (`users`, `target_roles`, `defense_cards`, `proofs` intact):
+    * `portfolio_companies`: Real-world organizations, domains, role titles, and employment periods.
+    * `portfolio_products`: Product lines and sub-systems with architecture archetypes (*Event-Driven Microservices, Distributed Storage, API Gateway, Real-Time Streaming, etc.*).
+    * `portfolio_projects`: Standalone and open-source repositories with live URLs.
+    * `master_bullets`: Atomic master evidence with action verbs, quantifiable metrics, review status (`approved`, `needs_review`, `draft`), provenance source (`manual`, `docx_import`, `git_digest`, `pr_artifact`), and parent check constraint (`chk_bullet_parent`).
+    * `resume_documents`, `resume_sections`, `resume_section_items`: Junction tables for dynamic multi-resume variant compilation.
+* **Backend SSOT CRUD Router ([`portfolio.routes.ts`](file:///e:/rabby-xponent/Projects/devscope/backend/src/portfolio/portfolio.routes.ts)):**
+  - Mounted at `/api/portfolio` in [`backend/src/index.ts`](file:///e:/rabby-xponent/Projects/devscope/backend/src/index.ts).
+  - Implemented CRUD endpoints for companies, products, standalone projects, and master bullets.
+  - Built `POST /api/portfolio/bootstrap-from-resume` enabling 1-click migration from Resume Vault to SSOT.
+* **Frontend SSOT Client Library ([`portfolio.ts`](file:///e:/rabby-xponent/Projects/devscope/frontend/lib/portfolio.ts)):**
+  - Strongly typed client supporting full live Supabase backend synchronization with `authHeaders()`.
+  - Built-in resilient local storage fallback (`gitgrill_portfolio_ssot_local_v1`) ensuring guest/sandbox visitors can interact with the portfolio prior to sign-in.
+* **Living Portfolio Hub Component ([`PortfolioHub.tsx`](file:///e:/rabby-xponent/Projects/devscope/frontend/components/PortfolioHub.tsx)):**
+  - Built comprehensive SSOT management workspace:
+    * 4-Dimension Metric Stats Strip: Companies count, Standalone Projects, Master Bullets (with approved breakdown), and quantifiable **Metric Density %**.
+    * Structured Hierarchy Cards: Company metadata, sub-systems with architecture badges, and master bullets with primary metrics and action verbs highlighted.
+    * Expandable **Architectural Trade-offs & Defense Notes** drawer for phone screen and hiring committee preparation.
+    * Dedicated Modals for Companies, Products, Projects, Master Bullets (with auto-detection of action verbs and metrics), and 1-Click Resume Vault Bootstrap.
+  - Mounted **Living Portfolio (SSOT)** tab on main CareerOS page ([`frontend/app/developer/page.tsx`](file:///e:/rabby-xponent/Projects/devscope/frontend/app/developer/page.tsx)).
+* **Verification & Quality:**
+  - TypeScript zero-error compilation across both `backend` and `frontend` (`npx tsc --noEmit` exited 0).
+
 
 
 
