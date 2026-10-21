@@ -37,13 +37,16 @@ import {
 } from '@/components/ui';
 
 const ARCHITECTURE_OPTIONS: SelectOption[] = [
-  { value: 'microservices', label: 'Event-Driven Microservices', description: 'Kafka, RabbitMQ, gRPC decoupled services' },
-  { value: 'distributed_storage', label: 'Distributed Storage / Caching Layer', description: 'Redis, Raft, DynamoDB partitioning' },
-  { value: 'api_gateway', label: 'High-Throughput API Gateway', description: 'Rate limiting, reverse proxy, auth middleware' },
-  { value: 'realtime_stream', label: 'Real-Time Data Streaming / Pipeline', description: 'Flink, Spark, real-time telemetry ingestion' },
-  { value: 'modular_monolith', label: 'Modular Monolith / Domain-Driven', description: 'Clean architecture, boundaries, Hexagonal' },
-  { value: 'ml_infra', label: 'ML Ops & Model Serving Pipeline', description: 'Inference serving, model latency optimization' },
-  { value: 'developer_tools', label: 'Developer CLI & Tooling', description: 'Developer productivity tools, code generators' },
+  { value: 'Event-Driven Microservices', label: 'Event-Driven Microservices', description: 'Kafka, RabbitMQ, gRPC decoupled services' },
+  { value: 'Distributed Storage / Caching Layer', label: 'Distributed Storage / Caching Layer', description: 'Redis, Raft, DynamoDB partitioning' },
+  { value: 'High-Throughput API Gateway', label: 'High-Throughput API Gateway', description: 'Rate limiting, reverse proxy, auth middleware' },
+  { value: 'Real-Time Data Streaming / Pipeline', label: 'Real-Time Data Streaming / Pipeline', description: 'Flink, Spark, real-time telemetry ingestion' },
+  { value: 'Modular Monolith / Domain-Driven', label: 'Modular Monolith / Domain-Driven', description: 'Clean architecture, boundaries, Hexagonal' },
+  { value: 'ML Ops & Model Serving Pipeline', label: 'ML Ops & Model Serving Pipeline', description: 'Inference serving, model latency optimization' },
+  { value: 'Serverless / Cloud-Native Functions', label: 'Serverless / Cloud-Native Functions', description: 'Lambda, Step Functions, DynamoDB event triggers' },
+  { value: 'Full-Stack Web Application', label: 'Full-Stack Web Application', description: 'Next.js, React, Node.js SSR/Edge compute' },
+  { value: 'Developer Tools & CLI Engine', label: 'Developer Tools & CLI Engine', description: 'Developer productivity tools, code generators' },
+  { value: '__custom__', label: '✏️ Custom / Freeform Archetype…', description: 'Type any custom architecture style or engineering paradigm' },
 ];
 
 const REVIEW_STATUS_OPTIONS: SelectOption[] = [
@@ -223,9 +226,8 @@ export function PortfolioHub() {
             <h1 className="font-mono text-xl sm:text-2xl font-black tracking-tight text-content">
               Engineering Master Portfolio
             </h1>
-            <p className="max-w-2xl font-sans text-xs sm:text-sm text-muted leading-relaxed">
-              Your single source of truth for real-world engineering contributions across products, companies, and repositories.
-              Atomic master bullets are maintained here once and queried into specialized resume branches dynamically.
+            <p className="font-sans text-xs sm:text-sm text-muted">
+              Central source of truth for your systems, products, and quantified engineering impact.
             </p>
           </div>
 
@@ -480,16 +482,16 @@ export function PortfolioHub() {
                           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2.5 border-b border-edge/50">
                             <div className="flex items-center gap-2 flex-wrap">
                               <span className="font-mono text-sm font-bold text-content">
-                                {product.name}
+                                {product.name || (product as any).title || 'Untitled Subsystem'}
                               </span>
-                              {product.architecture_type && (
+                              {(product.architecture_type || (product as any).architectural_notes) && (
                                 <span className="rounded-md border border-edge bg-surface px-2 py-0.5 font-mono text-[10px] font-bold text-muted uppercase">
-                                  {product.architecture_type.replace(/_/g, ' ')}
+                                  {String(product.architecture_type || (product as any).architectural_notes).replace(/_/g, ' ')}
                                 </span>
                               )}
-                              {product.repo_url && (
+                              {(product.repo_url || (Array.isArray((product as any).repo_links) && (product as any).repo_links[0]?.url)) && (
                                 <a
-                                  href={product.repo_url}
+                                  href={product.repo_url || (product as any).repo_links[0].url}
                                   target="_blank"
                                   rel="noopener noreferrer"
                                   className="text-muted hover:text-signal p-0.5"
@@ -498,9 +500,9 @@ export function PortfolioHub() {
                                   <Icon.Github className="h-3.5 w-3.5" />
                                 </a>
                               )}
-                              {product.live_url && (
+                              {(product.live_url || (typeof (product as any).description === 'string' && (product as any).description.startsWith('Live: ') ? (product as any).description.slice(6) : null)) && (
                                 <a
-                                  href={product.live_url}
+                                  href={product.live_url || (product as any).description.slice(6)}
                                   target="_blank"
                                   rel="noopener noreferrer"
                                   className="text-muted hover:text-signal p-0.5"
@@ -683,6 +685,7 @@ export function PortfolioHub() {
       {productModal?.isOpen && (
         <ProductEditModal
           companyId={productModal.companyId}
+          companyRole={portfolio.companies.find((c) => c.id === productModal.companyId)?.role_title}
           product={productModal.product}
           onClose={() => setProductModal(null)}
           onSaved={async () => {
@@ -1152,11 +1155,13 @@ function CompanyEditModal({
 
 function ProductEditModal({
   companyId,
+  companyRole,
   product,
   onClose,
   onSaved,
 }: {
   companyId: string;
+  companyRole?: string | null;
   product?: PortfolioProduct;
   onClose: () => void;
   onSaved: () => Promise<void>;
@@ -1165,7 +1170,15 @@ function ProductEditModal({
   const [hasRestoredDraft, setHasRestoredDraft] = useState(false);
 
   const [name, setName] = useState(product?.name || '');
-  const [architectureType, setArchitectureType] = useState(product?.architecture_type || 'microservices');
+  const isKnownPreset = ARCHITECTURE_OPTIONS.some(
+    (p) => p.value !== '__custom__' && (p.value === product?.architecture_type || p.value.toLowerCase() === (product?.architecture_type || '').toLowerCase())
+  );
+  const [isCustomArch, setIsCustomArch] = useState(
+    Boolean(product?.architecture_type && !isKnownPreset)
+  );
+  const [architectureType, setArchitectureType] = useState(
+    product?.architecture_type || 'Event-Driven Microservices'
+  );
   const [liveUrl, setLiveUrl] = useState(product?.live_url || '');
   const [repoUrl, setRepoUrl] = useState(product?.repo_url || '');
   const [saving, setSaving] = useState(false);
@@ -1178,9 +1191,17 @@ function ProductEditModal({
       const raw = localStorage.getItem(DRAFT_KEY);
       if (raw) {
         const d = JSON.parse(raw);
-        if (d.name || d.liveUrl || d.repoUrl) {
+        if (d.name || d.liveUrl || d.repoUrl || d.architectureType) {
           setName(d.name || '');
-          if (d.architectureType) setArchitectureType(d.architectureType);
+          if (d.architectureType) {
+            setArchitectureType(d.architectureType);
+            if (d.isCustomArch !== undefined) {
+              setIsCustomArch(Boolean(d.isCustomArch));
+            } else {
+              const known = ARCHITECTURE_OPTIONS.some((p) => p.value !== '__custom__' && p.value === d.architectureType);
+              setIsCustomArch(!known);
+            }
+          }
           setLiveUrl(d.liveUrl || '');
           setRepoUrl(d.repoUrl || '');
           setHasRestoredDraft(true);
@@ -1193,18 +1214,19 @@ function ProductEditModal({
   useEffect(() => {
     if (product) return;
     try {
-      if (name || liveUrl || repoUrl) {
-        localStorage.setItem(DRAFT_KEY, JSON.stringify({ name, architectureType, liveUrl, repoUrl }));
+      if (name || liveUrl || repoUrl || architectureType) {
+        localStorage.setItem(DRAFT_KEY, JSON.stringify({ name, architectureType, isCustomArch, liveUrl, repoUrl }));
       }
     } catch {}
-  }, [product, DRAFT_KEY, name, architectureType, liveUrl, repoUrl]);
+  }, [product, DRAFT_KEY, name, architectureType, isCustomArch, liveUrl, repoUrl]);
 
   const handleDiscardDraft = () => {
     try {
       localStorage.removeItem(DRAFT_KEY);
     } catch {}
     setName('');
-    setArchitectureType('microservices');
+    setIsCustomArch(false);
+    setArchitectureType('Event-Driven Microservices');
     setLiveUrl('');
     setRepoUrl('');
     setHasRestoredDraft(false);
@@ -1224,6 +1246,8 @@ function ProductEditModal({
         id: product?.id,
         company_id: companyId,
         name: name.trim(),
+        title: name.trim(),
+        role_title: companyRole || 'Software Engineer',
         architecture_type: architectureType.trim() || null,
         live_url: liveUrl.trim() || null,
         repo_url: repoUrl.trim() || null,
@@ -1311,13 +1335,59 @@ function ProductEditModal({
             />
           </FormField>
 
-          <FormField label="Architecture Archetype">
-            <Select
-              value={architectureType}
-              onChange={setArchitectureType}
-              options={ARCHITECTURE_OPTIONS}
-              placeholder="Select Architecture Archetype"
-            />
+          <FormField
+            label="Architecture Archetype"
+            hint="Choose from industry archetypes or type any custom architecture freeform"
+            badge={
+              <button
+                type="button"
+                onClick={() => {
+                  const nextCustom = !isCustomArch;
+                  setIsCustomArch(nextCustom);
+                }}
+                className="font-mono text-[10px] text-signal hover:underline cursor-pointer flex items-center gap-1"
+              >
+                <Icon.Sparkle className="h-3 w-3" />
+                <span>{isCustomArch ? 'Choose from presets' : 'Type custom archetype'}</span>
+              </button>
+            }
+          >
+            {isCustomArch ? (
+              <div className="space-y-2">
+                <TextInput
+                  value={architectureType}
+                  onChange={(e) => setArchitectureType(e.target.value)}
+                  placeholder="e.g. WebRTC Media Mesh, CQRS / Event Sourcing, Edge Worker"
+                />
+                <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                  <span className="font-mono text-[10px] text-muted">Suggestions:</span>
+                  {['Microservices', 'Distributed Storage', 'API Gateway', 'Streaming Pipeline', 'Modular Monolith', 'Serverless', 'CQRS', 'Edge Worker'].map((sug) => (
+                    <button
+                      key={sug}
+                      type="button"
+                      onClick={() => setArchitectureType(sug)}
+                      className="rounded-md border border-edge bg-surface/60 hover:border-signal/40 hover:text-signal px-2 py-0.5 font-mono text-[10px] text-muted transition-all cursor-pointer"
+                    >
+                      +{sug}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <Select
+                value={architectureType}
+                onChange={(val) => {
+                  if (val === '__custom__') {
+                    setIsCustomArch(true);
+                    setArchitectureType('');
+                  } else {
+                    setArchitectureType(val);
+                  }
+                }}
+                options={ARCHITECTURE_OPTIONS}
+                placeholder="Select Architecture Archetype"
+              />
+            )}
           </FormField>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

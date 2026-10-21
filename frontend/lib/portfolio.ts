@@ -131,8 +131,32 @@ export async function fetchPortfolio(): Promise<PortfolioSSOT> {
       });
       if (res.ok) {
         const data = await res.json();
+        const normalizedCompanies: PortfolioCompany[] = (data.companies || []).map((c: any) => ({
+          ...c,
+          products: (c.products || []).map((p: any) => {
+            const name = p.name || p.title || '';
+            const architecture_type = p.architecture_type || p.architectural_notes || null;
+            let live_url = p.live_url || null;
+            if (!live_url && typeof p.description === 'string' && p.description.startsWith('Live: ')) {
+              live_url = p.description.slice(6).trim();
+            }
+            let repo_url = p.repo_url || null;
+            if (!repo_url && Array.isArray(p.repo_links) && p.repo_links[0]?.url) {
+              repo_url = p.repo_links[0].url;
+            }
+            return {
+              ...p,
+              name,
+              architecture_type,
+              live_url,
+              repo_url,
+              bullets: Array.isArray(p.bullets) ? p.bullets : [],
+            };
+          }),
+        }));
+
         const ssot: PortfolioSSOT = {
-          companies: data.companies || [],
+          companies: normalizedCompanies,
           standalone_projects: data.standalone_projects || [],
           unattached_bullets: data.unattached_bullets || [],
         };
@@ -231,6 +255,9 @@ export function humanizePortfolioError(raw: string | undefined | null, fallback 
   if (!raw) return fallback;
   if (raw.includes('violates foreign key constraint') || raw.includes('user_id_fkey') || raw.includes('portfolio_companies_user_id_fkey')) {
     return 'User profile could not be synchronized. Please try saving again.';
+  }
+  if (raw.includes('company_id') || raw.includes('role_title') || raw.includes('title are required')) {
+    return 'Product name is required. Please verify inputs and try again.';
   }
   if (raw.includes('invalid input syntax for type date')) {
     return 'Please enter a valid date (e.g. Jun 2026, 2026-06, or Jan 2022).';
@@ -334,8 +361,24 @@ export async function deleteCompany(id: string): Promise<void> {
  * Save / Update a Product
  */
 export async function saveProduct(
-  product: Partial<PortfolioProduct> & { company_id: string; name: string }
+  product: Partial<PortfolioProduct> & { company_id: string; name: string; role_title?: string; title?: string }
 ): Promise<PortfolioProduct> {
+  const local = getLocalPortfolio();
+  const parentCompany = local.companies.find((c) => c.id === product.company_id);
+  const resolvedRole = product.role_title?.trim() || parentCompany?.role_title?.trim() || 'Software Engineer';
+  const resolvedTitle = product.name?.trim() || product.title?.trim() || '';
+
+  const payload: any = {
+    ...product,
+    company_id: product.company_id,
+    title: resolvedTitle,
+    name: resolvedTitle,
+    role_title: resolvedRole,
+    description: (product as any).description || (product.live_url ? `Live: ${product.live_url}` : null),
+    architectural_notes: product.architecture_type || null,
+    repo_links: product.repo_url ? [{ name: resolvedTitle, provider: 'github', url: product.repo_url }] : [],
+  };
+
   const headers = await authHeaders();
   if (headers.Authorization) {
     const res = await fetch(`${API_URL}/api/portfolio/products`, {
@@ -344,18 +387,24 @@ export async function saveProduct(
         'content-type': 'application/json',
         ...headers,
       },
-      body: JSON.stringify(product),
+      body: JSON.stringify(payload),
     });
     if (!res.ok) {
       const errJson = await res.json().catch(() => ({}));
       throw new Error(humanizePortfolioError(errJson.error, 'Failed to save product.'));
     }
     const data = await res.json();
-    return data.product;
+    const prod = data.product;
+    return {
+      ...prod,
+      name: prod?.title || prod?.name || resolvedTitle,
+      architecture_type: prod?.architectural_notes || product.architecture_type || null,
+      live_url: product.live_url || null,
+      repo_url: product.repo_url || null,
+    };
   }
 
   // Local fallback
-  const local = getLocalPortfolio();
   const company = local.companies.find((c) => c.id === product.company_id);
   if (!company) throw new Error('Company not found.');
   if (!company.products) company.products = [];

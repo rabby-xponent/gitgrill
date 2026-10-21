@@ -43,6 +43,7 @@ export interface SelectProps {
   menuClassName?: string;
   align?: 'left' | 'right';
   ariaLabel?: string;
+  zIndex?: number;
 }
 
 export function Select({
@@ -56,6 +57,7 @@ export function Select({
   menuClassName = '',
   align = 'left',
   ariaLabel,
+  zIndex = 250,
 }: SelectProps) {
   const [open, setOpen] = useState(false);
   const [highlight, setHighlight] = useState(-1);
@@ -253,8 +255,9 @@ export function Select({
                 left: coords.left !== undefined ? coords.left : undefined,
                 right: coords.right !== undefined ? coords.right : undefined,
                 minWidth: coords.width,
+                zIndex,
               }}
-              className={`z-[100] max-h-72 overflow-y-auto rounded-xl border border-edge bg-card p-1 shadow-pop thin-scroll animate-in ${menuClassName}`}
+              className={`max-h-72 overflow-y-auto rounded-xl border border-edge bg-card p-1 shadow-pop thin-scroll animate-in ${menuClassName}`}
             >
               {options.map((opt, idx) => {
                 const isSelected = opt.value === value;

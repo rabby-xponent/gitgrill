@@ -67,6 +67,10 @@ router.get('/', requireAuth, async (req: Request, res: Response) => {
     for (const p of products) {
       const enrichedProduct = {
         ...p,
+        name: p.title || p.name,
+        architecture_type: p.architectural_notes || p.architecture_type,
+        live_url: p.live_url || (typeof p.description === 'string' && p.description.startsWith('Live: ') ? p.description.slice(6) : null),
+        repo_url: p.repo_url || (Array.isArray(p.repo_links) && p.repo_links[0]?.url ? p.repo_links[0].url : null),
         bullets: bulletsByProduct.get(p.id) || [],
       };
       if (!productsByCompany.has(p.company_id)) productsByCompany.set(p.company_id, []);
@@ -268,24 +272,35 @@ router.post('/products', requireAuth, async (req: Request, res: Response) => {
   if (!isDbConfigured()) return serviceUnavailable(res);
   const admin = getAdmin()!;
   const userId = req.auth!.userId;
-  const { id, company_id, title, role_title, description, tech_stack, architectural_notes, repo_links, display_order } = req.body || {};
+  const { id, company_id, title, name, role_title, description, tech_stack, architectural_notes, architecture_type, repo_links, display_order } = req.body || {};
 
-  if (!company_id || !title?.trim() || !role_title?.trim()) {
-    res.status(400).json({ error: 'company_id, title, and role_title are required.' });
+  const resolvedTitle = (title || name)?.trim();
+  if (!company_id || !resolvedTitle) {
+    res.status(400).json({ error: 'Product name and company reference are required.' });
     return;
   }
 
   try {
     await ensureUserRow(admin, req.auth!);
 
+    let resolvedRole = role_title?.trim();
+    if (!resolvedRole) {
+      const { data: comp } = await admin
+        .from('portfolio_companies')
+        .select('role_title')
+        .eq('id', company_id)
+        .maybeSingle();
+      resolvedRole = comp?.role_title || 'Software Engineer';
+    }
+
     const payload: any = {
       user_id: userId,
       company_id,
-      title: title.trim(),
-      role_title: role_title.trim(),
+      title: resolvedTitle,
+      role_title: resolvedRole,
       description: description?.trim() || null,
       tech_stack: Array.isArray(tech_stack) ? tech_stack : [],
-      architectural_notes: architectural_notes?.trim() || null,
+      architectural_notes: (architectural_notes || architecture_type)?.trim() || null,
       repo_links: Array.isArray(repo_links) ? repo_links : [],
       display_order: typeof display_order === 'number' ? display_order : 0,
       updated_at: new Date().toISOString(),
