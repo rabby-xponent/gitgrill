@@ -23,6 +23,7 @@ import { ResumeVault } from '@/components/ResumeVault';
 import { ResumeTailorModal } from '@/components/ResumeTailorModal';
 import { JDResumeMatchmaker } from '@/components/JDResumeMatchmaker';
 import { CareerQuotaHUD } from '@/components/CareerQuotaHUD';
+import { PortfolioHub } from '@/components/PortfolioHub';
 import {
   TargetRole,
   ApplicationStatus,
@@ -57,7 +58,7 @@ function DeveloperCareerContent() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [defenseCards, setDefenseCards] = useState<DefenseCard[]>([]);
-  const [activeTab, setActiveTab] = useState<'roles' | 'resumes' | 'matchmaker'>('roles');
+  const [activeTab, setActiveTab] = useState<'roles' | 'portfolio' | 'resumes' | 'matchmaker'>('roles');
   const [selectedTailorRole, setSelectedTailorRole] = useState<TargetRole | null>(null);
   const [roleToRemove, setRoleToRemove] = useState<{ id: string; title: string } | null>(null);
   const [alertModal, setAlertModal] = useState<{ isOpen: boolean; title: string; description: string; variant?: 'error' | 'info' | 'warning' }>({
@@ -292,6 +293,21 @@ function DeveloperCareerContent() {
             </button>
 
             <button
+              onClick={() => setActiveTab('portfolio')}
+              className={`flex items-center gap-2 rounded-xl px-3.5 sm:px-4 py-2 font-mono text-xs font-bold transition-all shrink-0 whitespace-nowrap cursor-pointer ${
+                activeTab === 'portfolio'
+                  ? 'border border-signal/40 bg-signal/10 text-signal shadow-xs'
+                  : 'border border-transparent text-muted hover:border-edge hover:bg-card hover:text-content'
+              }`}
+            >
+              <Icon.Layers className="h-4 w-4" />
+              <span>Living Portfolio (SSOT)</span>
+              <span className="ml-1 rounded-full bg-signal/20 px-2 py-0.5 font-mono text-[10px] text-signal uppercase tracking-wider font-bold">
+                Master
+              </span>
+            </button>
+
+            <button
               onClick={() => setActiveTab('resumes')}
               className={`flex items-center gap-2 rounded-xl px-3.5 sm:px-4 py-2 font-mono text-xs font-bold transition-all shrink-0 whitespace-nowrap cursor-pointer ${
                 activeTab === 'resumes'
@@ -328,7 +344,9 @@ function DeveloperCareerContent() {
           </div>
         </div>
 
-        {activeTab === 'resumes' ? (
+        {activeTab === 'portfolio' ? (
+          <PortfolioHub />
+        ) : activeTab === 'resumes' ? (
           <ResumeVault />
         ) : activeTab === 'matchmaker' ? (
           <JDResumeMatchmaker

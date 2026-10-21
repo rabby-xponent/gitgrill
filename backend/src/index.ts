@@ -10,6 +10,7 @@ import { entitlementsRouter } from './security/entitlements';
 import workspaceRoutes from './workspace/routes';
 import billingRoutes from './billing/billing.routes';
 import adminRoutes from './admin/admin.routes';
+import portfolioRoutes from './portfolio/portfolio.routes';
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -90,6 +91,7 @@ app.use('/api/entitlements', entitlementsRouter);
 app.use('/api/workspace', workspaceRoutes);
 app.use('/api/billing', billingRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/portfolio', portfolioRoutes);
 
 app.listen(PORT, () => {
   console.log(`GitGrill backend running on port ${PORT}`);
