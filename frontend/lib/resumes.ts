@@ -77,7 +77,7 @@ export interface ResumeProfile {
   isMasterCopy?: boolean;        // True if this is an unaltered master upload
   versionLabel?: string;         // e.g. "v1.0 (Master Copy)", "v2.0 (Derived / Tailored)"
   parentMasterId?: string;       // ID of parent master if this is a tailored / derived version
-  sourceFileName?: string;       // Original filename (e.g. "Golam Rabby Software Engineer Cefalo.docx")
+  sourceFileName?: string;       // Original filename (e.g. "Software_Engineer_Resume.docx")
   sourceFileType?: string;       // 'docx' | 'pdf' | 'md' | 'txt'
   sourceFileSize?: number;       // Size in bytes
   sourceFileDataUrl?: string;    // Base64 DataURL of exact original binary file (for 100% fidelity download & preview)
@@ -1201,8 +1201,8 @@ export function parseUploadedResumeText(rawText: string, fileName?: string): Par
   let titleCandidate = fullName ? `${fullName} — ${candidateTitle || 'Software Engineer'}` : 'Software Engineer';
   if (fileName) {
     const cleanFileName = fileName.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ');
-    if (cleanFileName.toLowerCase().includes('cefalo')) {
-      titleCandidate = `${fullName || 'Developer'} — ${candidateTitle || 'Software Engineer'} (Cefalo Target)`;
+    if (cleanFileName.toLowerCase().includes('backend')) {
+      titleCandidate = `${fullName || 'Developer'} — ${candidateTitle || 'Software Engineer'} (Backend Variant)`;
     }
   }
 
@@ -1314,11 +1314,10 @@ export interface TailoredResumeProposal {
 
 export function generateAITailoredProposal(
   resume: ResumeProfile,
-  targetFocus: string = 'Cefalo (Software Engineer)',
+  targetFocus: string = 'Senior Software Engineer',
   jdText?: string
 ): TailoredResumeProposal {
-  const isCefalo = targetFocus.toLowerCase().includes('cefalo');
-  const targetLabel = isCefalo ? 'Cefalo (Software Engineer)' : targetFocus;
+  const targetLabel = targetFocus || 'Senior Software Engineer';
 
   let tailoredSummary = resume.summary;
   if (resume.summary.includes('I build web applications using JavaScript, TypeScript, React, and Node.js') || resume.summary.length < 120) {

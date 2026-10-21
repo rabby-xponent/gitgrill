@@ -82,7 +82,7 @@ export interface PortfolioSSOT {
 
 const LOCAL_STORAGE_KEY = 'gitgrill_portfolio_ssot_local_v1';
 
-function getLocalPortfolio(): PortfolioSSOT {
+export function getLocalPortfolio(): PortfolioSSOT {
   if (typeof window === 'undefined') {
     return { companies: [], standalone_projects: [], unattached_bullets: [] };
   }
@@ -93,6 +93,17 @@ function getLocalPortfolio(): PortfolioSSOT {
     console.error('Failed to read local portfolio SSOT', err);
   }
   return { companies: [], standalone_projects: [], unattached_bullets: [] };
+}
+
+export const getPortfolioSSOTLocal = getLocalPortfolio;
+
+export function countTotalMasterBullets(portfolio?: PortfolioSSOT | null): number {
+  if (!portfolio) return 0;
+  let count = 0;
+  portfolio.companies?.forEach((c) => c.products?.forEach((p) => { count += (p.bullets?.length || 0); }));
+  portfolio.standalone_projects?.forEach((pr) => { count += (pr.bullets?.length || 0); });
+  count += (portfolio.unattached_bullets?.length || 0);
+  return count;
 }
 
 function saveLocalPortfolio(data: PortfolioSSOT): void {
@@ -138,11 +149,118 @@ export async function fetchPortfolio(): Promise<PortfolioSSOT> {
 }
 
 /**
+ * Normalize human date strings (e.g. "Jun 2026", "2026-06", "06/2026", "Jan 2022")
+ * into valid Postgres/ISO YYYY-MM-DD date strings ("2026-06-01").
+ */
+export function normalizeDateToISO(val: string | null | undefined): string | null {
+  if (!val || typeof val !== 'string' || !val.trim()) return null;
+  const s = val.trim();
+
+  // If already YYYY-MM-DD
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+
+  // If YYYY-MM
+  if (/^\d{4}-\d{2}$/.test(s)) return `${s}-01`;
+
+  // If MM/YYYY or M/YYYY
+  const mmyyyy = s.match(/^(\d{1,2})\/(\d{4})$/);
+  if (mmyyyy) {
+    const month = mmyyyy[1].padStart(2, '0');
+    return `${mmyyyy[2]}-${month}-01`;
+  }
+
+  // If Month Year (e.g. "Jun 2026", "June 2026", "Jan 2022")
+  const monthMap: Record<string, string> = {
+    jan: '01', january: '01',
+    feb: '02', february: '02',
+    mar: '03', march: '03',
+    apr: '04', april: '04',
+    may: '05',
+    jun: '06', june: '06',
+    jul: '07', july: '07',
+    aug: '08', august: '08',
+    sep: '09', sept: '09', september: '09',
+    oct: '10', october: '10',
+    nov: '11', november: '11',
+    dec: '12', december: '12',
+  };
+
+  const nameMatch = s.match(/^([a-zA-Z]+)[,\s]+(\d{4})$/);
+  if (nameMatch) {
+    const mStr = nameMatch[1].toLowerCase();
+    const year = nameMatch[2];
+    const mNum = monthMap[mStr];
+    if (mNum) return `${year}-${mNum}-01`;
+  }
+
+  // If Year only: "2026"
+  if (/^\d{4}$/.test(s)) return `${s}-01-01`;
+
+  // Fallback: try standard JS Date
+  const parsed = new Date(s);
+  if (!isNaN(parsed.getTime())) {
+    const y = parsed.getFullYear();
+    const m = String(parsed.getMonth() + 1).padStart(2, '0');
+    const d = String(parsed.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+
+  return null;
+}
+
+/**
+ * Format ISO dates (e.g. "2026-06-01") for elegant human display ("Jun 2026").
+ */
+export function formatISODateToDisplay(iso: string | null | undefined): string {
+  if (!iso || typeof iso !== 'string' || !iso.trim()) return '';
+  const clean = iso.trim();
+  const match = clean.match(/^(\d{4})-(\d{2})(?:-\d{2})?/);
+  if (!match) return clean;
+  const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const monthIdx = parseInt(match[2], 10) - 1;
+  if (monthIdx >= 0 && monthIdx < 12) {
+    return `${monthNames[monthIdx]} ${match[1]}`;
+  }
+  return clean;
+}
+
+/**
+ * Maps raw backend/database error strings into user-friendly messages.
+ */
+export function humanizePortfolioError(raw: string | undefined | null, fallback = 'Operation failed. Please try again.'): string {
+  if (!raw) return fallback;
+  if (raw.includes('violates foreign key constraint') || raw.includes('user_id_fkey') || raw.includes('portfolio_companies_user_id_fkey')) {
+    return 'User profile could not be synchronized. Please try saving again.';
+  }
+  if (raw.includes('invalid input syntax for type date')) {
+    return 'Please enter a valid date (e.g. Jun 2026, 2026-06, or Jan 2022).';
+  }
+  if (raw.includes('duplicate key') || raw.includes('unique constraint')) {
+    return 'An item with this name already exists in your portfolio.';
+  }
+  if (raw.includes('syntax error') || raw.includes('relation ') || raw.includes('violates')) {
+    return fallback;
+  }
+  return raw;
+}
+
+/**
  * Save / Update a Company
  */
 export async function saveCompany(
-  company: Partial<PortfolioCompany> & { name: string }
+  company: Partial<PortfolioCompany> & { name: string; website_url?: string | null }
 ): Promise<PortfolioCompany> {
+  const normalizedStart = normalizeDateToISO(company.start_date) || (company.start_date ? null : new Date().toISOString().slice(0, 10));
+  const normalizedEnd = company.is_current ? null : normalizeDateToISO(company.end_date);
+
+  const payload = {
+    ...company,
+    domain: company.domain || company.website_url || null,
+    website_url: company.website_url || company.domain || null,
+    start_date: normalizedStart,
+    end_date: normalizedEnd,
+  };
+
   const headers = await authHeaders();
   if (headers.Authorization) {
     const res = await fetch(`${API_URL}/api/portfolio/companies`, {
@@ -151,11 +269,11 @@ export async function saveCompany(
         'content-type': 'application/json',
         ...headers,
       },
-      body: JSON.stringify(company),
+      body: JSON.stringify(payload),
     });
     if (!res.ok) {
       const errJson = await res.json().catch(() => ({}));
-      throw new Error(errJson.error || 'Failed to save company.');
+      throw new Error(humanizePortfolioError(errJson.error, 'Failed to save company.'));
     }
     const data = await res.json();
     return data.company;
@@ -169,14 +287,14 @@ export async function saveCompany(
 
   const record: PortfolioCompany = {
     id,
-    name: company.name,
-    domain: company.domain || null,
-    role_title: company.role_title || null,
-    start_date: company.start_date || null,
-    end_date: company.end_date || null,
-    is_current: !!company.is_current,
-    location: company.location || null,
-    display_order: company.display_order ?? local.companies.length,
+    name: payload.name,
+    domain: payload.domain || null,
+    role_title: payload.role_title || null,
+    start_date: payload.start_date || null,
+    end_date: payload.end_date || null,
+    is_current: !!payload.is_current,
+    location: payload.location || null,
+    display_order: payload.display_order ?? local.companies.length,
     products: existingIdx >= 0 ? local.companies[existingIdx].products : [],
     created_at: existingIdx >= 0 ? local.companies[existingIdx].created_at : now,
     updated_at: now,
@@ -203,7 +321,7 @@ export async function deleteCompany(id: string): Promise<void> {
     });
     if (!res.ok) {
       const errJson = await res.json().catch(() => ({}));
-      throw new Error(errJson.error || 'Failed to delete company.');
+      throw new Error(humanizePortfolioError(errJson.error, 'Failed to delete company.'));
     }
   }
 
@@ -230,7 +348,7 @@ export async function saveProduct(
     });
     if (!res.ok) {
       const errJson = await res.json().catch(() => ({}));
-      throw new Error(errJson.error || 'Failed to save product.');
+      throw new Error(humanizePortfolioError(errJson.error, 'Failed to save product.'));
     }
     const data = await res.json();
     return data.product;
@@ -280,7 +398,7 @@ export async function deleteProduct(id: string): Promise<void> {
     });
     if (!res.ok) {
       const errJson = await res.json().catch(() => ({}));
-      throw new Error(errJson.error || 'Failed to delete product.');
+      throw new Error(humanizePortfolioError(errJson.error, 'Failed to delete product.'));
     }
   }
 
@@ -311,7 +429,7 @@ export async function saveProject(
     });
     if (!res.ok) {
       const errJson = await res.json().catch(() => ({}));
-      throw new Error(errJson.error || 'Failed to save project.');
+      throw new Error(humanizePortfolioError(errJson.error, 'Failed to save project.'));
     }
     const data = await res.json();
     return data.project;
@@ -356,7 +474,7 @@ export async function deleteProject(id: string): Promise<void> {
     });
     if (!res.ok) {
       const errJson = await res.json().catch(() => ({}));
-      throw new Error(errJson.error || 'Failed to delete project.');
+      throw new Error(humanizePortfolioError(errJson.error, 'Failed to delete project.'));
     }
   }
 
@@ -383,7 +501,7 @@ export async function saveBullet(
     });
     if (!res.ok) {
       const errJson = await res.json().catch(() => ({}));
-      throw new Error(errJson.error || 'Failed to save bullet.');
+      throw new Error(humanizePortfolioError(errJson.error, 'Failed to save bullet.'));
     }
     const data = await res.json();
     return data.bullet;
@@ -490,7 +608,7 @@ export async function bootstrapPortfolioFromResume(
 
     if (!res.ok) {
       const errJson = await res.json().catch(() => ({}));
-      throw new Error(errJson.error || 'Failed to bootstrap portfolio.');
+      throw new Error(humanizePortfolioError(errJson.error, 'Failed to bootstrap portfolio.'));
     }
     return await res.json();
   }

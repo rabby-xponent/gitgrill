@@ -1,11 +1,13 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { Icon } from '@/components/icons';
 import {
   ConfirmModal,
   AlertModal,
   Select,
+  Checkbox,
   FormField,
   TextInput,
   TextArea,
@@ -54,6 +56,8 @@ const ROLE_CATEGORY_OPTIONS: SelectOption[] = [
 ];
 
 export function ResumeVault() {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
   const [resumes, setResumes] = useState<ResumeProfile[]>([]);
   const [activeResumeId, setActiveId] = useState<string>('');
   const [isCreating, setIsCreating] = useState(false);
@@ -78,7 +82,7 @@ export function ResumeVault() {
 
   // AI Tailor Studio state
   const [isTailorModalOpen, setIsTailorModalOpen] = useState(false);
-  const [tailorTarget, setTailorTarget] = useState('Cefalo (Software Engineer)');
+  const [tailorTarget, setTailorTarget] = useState('Senior Software Engineer');
   const [proposal, setProposal] = useState<TailoredResumeProposal | null>(null);
 
   // Section Editor state
@@ -475,7 +479,7 @@ export function ResumeVault() {
   };
 
   // --- AI Tailor Studio Actions ----------------------------------------------
-  const handleOpenTailor = (targetFocus: string = 'Cefalo (Software Engineer)') => {
+  const handleOpenTailor = (targetFocus: string = 'Senior Software Engineer') => {
     if (!activeResume) return;
     setTailorTarget(targetFocus);
     const prop = generateAITailoredProposal(activeResume, targetFocus);
@@ -511,9 +515,9 @@ export function ResumeVault() {
       };
     });
 
-    const isCefalo = proposal.targetRoleOrCompany.toLowerCase().includes('cefalo');
-    const versionLabel = `v2.0 (${isCefalo ? 'Tailored for Cefalo' : 'AI Tailored'})`;
-    const newTitle = `${activeResume.fullName || 'Developer'} — Software Engineer (${isCefalo ? 'Cefalo Tailored' : 'Tailored'})`;
+    const targetName = proposal.targetRoleOrCompany || 'Target Role';
+    const versionLabel = `v2.0 (${targetName ? `Tailored for ${targetName}` : 'AI Tailored'})`;
+    const newTitle = `${activeResume.fullName || 'Developer'} — Software Engineer (${targetName ? `${targetName} Tailored` : 'Tailored'})`;
 
     const saved = saveResume({
       title: newTitle,
@@ -727,9 +731,9 @@ export function ResumeVault() {
       </div>
 
       {/* Upload & New Resume Modal */}
-      {isCreating && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
-          <div className="fade-up relative w-full max-w-2xl my-auto rounded-2xl border border-edge bg-card p-6 shadow-card max-h-[90vh] overflow-y-auto">
+      {mounted && isCreating && createPortal(
+        <div className="fixed inset-0 z-[150] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 overflow-y-auto animate-in fade-in duration-200" onClick={() => setIsCreating(false)}>
+          <div className="fade-up relative w-full max-w-2xl my-auto rounded-2xl border border-edge bg-card p-6 shadow-card max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between pb-3.5 border-b border-edge mb-4">
               <div>
                 <h3 className="font-mono text-sm font-bold text-content">
@@ -973,13 +977,14 @@ export function ResumeVault() {
               </form>
             )}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Branch New Version Modal */}
-      {isBranching && activeResume && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
-          <div className="fade-up relative w-full max-w-2xl my-auto rounded-2xl border border-edge bg-card p-6 shadow-card max-h-[90vh] overflow-y-auto">
+      {mounted && isBranching && activeResume && createPortal(
+        <div className="fixed inset-0 z-[150] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 overflow-y-auto animate-in fade-in duration-200" onClick={() => setIsBranching(false)}>
+          <div className="fade-up relative w-full max-w-2xl my-auto rounded-2xl border border-edge bg-card p-6 shadow-card max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between pb-3.5 border-b border-edge mb-4">
               <div>
                 <div className="flex items-center gap-2">
@@ -1008,12 +1013,12 @@ export function ResumeVault() {
 
             <form onSubmit={handleSaveBranch} className="space-y-4 font-mono text-xs">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <FormField label="Variant Title" hint="e.g. Cefalo Backend Variant">
+                <FormField label="Variant Title" hint="e.g. Distributed Systems Variant">
                   <TextInput
                     required
                     value={formTitle}
                     onChange={(e) => setFormTitle(e.target.value)}
-                    placeholder="e.g. Staff Backend Engineer — Cefalo Tailored"
+                    placeholder="e.g. Staff Backend Engineer — High Throughput Systems"
                     mono
                   />
                 </FormField>
@@ -1076,7 +1081,8 @@ export function ResumeVault() {
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Main Content Area */}
@@ -1449,7 +1455,7 @@ export function ResumeVault() {
                           <div className="flex flex-wrap items-center gap-2">
                             <button
                               type="button"
-                              onClick={() => handleOpenTailor('Cefalo (Software Engineer)')}
+                              onClick={() => handleOpenTailor('Senior Software Engineer')}
                               className="inline-flex items-center gap-1.5 rounded-xl bg-signal px-3.5 py-2 font-mono text-xs font-bold text-white shadow-xs hover:bg-signal/90 transition-all cursor-pointer"
                             >
                               <Icon.Sparkle className="h-3.5 w-3.5" />
@@ -2223,9 +2229,9 @@ export function ResumeVault() {
       )}
 
       {/* AI Tailoring Studio Modal */}
-      {isTailorModalOpen && proposal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
-          <div className="fade-up relative w-full max-w-3xl my-auto rounded-2xl border border-edge bg-card p-6 shadow-card max-h-[92vh] overflow-y-auto space-y-5">
+      {mounted && isTailorModalOpen && proposal && createPortal(
+        <div className="fixed inset-0 z-[150] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 overflow-y-auto animate-in fade-in duration-200" onClick={() => setIsTailorModalOpen(false)}>
+          <div className="fade-up relative w-full max-w-3xl my-auto rounded-2xl border border-edge bg-card p-6 shadow-card max-h-[92vh] overflow-y-auto space-y-5" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between pb-3.5 border-b border-edge">
               <div className="flex items-center gap-2">
                 <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-signal/15 border border-signal/30 text-signal">
@@ -2260,7 +2266,7 @@ export function ResumeVault() {
                 </span>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                {['Cefalo (Software Engineer)', 'Backend & Distributed Systems', 'Senior Fullstack & Performance'].map((target) => (
+                {['Senior Software Engineer', 'Backend & Distributed Systems', 'Senior Fullstack & Performance'].map((target) => (
                   <button
                     key={target}
                     type="button"
@@ -2321,21 +2327,15 @@ export function ResumeVault() {
                     }`}
                   >
                     <div className="flex items-center justify-between gap-2">
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={bp.enabled}
-                          onChange={(e) => {
-                            const updated = [...proposal.bulletProposals];
-                            updated[idx].enabled = e.target.checked;
-                            setProposal({ ...proposal, bulletProposals: updated });
-                          }}
-                          className="h-3.5 w-3.5 rounded border-edge text-signal focus:ring-signal"
-                        />
-                        <span className="font-bold text-content text-[11px]">
-                          Bullet #{idx + 1}
-                        </span>
-                      </label>
+                      <Checkbox
+                        checked={bp.enabled}
+                        onChange={(checked) => {
+                          const updated = [...proposal.bulletProposals];
+                          updated[idx].enabled = checked;
+                          setProposal({ ...proposal, bulletProposals: updated });
+                        }}
+                        label={<span className="font-bold text-content text-[11px]">Bullet #{idx + 1}</span>}
+                      />
                       <span className="rounded bg-signal/10 border border-signal/20 px-2 py-0.5 text-[10px] font-semibold text-signal">
                         {bp.rationale}
                       </span>
@@ -2346,7 +2346,7 @@ export function ResumeVault() {
                         Original: {bp.original}
                       </div>
                       <div className="pt-1">
-                        <textarea
+                        <TextArea
                           rows={2}
                           value={bp.tailored}
                           disabled={!bp.enabled}
@@ -2355,7 +2355,6 @@ export function ResumeVault() {
                             updated[idx].tailored = e.target.value;
                             setProposal({ ...proposal, bulletProposals: updated });
                           }}
-                          className="w-full rounded-lg border border-edge bg-card p-2 text-content font-sans text-xs focus:border-signal focus:outline-hidden disabled:opacity-50"
                         />
                       </div>
                     </div>
@@ -2388,13 +2387,14 @@ export function ResumeVault() {
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Section-by-Section In-Place Editor Modal */}
-      {isSectionEditOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
-          <div className="fade-up relative w-full max-w-3xl my-auto rounded-2xl border border-edge bg-card p-6 shadow-card max-h-[92vh] overflow-y-auto space-y-5">
+      {mounted && isSectionEditOpen && createPortal(
+        <div className="fixed inset-0 z-[150] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 overflow-y-auto animate-in fade-in duration-200" onClick={() => setIsSectionEditOpen(false)}>
+          <div className="fade-up relative w-full max-w-3xl my-auto rounded-2xl border border-edge bg-card p-6 shadow-card max-h-[92vh] overflow-y-auto space-y-5" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between pb-3 border-b border-edge">
               <div>
                 <h3 className="font-mono text-sm font-bold text-content">
@@ -2864,7 +2864,8 @@ export function ResumeVault() {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Global CSS for Flawless Native Print to PDF */}

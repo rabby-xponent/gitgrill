@@ -299,34 +299,130 @@ export function Select({
 export interface CheckboxProps {
   checked: boolean;
   onChange: (checked: boolean) => void;
+  label?: React.ReactNode;
   disabled?: boolean;
   className?: string;
   ariaLabel?: string;
 }
 
-export function Checkbox({ checked, onChange, disabled = false, className = '', ariaLabel }: CheckboxProps) {
-  return (
+export function Checkbox({
+  checked,
+  onChange,
+  label,
+  disabled = false,
+  className = '',
+  ariaLabel,
+}: CheckboxProps) {
+  const button = (
     <button
       type="button"
       role="checkbox"
       aria-checked={checked}
-      aria-label={ariaLabel}
+      aria-label={ariaLabel || (typeof label === 'string' ? label : undefined)}
       disabled={disabled}
-      onClick={() => onChange(!checked)}
-      className={`flex h-[17px] w-[17px] flex-none items-center justify-center rounded-[5px] border transition-all duration-150 outline-none
+      onClick={(e) => {
+        e.stopPropagation();
+        onChange(!checked);
+      }}
+      className={`flex h-[18px] w-[18px] flex-none items-center justify-center rounded-[5px] border transition-all duration-150 outline-none cursor-pointer
         focus-visible:ring-2 focus-visible:ring-signal/40 focus-visible:ring-offset-1 focus-visible:ring-offset-card
         disabled:cursor-not-allowed disabled:opacity-40
         ${
           checked
-            ? 'border-signal bg-signal text-white'
+            ? 'border-signal bg-signal text-white shadow-xs'
             : 'border-edge bg-card hover:border-signal/60'
         } ${className}`}
     >
       <Icon.Check
-        className={`h-3 w-3 transition-all duration-150 ${checked ? 'scale-100 opacity-100' : 'scale-50 opacity-0'}`}
-        strokeWidth={2.5}
+        className={`h-3 w-3 text-white transition-all duration-150 ${checked ? 'scale-100 opacity-100' : 'scale-50 opacity-0'}`}
+        strokeWidth={3}
       />
     </button>
+  );
+
+  if (!label) return button;
+
+  return (
+    <label
+      onClick={(e) => {
+        if (!disabled) {
+          e.preventDefault();
+          onChange(!checked);
+        }
+      }}
+      className={`inline-flex items-center gap-2.5 cursor-pointer select-none ${
+        disabled ? 'cursor-not-allowed opacity-50' : ''
+      }`}
+    >
+      {button}
+      <span className="font-mono text-xs text-content">{label}</span>
+    </label>
+  );
+}
+
+/* ==========================================================================
+   Tooltip — sleek floating context popover
+   ========================================================================== */
+
+export interface TooltipProps {
+  content: React.ReactNode;
+  children: React.ReactNode;
+  position?: 'top' | 'bottom' | 'left' | 'right';
+  className?: string;
+  delay?: number;
+}
+
+export function Tooltip({
+  content,
+  children,
+  position = 'top',
+  className = '',
+  delay = 150,
+}: TooltipProps) {
+  const [visible, setVisible] = useState(false);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const show = () => {
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    timeoutRef.current = setTimeout(() => setVisible(true), delay);
+  };
+
+  const hide = () => {
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    setVisible(false);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    };
+  }, []);
+
+  const positionClasses = {
+    top: 'bottom-full left-1/2 -translate-x-1/2 mb-2',
+    bottom: 'top-full left-1/2 -translate-x-1/2 mt-2',
+    left: 'right-full top-1/2 -translate-y-1/2 mr-2',
+    right: 'left-full top-1/2 -translate-y-1/2 ml-2',
+  }[position];
+
+  return (
+    <div
+      className="relative inline-flex items-center"
+      onMouseEnter={show}
+      onMouseLeave={hide}
+      onFocus={show}
+      onBlur={hide}
+    >
+      {children}
+      {visible && content && (
+        <div
+          role="tooltip"
+          className={`pointer-events-none absolute z-[120] whitespace-nowrap rounded-lg border border-edge bg-card px-2.5 py-1 font-mono text-[11px] font-medium text-content shadow-pop animate-in fade-in-0 zoom-in-95 duration-150 ${positionClasses} ${className}`}
+        >
+          {content}
+        </div>
+      )}
+    </div>
   );
 }
 

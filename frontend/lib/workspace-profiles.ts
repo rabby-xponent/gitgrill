@@ -26,6 +26,9 @@ export interface RecruiterWorkspaceProfile {
 
 export interface DeveloperWorkspaceProfile {
   githubUsername: string;
+  fullName?: string;
+  additionalGithubAccounts?: string[];
+  linkedinUrl?: string;
   portfolioUrl: string;
   targetRoleId: string;
   customJdText: string;
@@ -125,6 +128,9 @@ export function recordCandidateScreening(username: string, roleId?: string, role
 export function getDeveloperProfile(): DeveloperWorkspaceProfile {
   const defaultProfile: DeveloperWorkspaceProfile = {
     githubUsername: '',
+    fullName: '',
+    additionalGithubAccounts: [],
+    linkedinUrl: '',
     portfolioUrl: '',
     targetRoleId: 'req_senior_fullstack',
     customJdText: '',

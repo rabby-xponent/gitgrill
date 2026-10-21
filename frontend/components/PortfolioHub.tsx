@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { Icon } from '@/components/icons';
 import {
   PortfolioSSOT,
@@ -18,9 +19,38 @@ import {
   saveBullet,
   deleteBullet,
   bootstrapPortfolioFromResume,
+  normalizeDateToISO,
+  formatISODateToDisplay,
+  humanizePortfolioError,
 } from '@/lib/portfolio';
 import { getResumes, ResumeProfile } from '@/lib/resumes';
-import { ConfirmModal, AlertModal } from '@/components/ui';
+import {
+  ConfirmModal,
+  AlertModal,
+  Checkbox,
+  Select,
+  FormField,
+  TextInput,
+  TextArea,
+  SearchInput,
+  type SelectOption,
+} from '@/components/ui';
+
+const ARCHITECTURE_OPTIONS: SelectOption[] = [
+  { value: 'microservices', label: 'Event-Driven Microservices', description: 'Kafka, RabbitMQ, gRPC decoupled services' },
+  { value: 'distributed_storage', label: 'Distributed Storage / Caching Layer', description: 'Redis, Raft, DynamoDB partitioning' },
+  { value: 'api_gateway', label: 'High-Throughput API Gateway', description: 'Rate limiting, reverse proxy, auth middleware' },
+  { value: 'realtime_stream', label: 'Real-Time Data Streaming / Pipeline', description: 'Flink, Spark, real-time telemetry ingestion' },
+  { value: 'modular_monolith', label: 'Modular Monolith / Domain-Driven', description: 'Clean architecture, boundaries, Hexagonal' },
+  { value: 'ml_infra', label: 'ML Ops & Model Serving Pipeline', description: 'Inference serving, model latency optimization' },
+  { value: 'developer_tools', label: 'Developer CLI & Tooling', description: 'Developer productivity tools, code generators' },
+];
+
+const REVIEW_STATUS_OPTIONS: SelectOption[] = [
+  { value: 'approved', label: 'Approved (Verified & Ready for Resumes)', description: 'Production metric validated and ready to query' },
+  { value: 'needs_review', label: 'Needs Review (Missing Metrics or Details)', description: 'Requires quantification or architecture defense context' },
+  { value: 'draft', label: 'Draft (Work in Progress)', description: 'Preliminary bullet draft still undergoing iteration' },
+];
 
 export function PortfolioHub() {
   const [loading, setLoading] = useState(true);
@@ -280,24 +310,12 @@ export function PortfolioHub() {
 
       {/* Search & Filter Toolbar */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-        <div className="relative flex-1 max-w-md">
-          <Icon.Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted pointer-events-none" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search by company, tech stack, architecture, or metric..."
-            className="w-full rounded-xl border border-edge bg-card pl-10 pr-4 py-2 font-sans text-xs text-content placeholder:text-muted focus:border-signal focus:outline-none focus:ring-1 focus:ring-signal transition-all"
-          />
-          {searchQuery && (
-            <button
-              onClick={() => setSearchQuery('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-content p-0.5"
-            >
-              <Icon.X className="h-3.5 w-3.5" />
-            </button>
-          )}
-        </div>
+        <SearchInput
+          value={searchQuery}
+          onChange={setSearchQuery}
+          placeholder="Search by company, tech stack, architecture, or metric..."
+          className="w-full max-w-md py-1"
+        />
 
         <div className="flex items-center gap-2">
           <span className="font-mono text-[11px] text-muted uppercase font-bold shrink-0">Status:</span>
@@ -408,7 +426,7 @@ export function PortfolioHub() {
                       <div className="flex items-center gap-2 text-xs text-muted font-mono flex-wrap">
                         {company.role_title && <span className="text-content font-medium">{company.role_title}</span>}
                         {(company.start_date || company.end_date) && (
-                          <span>· {company.start_date || ''} — {company.is_current ? 'Present' : company.end_date || ''}</span>
+                          <span>· {formatISODateToDisplay(company.start_date)} — {company.is_current ? 'Present' : formatISODateToDisplay(company.end_date)}</span>
                         )}
                         {company.location && <span>· {company.location}</span>}
                       </div>
@@ -880,15 +898,67 @@ function CompanyEditModal({
   onClose: () => void;
   onSaved: () => Promise<void>;
 }) {
+  const DRAFT_KEY = 'gitgrill_company_draft_v1';
+  const [hasRestoredDraft, setHasRestoredDraft] = useState(false);
+
   const [name, setName] = useState(company?.name || '');
   const [roleTitle, setRoleTitle] = useState(company?.role_title || '');
   const [domain, setDomain] = useState(company?.domain || '');
   const [location, setLocation] = useState(company?.location || '');
-  const [startDate, setStartDate] = useState(company?.start_date || '');
-  const [endDate, setEndDate] = useState(company?.end_date || '');
+  const [startDate, setStartDate] = useState(company?.start_date ? formatISODateToDisplay(company.start_date) : '');
+  const [endDate, setEndDate] = useState(company?.end_date ? formatISODateToDisplay(company.end_date) : '');
   const [isCurrent, setIsCurrent] = useState(company?.is_current || false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+
+  // Auto-restore draft if creating new company
+  useEffect(() => {
+    if (company) return;
+    try {
+      const raw = localStorage.getItem(DRAFT_KEY);
+      if (raw) {
+        const d = JSON.parse(raw);
+        if (d.name || d.roleTitle || d.domain || d.location || d.startDate || d.endDate || d.isCurrent) {
+          setName(d.name || '');
+          setRoleTitle(d.roleTitle || '');
+          setDomain(d.domain || '');
+          setLocation(d.location || '');
+          setStartDate(d.startDate || '');
+          setEndDate(d.endDate || '');
+          setIsCurrent(Boolean(d.isCurrent));
+          setHasRestoredDraft(true);
+        }
+      }
+    } catch {}
+  }, [company]);
+
+  // Auto-save draft on every keystroke when creating
+  useEffect(() => {
+    if (company) return;
+    try {
+      if (name || roleTitle || domain || location || startDate || endDate || isCurrent) {
+        localStorage.setItem(
+          DRAFT_KEY,
+          JSON.stringify({ name, roleTitle, domain, location, startDate, endDate, isCurrent })
+        );
+      }
+    } catch {}
+  }, [company, name, roleTitle, domain, location, startDate, endDate, isCurrent]);
+
+  const handleDiscardDraft = () => {
+    try {
+      localStorage.removeItem(DRAFT_KEY);
+    } catch {}
+    setName('');
+    setRoleTitle('');
+    setDomain('');
+    setLocation('');
+    setStartDate('');
+    setEndDate('');
+    setIsCurrent(false);
+    setHasRestoredDraft(false);
+    setError('');
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -896,6 +966,19 @@ function CompanyEditModal({
       setError('Company name is required.');
       return;
     }
+
+    const parsedStart = startDate.trim() ? normalizeDateToISO(startDate) : null;
+    if (startDate.trim() && !parsedStart) {
+      setError('Invalid start date format. Please use "Jun 2026", "2026-06", or "Jan 2022".');
+      return;
+    }
+
+    const parsedEnd = (!isCurrent && endDate.trim()) ? normalizeDateToISO(endDate) : null;
+    if (!isCurrent && endDate.trim() && !parsedEnd) {
+      setError('Invalid end date format. Please use "Dec 2024", "2024-12", or "Dec 2024".');
+      return;
+    }
+
     setSaving(true);
     setError('');
     try {
@@ -905,21 +988,52 @@ function CompanyEditModal({
         role_title: roleTitle.trim() || null,
         domain: domain.trim() || null,
         location: location.trim() || null,
-        start_date: startDate.trim() || null,
-        end_date: isCurrent ? null : endDate.trim() || null,
+        start_date: parsedStart,
+        end_date: isCurrent ? null : parsedEnd,
         is_current: isCurrent,
       });
+
+      // Clear draft on successful save
+      try {
+        localStorage.removeItem(DRAFT_KEY);
+      } catch {}
+
       await onSaved();
     } catch (err: any) {
-      setError(err.message || 'Failed to save company.');
+      setError(humanizePortfolioError(err?.message, 'Failed to save company.'));
     } finally {
       setSaving(false);
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
-      <div className="w-full max-w-lg rounded-2xl border border-edge bg-card p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-150">
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [onClose]);
+
+  if (!mounted) return null;
+
+  return createPortal(
+    <div
+      role="dialog"
+      aria-modal="true"
+      className="fixed inset-0 z-[150] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 animate-in fade-in duration-200"
+      onClick={onClose}
+    >
+      <div
+        className="relative w-full max-w-lg rounded-2xl border border-edge bg-card p-6 shadow-2xl animate-in zoom-in-95 duration-150"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="flex items-center justify-between pb-4 border-b border-edge">
           <h3 className="font-mono text-base font-bold text-content">
             {company ? 'Edit Company' : 'Add Company / Organization'}
@@ -929,6 +1043,22 @@ function CompanyEditModal({
           </button>
         </div>
 
+        {hasRestoredDraft && !company && (
+          <div className="mt-3 flex items-center justify-between rounded-xl border border-signal/30 bg-signal/10 px-3.5 py-2 text-xs font-mono text-signal animate-in fade-in">
+            <span className="flex items-center gap-1.5 font-semibold">
+              <Icon.Sparkle className="h-3.5 w-3.5" />
+              <span>Unsaved draft restored</span>
+            </span>
+            <button
+              type="button"
+              onClick={handleDiscardDraft}
+              className="text-[11px] underline hover:opacity-80 font-bold cursor-pointer"
+            >
+              Discard Draft
+            </button>
+          </div>
+        )}
+
         {error && (
           <div className="mt-4 rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-xs text-red-400 font-mono">
             {error}
@@ -936,97 +1066,65 @@ function CompanyEditModal({
         )}
 
         <form onSubmit={handleSubmit} className="mt-4 space-y-4">
-          <div>
-            <label className="block font-mono text-[11px] uppercase tracking-wider text-muted font-bold mb-1">
-              Company Name *
-            </label>
-            <input
-              type="text"
+          <FormField label="Company Name *">
+            <TextInput
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. Stripe, Cefalo, Vercel"
-              className="w-full rounded-xl border border-edge bg-surface px-3.5 py-2 font-sans text-xs text-content focus:border-signal focus:outline-none"
+              placeholder="e.g. Stripe, Linear, Vercel"
               required
             />
-          </div>
+          </FormField>
 
-          <div>
-            <label className="block font-mono text-[11px] uppercase tracking-wider text-muted font-bold mb-1">
-              Your Role / Title
-            </label>
-            <input
-              type="text"
+          <FormField label="Your Role / Title">
+            <TextInput
               value={roleTitle}
               onChange={(e) => setRoleTitle(e.target.value)}
               placeholder="e.g. Senior Backend Engineer / Tech Lead"
-              className="w-full rounded-xl border border-edge bg-surface px-3.5 py-2 font-sans text-xs text-content focus:border-signal focus:outline-none"
             />
-          </div>
+          </FormField>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className="block font-mono text-[11px] uppercase tracking-wider text-muted font-bold mb-1">
-                Domain / URL
-              </label>
-              <input
-                type="text"
+            <FormField label="Domain / URL">
+              <TextInput
                 value={domain}
                 onChange={(e) => setDomain(e.target.value)}
                 placeholder="stripe.com"
-                className="w-full rounded-xl border border-edge bg-surface px-3.5 py-2 font-sans text-xs text-content focus:border-signal focus:outline-none"
               />
-            </div>
-            <div>
-              <label className="block font-mono text-[11px] uppercase tracking-wider text-muted font-bold mb-1">
-                Location
-              </label>
-              <input
-                type="text"
+            </FormField>
+            <FormField label="Location">
+              <TextInput
                 value={location}
                 onChange={(e) => setLocation(e.target.value)}
                 placeholder="San Francisco / Remote"
-                className="w-full rounded-xl border border-edge bg-surface px-3.5 py-2 font-sans text-xs text-content focus:border-signal focus:outline-none"
               />
-            </div>
+            </FormField>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className="block font-mono text-[11px] uppercase tracking-wider text-muted font-bold mb-1">
-                Start Date
-              </label>
-              <input
-                type="text"
+            <FormField label="Start Date" hint="e.g. Jun 2026, 2026-06, or Jan 2022">
+              <TextInput
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
-                placeholder="e.g. Jan 2022"
-                className="w-full rounded-xl border border-edge bg-surface px-3.5 py-2 font-sans text-xs text-content focus:border-signal focus:outline-none"
+                placeholder="e.g. Jun 2026"
               />
-            </div>
-            <div>
-              <label className="block font-mono text-[11px] uppercase tracking-wider text-muted font-bold mb-1">
-                End Date
-              </label>
-              <input
-                type="text"
+            </FormField>
+            <FormField label="End Date" hint={isCurrent ? 'Currently working here' : 'e.g. Dec 2024 or 2024-12'}>
+              <TextInput
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
                 disabled={isCurrent}
                 placeholder={isCurrent ? 'Present' : 'e.g. Dec 2024'}
-                className="w-full rounded-xl border border-edge bg-surface px-3.5 py-2 font-sans text-xs text-content disabled:opacity-50 focus:border-signal focus:outline-none"
               />
-            </div>
+            </FormField>
           </div>
 
-          <label className="flex items-center gap-2 cursor-pointer pt-1">
-            <input
-              type="checkbox"
+          <div className="pt-1">
+            <Checkbox
               checked={isCurrent}
-              onChange={(e) => setIsCurrent(e.target.checked)}
-              className="rounded border-edge text-signal focus:ring-signal"
+              onChange={setIsCurrent}
+              label="I currently work here"
             />
-            <span className="font-mono text-xs text-content">I currently work here</span>
-          </label>
+          </div>
 
           <div className="flex items-center justify-end gap-2.5 pt-4 border-t border-edge">
             <button
@@ -1047,7 +1145,8 @@ function CompanyEditModal({
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 
@@ -1062,12 +1161,55 @@ function ProductEditModal({
   onClose: () => void;
   onSaved: () => Promise<void>;
 }) {
+  const DRAFT_KEY = `gitgrill_product_draft_${companyId}`;
+  const [hasRestoredDraft, setHasRestoredDraft] = useState(false);
+
   const [name, setName] = useState(product?.name || '');
   const [architectureType, setArchitectureType] = useState(product?.architecture_type || 'microservices');
   const [liveUrl, setLiveUrl] = useState(product?.live_url || '');
   const [repoUrl, setRepoUrl] = useState(product?.repo_url || '');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+
+  // Auto-restore draft if creating new product
+  useEffect(() => {
+    if (product) return;
+    try {
+      const raw = localStorage.getItem(DRAFT_KEY);
+      if (raw) {
+        const d = JSON.parse(raw);
+        if (d.name || d.liveUrl || d.repoUrl) {
+          setName(d.name || '');
+          if (d.architectureType) setArchitectureType(d.architectureType);
+          setLiveUrl(d.liveUrl || '');
+          setRepoUrl(d.repoUrl || '');
+          setHasRestoredDraft(true);
+        }
+      }
+    } catch {}
+  }, [product, DRAFT_KEY]);
+
+  // Auto-save draft on every change
+  useEffect(() => {
+    if (product) return;
+    try {
+      if (name || liveUrl || repoUrl) {
+        localStorage.setItem(DRAFT_KEY, JSON.stringify({ name, architectureType, liveUrl, repoUrl }));
+      }
+    } catch {}
+  }, [product, DRAFT_KEY, name, architectureType, liveUrl, repoUrl]);
+
+  const handleDiscardDraft = () => {
+    try {
+      localStorage.removeItem(DRAFT_KEY);
+    } catch {}
+    setName('');
+    setArchitectureType('microservices');
+    setLiveUrl('');
+    setRepoUrl('');
+    setHasRestoredDraft(false);
+    setError('');
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1086,17 +1228,48 @@ function ProductEditModal({
         live_url: liveUrl.trim() || null,
         repo_url: repoUrl.trim() || null,
       });
+
+      // Clear draft on save
+      try {
+        localStorage.removeItem(DRAFT_KEY);
+      } catch {}
+
       await onSaved();
     } catch (err: any) {
-      setError(err.message || 'Failed to save product.');
+      setError(humanizePortfolioError(err?.message, 'Failed to save product.'));
     } finally {
       setSaving(false);
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
-      <div className="w-full max-w-lg rounded-2xl border border-edge bg-card p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-150">
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [onClose]);
+
+  if (!mounted) return null;
+
+  return createPortal(
+    <div
+      role="dialog"
+      aria-modal="true"
+      className="fixed inset-0 z-[150] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 animate-in fade-in duration-200"
+      onClick={onClose}
+    >
+      <div
+        className="relative w-full max-w-lg rounded-2xl border border-edge bg-card p-6 shadow-2xl animate-in zoom-in-95 duration-150"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="flex items-center justify-between pb-4 border-b border-edge">
           <h3 className="font-mono text-base font-bold text-content">
             {product ? 'Edit Product / Sub-system' : 'Add Product / Sub-system'}
@@ -1106,6 +1279,22 @@ function ProductEditModal({
           </button>
         </div>
 
+        {hasRestoredDraft && !product && (
+          <div className="mt-3 flex items-center justify-between rounded-xl border border-signal/30 bg-signal/10 px-3.5 py-2 text-xs font-mono text-signal animate-in fade-in">
+            <span className="flex items-center gap-1.5 font-semibold">
+              <Icon.Sparkle className="h-3.5 w-3.5" />
+              <span>Unsaved draft restored</span>
+            </span>
+            <button
+              type="button"
+              onClick={handleDiscardDraft}
+              className="text-[11px] underline hover:opacity-80 font-bold cursor-pointer"
+            >
+              Discard Draft
+            </button>
+          </div>
+        )}
+
         {error && (
           <div className="mt-4 rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-xs text-red-400 font-mono">
             {error}
@@ -1113,64 +1302,39 @@ function ProductEditModal({
         )}
 
         <form onSubmit={handleSubmit} className="mt-4 space-y-4">
-          <div>
-            <label className="block font-mono text-[11px] uppercase tracking-wider text-muted font-bold mb-1">
-              Product / Subsystem Name *
-            </label>
-            <input
-              type="text"
+          <FormField label="Product / Subsystem Name *">
+            <TextInput
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g. High-Throughput Ingestion Engine, Checkout Core"
-              className="w-full rounded-xl border border-edge bg-surface px-3.5 py-2 font-sans text-xs text-content focus:border-signal focus:outline-none"
               required
             />
-          </div>
+          </FormField>
 
-          <div>
-            <label className="block font-mono text-[11px] uppercase tracking-wider text-muted font-bold mb-1">
-              Architecture Archetype
-            </label>
-            <select
+          <FormField label="Architecture Archetype">
+            <Select
               value={architectureType}
-              onChange={(e) => setArchitectureType(e.target.value)}
-              className="w-full rounded-xl border border-edge bg-surface px-3.5 py-2 font-mono text-xs text-content focus:border-signal focus:outline-none"
-            >
-              <option value="microservices">Event-Driven Microservices</option>
-              <option value="distributed_storage">Distributed Storage / Caching Layer</option>
-              <option value="api_gateway">High-Throughput API Gateway</option>
-              <option value="realtime_stream">Real-Time Data Streaming / Pipeline</option>
-              <option value="modular_monolith">Modular Monolith / Domain-Driven</option>
-              <option value="ml_infra">ML Ops & Model Serving Pipeline</option>
-              <option value="developer_tools">Developer CLI & Tooling</option>
-            </select>
-          </div>
+              onChange={setArchitectureType}
+              options={ARCHITECTURE_OPTIONS}
+              placeholder="Select Architecture Archetype"
+            />
+          </FormField>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className="block font-mono text-[11px] uppercase tracking-wider text-muted font-bold mb-1">
-                Repository Link (optional)
-              </label>
-              <input
-                type="text"
+            <FormField label="Repository Link (optional)">
+              <TextInput
                 value={repoUrl}
                 onChange={(e) => setRepoUrl(e.target.value)}
                 placeholder="https://github.com/..."
-                className="w-full rounded-xl border border-edge bg-surface px-3.5 py-2 font-sans text-xs text-content focus:border-signal focus:outline-none"
               />
-            </div>
-            <div>
-              <label className="block font-mono text-[11px] uppercase tracking-wider text-muted font-bold mb-1">
-                Live URL (optional)
-              </label>
-              <input
-                type="text"
+            </FormField>
+            <FormField label="Live URL (optional)">
+              <TextInput
                 value={liveUrl}
                 onChange={(e) => setLiveUrl(e.target.value)}
                 placeholder="https://app.example.com"
-                className="w-full rounded-xl border border-edge bg-surface px-3.5 py-2 font-sans text-xs text-content focus:border-signal focus:outline-none"
               />
-            </div>
+            </FormField>
           </div>
 
           <div className="flex items-center justify-end gap-2.5 pt-4 border-t border-edge">
@@ -1192,7 +1356,8 @@ function ProductEditModal({
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 
@@ -1205,12 +1370,55 @@ function ProjectEditModal({
   onClose: () => void;
   onSaved: () => Promise<void>;
 }) {
+  const DRAFT_KEY = 'gitgrill_project_draft_v1';
+  const [hasRestoredDraft, setHasRestoredDraft] = useState(false);
+
   const [name, setName] = useState(project?.name || '');
   const [headline, setHeadline] = useState(project?.headline || '');
   const [repoUrl, setRepoUrl] = useState(project?.repo_url || '');
   const [liveUrl, setLiveUrl] = useState(project?.live_url || '');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+
+  // Auto-restore draft if creating
+  useEffect(() => {
+    if (project) return;
+    try {
+      const raw = localStorage.getItem(DRAFT_KEY);
+      if (raw) {
+        const d = JSON.parse(raw);
+        if (d.name || d.headline || d.repoUrl || d.liveUrl) {
+          setName(d.name || '');
+          setHeadline(d.headline || '');
+          setRepoUrl(d.repoUrl || '');
+          setLiveUrl(d.liveUrl || '');
+          setHasRestoredDraft(true);
+        }
+      }
+    } catch {}
+  }, [project]);
+
+  // Auto-save draft on every change
+  useEffect(() => {
+    if (project) return;
+    try {
+      if (name || headline || repoUrl || liveUrl) {
+        localStorage.setItem(DRAFT_KEY, JSON.stringify({ name, headline, repoUrl, liveUrl }));
+      }
+    } catch {}
+  }, [project, name, headline, repoUrl, liveUrl]);
+
+  const handleDiscardDraft = () => {
+    try {
+      localStorage.removeItem(DRAFT_KEY);
+    } catch {}
+    setName('');
+    setHeadline('');
+    setRepoUrl('');
+    setLiveUrl('');
+    setHasRestoredDraft(false);
+    setError('');
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1228,17 +1436,48 @@ function ProjectEditModal({
         repo_url: repoUrl.trim() || null,
         live_url: liveUrl.trim() || null,
       });
+
+      // Clear draft on save
+      try {
+        localStorage.removeItem(DRAFT_KEY);
+      } catch {}
+
       await onSaved();
     } catch (err: any) {
-      setError(err.message || 'Failed to save project.');
+      setError(humanizePortfolioError(err?.message, 'Failed to save project.'));
     } finally {
       setSaving(false);
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
-      <div className="w-full max-w-lg rounded-2xl border border-edge bg-card p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-150">
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [onClose]);
+
+  if (!mounted) return null;
+
+  return createPortal(
+    <div
+      role="dialog"
+      aria-modal="true"
+      className="fixed inset-0 z-[150] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 animate-in fade-in duration-200"
+      onClick={onClose}
+    >
+      <div
+        className="relative w-full max-w-lg rounded-2xl border border-edge bg-card p-6 shadow-2xl animate-in zoom-in-95 duration-150"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="flex items-center justify-between pb-4 border-b border-edge">
           <h3 className="font-mono text-base font-bold text-content">
             {project ? 'Edit Standalone Project' : 'Add Standalone Project'}
@@ -1248,6 +1487,22 @@ function ProjectEditModal({
           </button>
         </div>
 
+        {hasRestoredDraft && !project && (
+          <div className="mt-3 flex items-center justify-between rounded-xl border border-signal/30 bg-signal/10 px-3.5 py-2 text-xs font-mono text-signal animate-in fade-in">
+            <span className="flex items-center gap-1.5 font-semibold">
+              <Icon.Sparkle className="h-3.5 w-3.5" />
+              <span>Unsaved draft restored</span>
+            </span>
+            <button
+              type="button"
+              onClick={handleDiscardDraft}
+              className="text-[11px] underline hover:opacity-80 font-bold cursor-pointer"
+            >
+              Discard Draft
+            </button>
+          </div>
+        )}
+
         {error && (
           <div className="mt-4 rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-xs text-red-400 font-mono">
             {error}
@@ -1255,58 +1510,38 @@ function ProjectEditModal({
         )}
 
         <form onSubmit={handleSubmit} className="mt-4 space-y-4">
-          <div>
-            <label className="block font-mono text-[11px] uppercase tracking-wider text-muted font-bold mb-1">
-              Project Name *
-            </label>
-            <input
-              type="text"
+          <FormField label="Project Name *">
+            <TextInput
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g. Distributed Key-Value Store"
-              className="w-full rounded-xl border border-edge bg-surface px-3.5 py-2 font-sans text-xs text-content focus:border-signal focus:outline-none"
               required
             />
-          </div>
+          </FormField>
 
-          <div>
-            <label className="block font-mono text-[11px] uppercase tracking-wider text-muted font-bold mb-1">
-              Headline / Brief
-            </label>
-            <input
-              type="text"
+          <FormField label="Headline / Brief">
+            <TextInput
               value={headline}
               onChange={(e) => setHeadline(e.target.value)}
               placeholder="Raft-consensus replicated key-value storage engine in Go"
-              className="w-full rounded-xl border border-edge bg-surface px-3.5 py-2 font-sans text-xs text-content focus:border-signal focus:outline-none"
             />
-          </div>
+          </FormField>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className="block font-mono text-[11px] uppercase tracking-wider text-muted font-bold mb-1">
-                Repository Link
-              </label>
-              <input
-                type="text"
+            <FormField label="Repository Link">
+              <TextInput
                 value={repoUrl}
                 onChange={(e) => setRepoUrl(e.target.value)}
                 placeholder="https://github.com/..."
-                className="w-full rounded-xl border border-edge bg-surface px-3.5 py-2 font-sans text-xs text-content focus:border-signal focus:outline-none"
               />
-            </div>
-            <div>
-              <label className="block font-mono text-[11px] uppercase tracking-wider text-muted font-bold mb-1">
-                Live URL
-              </label>
-              <input
-                type="text"
+            </FormField>
+            <FormField label="Live URL">
+              <TextInput
                 value={liveUrl}
                 onChange={(e) => setLiveUrl(e.target.value)}
                 placeholder="https://demo.example.com"
-                className="w-full rounded-xl border border-edge bg-surface px-3.5 py-2 font-sans text-xs text-content focus:border-signal focus:outline-none"
               />
-            </div>
+            </FormField>
           </div>
 
           <div className="flex items-center justify-end gap-2.5 pt-4 border-t border-edge">
@@ -1328,7 +1563,8 @@ function ProjectEditModal({
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 
@@ -1345,6 +1581,9 @@ function BulletEditModal({
   onClose: () => void;
   onSaved: () => Promise<void>;
 }) {
+  const DRAFT_KEY = `gitgrill_bullet_draft_${productId || projectId || 'unattached'}`;
+  const [hasRestoredDraft, setHasRestoredDraft] = useState(false);
+
   const [bulletText, setBulletText] = useState(bullet?.bullet_text || '');
   const [actionVerb, setActionVerb] = useState(bullet?.action_verb || '');
   const [metricPrimary, setMetricPrimary] = useState(bullet?.metric_primary || '');
@@ -1354,6 +1593,55 @@ function BulletEditModal({
   const [reviewStatus, setReviewStatus] = useState<MasterBullet['review_status']>(bullet?.review_status || 'approved');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+
+  // Auto-restore draft if creating
+  useEffect(() => {
+    if (bullet) return;
+    try {
+      const raw = localStorage.getItem(DRAFT_KEY);
+      if (raw) {
+        const d = JSON.parse(raw);
+        if (d.bulletText || d.actionVerb || d.metricPrimary || d.techStackStr || d.contextChallenge || d.defenseNotes) {
+          setBulletText(d.bulletText || '');
+          setActionVerb(d.actionVerb || '');
+          setMetricPrimary(d.metricPrimary || '');
+          setTechStackStr(d.techStackStr || '');
+          setContextChallenge(d.contextChallenge || '');
+          setDefenseNotes(d.defenseNotes || '');
+          if (d.reviewStatus) setReviewStatus(d.reviewStatus);
+          setHasRestoredDraft(true);
+        }
+      }
+    } catch {}
+  }, [bullet, DRAFT_KEY]);
+
+  // Auto-save draft on every change
+  useEffect(() => {
+    if (bullet) return;
+    try {
+      if (bulletText || actionVerb || metricPrimary || techStackStr || contextChallenge || defenseNotes) {
+        localStorage.setItem(
+          DRAFT_KEY,
+          JSON.stringify({ bulletText, actionVerb, metricPrimary, techStackStr, contextChallenge, defenseNotes, reviewStatus })
+        );
+      }
+    } catch {}
+  }, [bullet, DRAFT_KEY, bulletText, actionVerb, metricPrimary, techStackStr, contextChallenge, defenseNotes, reviewStatus]);
+
+  const handleDiscardDraft = () => {
+    try {
+      localStorage.removeItem(DRAFT_KEY);
+    } catch {}
+    setBulletText('');
+    setActionVerb('');
+    setMetricPrimary('');
+    setTechStackStr('');
+    setContextChallenge('');
+    setDefenseNotes('');
+    setReviewStatus('approved');
+    setHasRestoredDraft(false);
+    setError('');
+  };
 
   // Auto-detect action verb and primary metric as user types
   useEffect(() => {
@@ -1396,17 +1684,48 @@ function BulletEditModal({
         review_status: reviewStatus,
         source_type: bullet?.source_type || 'manual',
       });
+
+      // Clear draft on save
+      try {
+        localStorage.removeItem(DRAFT_KEY);
+      } catch {}
+
       await onSaved();
     } catch (err: any) {
-      setError(err.message || 'Failed to save bullet.');
+      setError(humanizePortfolioError(err?.message, 'Failed to save bullet.'));
     } finally {
       setSaving(false);
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
-      <div className="w-full max-w-xl max-h-[90vh] overflow-y-auto rounded-2xl border border-edge bg-card p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-150">
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [onClose]);
+
+  if (!mounted) return null;
+
+  return createPortal(
+    <div
+      role="dialog"
+      aria-modal="true"
+      className="fixed inset-0 z-[150] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 animate-in fade-in duration-200"
+      onClick={onClose}
+    >
+      <div
+        className="relative w-full max-w-xl max-h-[90vh] overflow-y-auto rounded-2xl border border-edge bg-card p-6 shadow-2xl animate-in zoom-in-95 duration-150"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="flex items-center justify-between pb-4 border-b border-edge">
           <div className="space-y-0.5">
             <h3 className="font-mono text-base font-bold text-content">
@@ -1421,6 +1740,22 @@ function BulletEditModal({
           </button>
         </div>
 
+        {hasRestoredDraft && !bullet && (
+          <div className="mt-3 flex items-center justify-between rounded-xl border border-signal/30 bg-signal/10 px-3.5 py-2 text-xs font-mono text-signal animate-in fade-in">
+            <span className="flex items-center gap-1.5 font-semibold">
+              <Icon.Sparkle className="h-3.5 w-3.5" />
+              <span>Unsaved draft restored</span>
+            </span>
+            <button
+              type="button"
+              onClick={handleDiscardDraft}
+              className="text-[11px] underline hover:opacity-80 font-bold cursor-pointer"
+            >
+              Discard Draft
+            </button>
+          </div>
+        )}
+
         {error && (
           <div className="mt-4 rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-xs text-red-400 font-mono">
             {error}
@@ -1428,100 +1763,66 @@ function BulletEditModal({
         )}
 
         <form onSubmit={handleSubmit} className="mt-4 space-y-4">
-          <div>
-            <label className="block font-mono text-[11px] uppercase tracking-wider text-muted font-bold mb-1">
-              Contribution Bullet Text *
-            </label>
-            <textarea
+          <FormField label="Contribution Bullet Text *">
+            <TextArea
               rows={3}
               value={bulletText}
               onChange={(e) => setBulletText(e.target.value)}
               placeholder="e.g. Architected distributed Kafka event pipeline handling 12M events/day, reducing end-to-end sync latency by 45%."
-              className="w-full rounded-xl border border-edge bg-surface px-3.5 py-2 font-sans text-xs text-content focus:border-signal focus:outline-none leading-relaxed"
               required
             />
-          </div>
+          </FormField>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className="block font-mono text-[11px] uppercase tracking-wider text-muted font-bold mb-1">
-                Action Verb
-              </label>
-              <input
-                type="text"
+            <FormField label="Action Verb">
+              <TextInput
                 value={actionVerb}
                 onChange={(e) => setActionVerb(e.target.value)}
                 placeholder="Architected, Scaled, Streamlined"
-                className="w-full rounded-xl border border-edge bg-surface px-3.5 py-2 font-sans text-xs text-content focus:border-signal focus:outline-none"
               />
-            </div>
-            <div>
-              <label className="block font-mono text-[11px] uppercase tracking-wider text-muted font-bold mb-1">
-                Primary Metric
-              </label>
-              <input
-                type="text"
+            </FormField>
+            <FormField label="Primary Metric">
+              <TextInput
                 value={metricPrimary}
                 onChange={(e) => setMetricPrimary(e.target.value)}
                 placeholder="45% latency drop, 12M events/day"
-                className="w-full rounded-xl border border-edge bg-surface px-3.5 py-2 font-sans text-xs text-content focus:border-signal focus:outline-none"
               />
-            </div>
+            </FormField>
           </div>
 
-          <div>
-            <label className="block font-mono text-[11px] uppercase tracking-wider text-muted font-bold mb-1">
-              Technologies & Tools (comma separated)
-            </label>
-            <input
-              type="text"
+          <FormField label="Technologies & Tools (comma separated)">
+            <TextInput
               value={techStackStr}
               onChange={(e) => setTechStackStr(e.target.value)}
               placeholder="PostgreSQL, Apache Kafka, Go, Redis, Docker"
-              className="w-full rounded-xl border border-edge bg-surface px-3.5 py-2 font-sans text-xs text-content focus:border-signal focus:outline-none"
             />
-          </div>
+          </FormField>
 
-          <div>
-            <label className="block font-mono text-[11px] uppercase tracking-wider text-muted font-bold mb-1">
-              Engineering Challenge (The Problem)
-            </label>
-            <textarea
+          <FormField label="Engineering Challenge (The Problem)">
+            <TextArea
               rows={2}
               value={contextChallenge}
               onChange={(e) => setContextChallenge(e.target.value)}
               placeholder="Legacy polling architecture was overwhelming the primary database and failing under traffic spikes."
-              className="w-full rounded-xl border border-edge bg-surface px-3.5 py-2 font-sans text-xs text-content focus:border-signal focus:outline-none"
             />
-          </div>
+          </FormField>
 
-          <div>
-            <label className="block font-mono text-[11px] uppercase tracking-wider text-muted font-bold mb-1">
-              Defense Notes & Trade-offs (The 'Why')
-            </label>
-            <textarea
+          <FormField label="Defense Notes & Trade-offs (The 'Why')">
+            <TextArea
               rows={2}
               value={defenseNotes}
               onChange={(e) => setDefenseNotes(e.target.value)}
               placeholder="Chose partitioned Kafka logs over RabbitMQ due to strict ordering guarantees and replayability requirements."
-              className="w-full rounded-xl border border-edge bg-surface px-3.5 py-2 font-sans text-xs text-content focus:border-signal focus:outline-none"
             />
-          </div>
+          </FormField>
 
-          <div>
-            <label className="block font-mono text-[11px] uppercase tracking-wider text-muted font-bold mb-1">
-              Review Status
-            </label>
-            <select
+          <FormField label="Review Status">
+            <Select
               value={reviewStatus}
-              onChange={(e) => setReviewStatus(e.target.value as any)}
-              className="w-full rounded-xl border border-edge bg-surface px-3.5 py-2 font-mono text-xs text-content focus:border-signal focus:outline-none"
-            >
-              <option value="approved">Approved (Verified & Ready for Resumes)</option>
-              <option value="needs_review">Needs Review (Missing Metrics or Details)</option>
-              <option value="draft">Draft (Work in Progress)</option>
-            </select>
-          </div>
+              onChange={(val) => setReviewStatus(val as any)}
+              options={REVIEW_STATUS_OPTIONS}
+            />
+          </FormField>
 
           <div className="flex items-center justify-end gap-2.5 pt-4 border-t border-edge">
             <button
@@ -1542,7 +1843,8 @@ function BulletEditModal({
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 
@@ -1585,9 +1887,34 @@ function ResumeImportModal({
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
-      <div className="w-full max-w-lg rounded-2xl border border-edge bg-card p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-150">
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [onClose]);
+
+  if (!mounted) return null;
+
+  return createPortal(
+    <div
+      role="dialog"
+      aria-modal="true"
+      className="fixed inset-0 z-[150] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 animate-in fade-in duration-200"
+      onClick={onClose}
+    >
+      <div
+        className="relative w-full max-w-lg rounded-2xl border border-edge bg-card p-6 shadow-2xl animate-in zoom-in-95 duration-150"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="flex items-center justify-between pb-4 border-b border-edge">
           <div className="flex items-center gap-2">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-signal/10 text-signal">
@@ -1647,31 +1974,36 @@ function ResumeImportModal({
                   Select Source Resume Profile:
                 </label>
                 <div className="space-y-2 max-h-56 overflow-y-auto">
-                  {resumes.map((r) => (
-                    <label
-                      key={r.id}
-                      className={`flex items-start gap-3 rounded-xl border p-3 cursor-pointer transition-all ${
-                        selectedResumeId === r.id
-                          ? 'border-signal bg-signal/5'
-                          : 'border-edge bg-surface/50 hover:border-edge/80'
-                      }`}
-                    >
-                      <input
-                        type="radio"
-                        name="resume_select"
-                        value={r.id}
-                        checked={selectedResumeId === r.id}
-                        onChange={() => setSelectedResumeId(r.id)}
-                        className="mt-0.5 text-signal focus:ring-signal"
-                      />
-                      <div className="flex-1 space-y-0.5">
-                        <div className="font-mono text-xs font-bold text-content">{r.title}</div>
-                        <div className="font-sans text-[11px] text-muted">
-                          {r.fullName} · {r.experience?.length || 0} companies · {r.projects?.length || 0} projects
+                  {resumes.map((r) => {
+                    const isSelected = selectedResumeId === r.id;
+                    return (
+                      <div
+                        key={r.id}
+                        onClick={() => setSelectedResumeId(r.id)}
+                        className={`flex items-start gap-3 rounded-xl border p-3 cursor-pointer transition-all select-none ${
+                          isSelected
+                            ? 'border-signal bg-signal/5'
+                            : 'border-edge bg-surface/50 hover:border-edge/80'
+                        }`}
+                      >
+                        <div
+                          className={`mt-0.5 flex h-4 w-4 flex-none items-center justify-center rounded-full border transition-all ${
+                            isSelected
+                              ? 'border-signal bg-signal text-white'
+                              : 'border-edge bg-card'
+                          }`}
+                        >
+                          {isSelected && <span className="h-1.5 w-1.5 rounded-full bg-white" />}
+                        </div>
+                        <div className="flex-1 space-y-0.5">
+                          <div className="font-mono text-xs font-bold text-content">{r.title}</div>
+                          <div className="font-sans text-[11px] text-muted">
+                            {r.fullName} · {r.experience?.length || 0} companies · {r.projects?.length || 0} projects
+                          </div>
                         </div>
                       </div>
-                    </label>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -1697,6 +2029,7 @@ function ResumeImportModal({
           </div>
         )}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

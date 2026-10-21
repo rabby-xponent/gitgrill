@@ -125,7 +125,7 @@ export default function NewTargetRoleModal({ isOpen, onClose, onCreate }: NewTar
               </FormField>
               <FormField label="Company" hint="Employer / organization">
                 <TextInput
-                  placeholder="e.g. Cefalo"
+                  placeholder="e.g. Stripe, Linear, or Google"
                   value={company}
                   onChange={(e) => setCompany(e.target.value)}
                 />

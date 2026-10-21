@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import { Icon } from '@/components/icons';
-import { ConfirmModal, AlertModal, TextArea } from '@/components/ui';
+import { ConfirmModal, AlertModal, TextArea, Checkbox, Select, type SelectOption } from '@/components/ui';
 import { useSession } from '@/components/SessionProvider';
 import {
   isAdmin,
@@ -639,20 +639,16 @@ export default function AdminBillingPage() {
                     </span>
                     <h3 className="font-sans font-bold text-sm text-content">bKash Account Settings</h3>
                   </div>
-                  <label className="flex items-center gap-2 text-xs font-mono cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={mfsConfig.bkash.isActive}
-                      onChange={(e) =>
-                        setMfsConfig({
-                          ...mfsConfig,
-                          bkash: { ...mfsConfig.bkash, isActive: e.target.checked },
-                        })
-                      }
-                      className="rounded border-edge"
-                    />
-                    <span>Active for Checkout</span>
-                  </label>
+                  <Checkbox
+                    checked={mfsConfig.bkash.isActive}
+                    onChange={(checked) =>
+                      setMfsConfig({
+                        ...mfsConfig,
+                        bkash: { ...mfsConfig.bkash, isActive: checked },
+                      })
+                    }
+                    label="Active for Checkout"
+                  />
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -678,19 +674,19 @@ export default function AdminBillingPage() {
                     <label className="block text-[11px] font-mono uppercase text-muted mb-1.5">
                       Account Type
                     </label>
-                    <select
+                    <Select
                       value={mfsConfig.bkash.type}
-                      onChange={(e) =>
+                      onChange={(val) =>
                         setMfsConfig({
                           ...mfsConfig,
-                          bkash: { ...mfsConfig.bkash, type: e.target.value as any },
+                          bkash: { ...mfsConfig.bkash, type: val as any },
                         })
                       }
-                      className="w-full rounded-xl border border-edge bg-well px-3.5 py-2 font-mono text-sm text-content focus:border-signal focus:outline-hidden cursor-pointer"
-                    >
-                      <option value="personal">Personal (Send Money)</option>
-                      <option value="merchant">Merchant (Payment)</option>
-                    </select>
+                      options={[
+                        { value: 'personal', label: 'Personal (Send Money)' },
+                        { value: 'merchant', label: 'Merchant (Payment)' },
+                      ]}
+                    />
                   </div>
                 </div>
 
@@ -733,20 +729,16 @@ export default function AdminBillingPage() {
                     </span>
                     <h3 className="font-sans font-bold text-sm text-content">Nagad Account Settings</h3>
                   </div>
-                  <label className="flex items-center gap-2 text-xs font-mono cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={mfsConfig.nagad.isActive}
-                      onChange={(e) =>
-                        setMfsConfig({
-                          ...mfsConfig,
-                          nagad: { ...mfsConfig.nagad, isActive: e.target.checked },
-                        })
-                      }
-                      className="rounded border-edge"
-                    />
-                    <span>Active for Checkout</span>
-                  </label>
+                  <Checkbox
+                    checked={mfsConfig.nagad.isActive}
+                    onChange={(checked) =>
+                      setMfsConfig({
+                        ...mfsConfig,
+                        nagad: { ...mfsConfig.nagad, isActive: checked },
+                      })
+                    }
+                    label="Active for Checkout"
+                  />
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -772,19 +764,19 @@ export default function AdminBillingPage() {
                     <label className="block text-[11px] font-mono uppercase text-muted mb-1.5">
                       Account Type
                     </label>
-                    <select
+                    <Select
                       value={mfsConfig.nagad.type}
-                      onChange={(e) =>
+                      onChange={(val) =>
                         setMfsConfig({
                           ...mfsConfig,
-                          nagad: { ...mfsConfig.nagad, type: e.target.value as any },
+                          nagad: { ...mfsConfig.nagad, type: val as any },
                         })
                       }
-                      className="w-full rounded-xl border border-edge bg-well px-3.5 py-2 font-mono text-sm text-content focus:border-signal focus:outline-hidden cursor-pointer"
-                    >
-                      <option value="personal">Personal (Send Money)</option>
-                      <option value="merchant">Merchant (Payment)</option>
-                    </select>
+                      options={[
+                        { value: 'personal', label: 'Personal (Send Money)' },
+                        { value: 'merchant', label: 'Merchant (Payment)' },
+                      ]}
+                    />
                   </div>
                 </div>
 
@@ -1849,15 +1841,15 @@ export default function AdminBillingPage() {
                 <label className="block text-[11px] text-muted mb-1 font-mono uppercase tracking-wider">
                   Assigned Tier / Access Role
                 </label>
-                <select
+                <Select
                   value={inviteTier}
-                  onChange={(e) => setInviteTier(e.target.value as any)}
-                  className="w-full rounded-xl border border-edge bg-well px-3.5 py-2 font-mono text-xs text-content focus:border-signal focus:outline-hidden cursor-pointer"
-                >
-                  <option value="pro">Pro Tier (Full access & elevated quotas)</option>
-                  <option value="admin">Super Admin (Unlimited ∞ on everything)</option>
-                  <option value="free">Free Tier (Standard generous limits)</option>
-                </select>
+                  onChange={(val) => setInviteTier(val as any)}
+                  options={[
+                    { value: 'pro', label: 'Pro Tier (Full access & elevated quotas)' },
+                    { value: 'admin', label: 'Super Admin (Unlimited ∞ on everything)' },
+                    { value: 'free', label: 'Free Tier (Standard generous limits)' },
+                  ]}
+                />
               </div>
 
               <div>
@@ -1939,15 +1931,15 @@ export default function AdminBillingPage() {
                   <label className="block text-[11px] text-muted mb-1 font-mono uppercase tracking-wider">
                     Overridden Tier
                   </label>
-                  <select
+                  <Select
                     value={overrideTier}
-                    onChange={(e) => setOverrideTier(e.target.value as any)}
-                    className="w-full rounded-xl border border-edge bg-well px-3.5 py-2 font-mono text-xs text-content focus:border-signal focus:outline-hidden cursor-pointer"
-                  >
-                    <option value="pro">Pro (Subscribed level)</option>
-                    <option value="admin">Super Admin (Unlimited ∞)</option>
-                    <option value="free">Free (Standard)</option>
-                  </select>
+                    onChange={(val) => setOverrideTier(val as any)}
+                    options={[
+                      { value: 'pro', label: 'Pro (Subscribed level)' },
+                      { value: 'admin', label: 'Super Admin (Unlimited ∞)' },
+                      { value: 'free', label: 'Free (Standard)' },
+                    ]}
+                  />
                 </div>
               </div>
 

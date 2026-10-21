@@ -607,6 +607,26 @@ pie title Roadmap Milestone Status
 * **Verification & Quality:**
   - TypeScript zero-error compilation across both `backend` and `frontend` (`npx tsc --noEmit` exited 0).
 
+---
+
+### Milestone 32 — Decoupled Developer Studios & Dedicated Sub-Routes 🔥
+
+* **Context & Architectural Resolution:**
+  - Identified and eliminated cognitive and UI clutter caused by squeezing all distinct developer capabilities (*Living Portfolio SSOT*, *Resume Vault*, *Target Role Pipeline*, *JD ↔ Resume Matchmaker*, *Interview Defense*) into client-side tabs on a single `/developer` page.
+  - Eliminated horizontal tab overflow/truncation (`AI AUDI...`) and context mismatch (e.g. "Add Target Role" button hovering above the Living Portfolio SSOT editor).
+* **Decoupled Dedicated Sub-Routes (`/developer/*`):**
+  - **`/developer` — Campaigns & Target Roles Command Center:** Focused cleanly on job search pipeline, proof strength composite, role cards, pre-flight audits, and 3-card studio launcher strip. Reduced bundle size from 48.2 kB to 9.71 kB.
+  - **`/developer/portfolio` — Living Portfolio (SSOT) Master Studio:** Dedicated full-canvas workspace hosting [`PortfolioHub.tsx`](file:///g:/Projects%20Dev/devscope/frontend/components/PortfolioHub.tsx) with company hierarchy, product architecture archetypes, master bullet review, and metric density calculation.
+  - **`/developer/resumes` — Resume Vault & AI Diagnostics:** Dedicated full-canvas workspace hosting [`ResumeVault.tsx`](file:///g:/Projects%20Dev/devscope/frontend/components/ResumeVault.tsx) for uploading, diagnosing ATS scores, and branching specialized resume variants.
+  - **`/developer/matchmaker` — JD ↔ Resume Matchmaker:** Dedicated benchmarking studio hosting [`JDResumeMatchmaker.tsx`](file:///g:/Projects%20Dev/devscope/frontend/components/JDResumeMatchmaker.tsx) for A/B comparing resumes against target job descriptions with deep-link query support (`?roleId=...`).
+  - **`/developer/defense` — Interview Defense Hub:** Dedicated practice studio hosting [`DefenseHub.tsx`](file:///g:/Projects%20Dev/devscope/frontend/components/DefenseHub.tsx) for technical screen probe rehearsal, rubric review, and spaced repetition.
+  - **`/developer/profile` — Profile, Quotas & Limits:** Standardized account overview with real-time capability consumption ledger.
+* **Unified Developer Studio Navigation ([`DeveloperNav.tsx`](file:///g:/Projects%20Dev/devscope/frontend/components/DeveloperNav.tsx)):**
+  - Built a persistent, responsive, top sub-navigation bar shared across all `/developer/*` pages with active state indicators, count chips, zero truncation, and instant Next.js page transitions.
+* **Build & Typecheck Verification:**
+  - Verified with `npx tsc --noEmit` (0 errors) and `next build` (all 16 routes compiled cleanly with 0 errors).
+
+
 
 
 

@@ -104,21 +104,23 @@ export async function getSessionUser(): Promise<AuthUser | null> {
   // 1. Check if Supabase client has an active authenticated user in browser session
   if (sb) {
     try {
-      const { data } = await sb.auth.getUser();
-      if (data?.user) {
-        const parsed = extractHandle(data.user);
-        const derivedHandle = parsed.handle || (data.user.email ? data.user.email.split('@')[0] : null);
+      // Check cached session first for instant (0ms) resolution
+      const { data: sessionData } = await sb.auth.getSession();
+      const activeUser = sessionData?.session?.user;
+      if (activeUser) {
+        const parsed = extractHandle(activeUser);
+        const derivedHandle = parsed.handle || (activeUser.email ? activeUser.email.split('@')[0] : null);
         const storedRole = typeof window !== 'undefined' ? (localStorage.getItem('gitgrill_user_role') as UserRole | null) : null;
         clientUser = {
-          id: data.user.id,
-          email: data.user.email ?? null,
+          id: activeUser.id,
+          email: activeUser.email ?? null,
           handle: derivedHandle,
           name: parsed.name || derivedHandle,
           role: parsed.role || storedRole || 'developer',
         };
       }
     } catch {
-      // Supabase getUser failed
+      // Supabase getSession failed
     }
   }
 
@@ -134,10 +136,10 @@ export async function getSessionUser(): Promise<AuthUser | null> {
     }
   }
 
-  // 3. Attempt backend profile enrichment (with timeout so sleeping backend never freezes auth)
+  // 3. Attempt backend profile enrichment (with fast timeout so cold backend never freezes session resolution)
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 2500);
+    const timeoutId = setTimeout(() => controller.abort(), 1200);
     const res = await fetch(`${API_URL}/api/auth/me`, {
       headers: { Authorization: `Bearer ${token}` },
       signal: controller.signal,

@@ -100,6 +100,100 @@ router.get('/', requireAuth, async (req: Request, res: Response) => {
   }
 });
 
+function normalizeDateToISO(val: string | null | undefined): string | null {
+  if (!val || typeof val !== 'string' || !val.trim()) return null;
+  const s = val.trim();
+
+  // If already YYYY-MM-DD
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+
+  // If YYYY-MM
+  if (/^\d{4}-\d{2}$/.test(s)) return `${s}-01`;
+
+  // If MM/YYYY or M/YYYY
+  const mmyyyy = s.match(/^(\d{1,2})\/(\d{4})$/);
+  if (mmyyyy) {
+    const month = mmyyyy[1].padStart(2, '0');
+    return `${mmyyyy[2]}-${month}-01`;
+  }
+
+  // If Month Year (e.g. "Jun 2026", "June 2026", "Jan 2022")
+  const monthMap: Record<string, string> = {
+    jan: '01', january: '01',
+    feb: '02', february: '02',
+    mar: '03', march: '03',
+    apr: '04', april: '04',
+    may: '05',
+    jun: '06', june: '06',
+    jul: '07', july: '07',
+    aug: '08', august: '08',
+    sep: '09', sept: '09', september: '09',
+    oct: '10', october: '10',
+    nov: '11', november: '11',
+    dec: '12', december: '12',
+  };
+
+  const nameMatch = s.match(/^([a-zA-Z]+)[,\s]+(\d{4})$/);
+  if (nameMatch) {
+    const mStr = nameMatch[1].toLowerCase();
+    const year = nameMatch[2];
+    const mNum = monthMap[mStr];
+    if (mNum) return `${year}-${mNum}-01`;
+  }
+
+  // If Year only: "2026"
+  if (/^\d{4}$/.test(s)) return `${s}-01-01`;
+
+  // Fallback: try JS Date
+  const parsed = new Date(s);
+  if (!isNaN(parsed.getTime())) {
+    const y = parsed.getFullYear();
+    const m = String(parsed.getMonth() + 1).padStart(2, '0');
+    const d = String(parsed.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+
+  return null;
+}
+
+async function ensureUserRow(admin: any, auth: { userId: string; email?: string | null; handle?: string | null }): Promise<void> {
+  try {
+    const { data } = await admin
+      .from('users')
+      .select('id')
+      .eq('id', auth.userId)
+      .maybeSingle();
+
+    if (!data) {
+      await admin.from('users').upsert({
+        id: auth.userId,
+        email: auth.email || null,
+        github_handle: auth.handle || null,
+        role: 'developer',
+      }, { onConflict: 'id' });
+    }
+  } catch (err) {
+    console.warn('[portfolio] ensureUserRow warning:', err);
+  }
+}
+
+function formatPortfolioError(err: any, fallbackMessage: string): string {
+  const msg = err?.message || '';
+  if (msg.includes('portfolio_companies_user_id_fkey') || msg.includes('violates foreign key constraint') || msg.includes('users_id_fkey') || msg.includes('user_id')) {
+    return 'User profile could not be synchronized. Please try saving again.';
+  }
+  if (msg.includes('invalid input syntax for type date')) {
+    return 'Invalid date format. Accepted formats: Jun 2026, 2026-06, or Jan 2022.';
+  }
+  if (msg.includes('unique constraint') || msg.includes('duplicate key')) {
+    return 'An entry with this name already exists.';
+  }
+  if (msg.includes('relation ') || msg.includes('syntax error') || msg.includes('violates')) {
+    return fallbackMessage;
+  }
+  return msg || fallbackMessage;
+}
+
 // ---------------------------------------------------------------------------
 // 2. Company CRUD
 // ---------------------------------------------------------------------------
@@ -107,7 +201,7 @@ router.post('/companies', requireAuth, async (req: Request, res: Response) => {
   if (!isDbConfigured()) return serviceUnavailable(res);
   const admin = getAdmin()!;
   const userId = req.auth!.userId;
-  const { id, name, location, website_url, start_date, end_date, is_current, display_order } = req.body || {};
+  const { id, name, location, website_url, domain, start_date, end_date, is_current, display_order } = req.body || {};
 
   if (!name || !name.trim()) {
     res.status(400).json({ error: 'Company name is required.' });
@@ -115,13 +209,18 @@ router.post('/companies', requireAuth, async (req: Request, res: Response) => {
   }
 
   try {
+    await ensureUserRow(admin, req.auth!);
+
+    const normalizedStart = normalizeDateToISO(start_date) || new Date().toISOString().slice(0, 10);
+    const normalizedEnd = is_current ? null : normalizeDateToISO(end_date);
+
     const payload: any = {
       user_id: userId,
       name: name.trim(),
       location: location?.trim() || null,
-      website_url: website_url?.trim() || null,
-      start_date: start_date || new Date().toISOString().slice(0, 10),
-      end_date: is_current ? null : (end_date || null),
+      website_url: (website_url || domain)?.trim() || null,
+      start_date: normalizedStart,
+      end_date: normalizedEnd,
       is_current: Boolean(is_current),
       display_order: typeof display_order === 'number' ? display_order : 0,
       updated_at: new Date().toISOString(),
@@ -137,7 +236,8 @@ router.post('/companies', requireAuth, async (req: Request, res: Response) => {
     if (error) throw new Error(error.message);
     res.json({ ok: true, company: data });
   } catch (err: any) {
-    res.status(500).json({ error: err?.message || 'Failed to save company.' });
+    console.error('[Portfolio] Company save error:', err);
+    res.status(500).json({ error: formatPortfolioError(err, 'Failed to save company.') });
   }
 });
 
@@ -176,6 +276,8 @@ router.post('/products', requireAuth, async (req: Request, res: Response) => {
   }
 
   try {
+    await ensureUserRow(admin, req.auth!);
+
     const payload: any = {
       user_id: userId,
       company_id,
@@ -199,7 +301,8 @@ router.post('/products', requireAuth, async (req: Request, res: Response) => {
     if (error) throw new Error(error.message);
     res.json({ ok: true, product: data });
   } catch (err: any) {
-    res.status(500).json({ error: err?.message || 'Failed to save product.' });
+    console.error('[Portfolio] Product save error:', err);
+    res.status(500).json({ error: formatPortfolioError(err, 'Failed to save product.') });
   }
 });
 
@@ -238,6 +341,8 @@ router.post('/projects', requireAuth, async (req: Request, res: Response) => {
   }
 
   try {
+    await ensureUserRow(admin, req.auth!);
+
     const payload: any = {
       user_id: userId,
       name: name.trim(),
@@ -261,7 +366,8 @@ router.post('/projects', requireAuth, async (req: Request, res: Response) => {
     if (error) throw new Error(error.message);
     res.json({ ok: true, project: data });
   } catch (err: any) {
-    res.status(500).json({ error: err?.message || 'Failed to save project.' });
+    console.error('[Portfolio] Project save error:', err);
+    res.status(500).json({ error: formatPortfolioError(err, 'Failed to save project.') });
   }
 });
 
@@ -300,6 +406,8 @@ router.post('/bullets', requireAuth, async (req: Request, res: Response) => {
   }
 
   try {
+    await ensureUserRow(admin, req.auth!);
+
     const payload: any = {
       user_id: userId,
       product_id: product_id || null,
@@ -325,7 +433,8 @@ router.post('/bullets', requireAuth, async (req: Request, res: Response) => {
     if (error) throw new Error(error.message);
     res.json({ ok: true, bullet: data });
   } catch (err: any) {
-    res.status(500).json({ error: err?.message || 'Failed to save bullet.' });
+    console.error('[Portfolio] Bullet save error:', err);
+    res.status(500).json({ error: formatPortfolioError(err, 'Failed to save bullet.') });
   }
 });
 
@@ -369,6 +478,8 @@ router.post('/import-resume', requireAuth, async (req: Request, res: Response) =
   let importedBullets = 0;
 
   try {
+    await ensureUserRow(admin, req.auth!);
+
     // 1. Import Experience -> Company + Product + Bullets
     if (Array.isArray(experience)) {
       for (let i = 0; i < experience.length; i++) {
@@ -479,7 +590,8 @@ router.post('/import-resume', requireAuth, async (req: Request, res: Response) =
       },
     });
   } catch (err: any) {
-    res.status(500).json({ error: err?.message || 'Failed to import resume into portfolio.' });
+    console.error('[Portfolio] Import resume error:', err);
+    res.status(500).json({ error: formatPortfolioError(err, 'Failed to import resume into portfolio.') });
   }
 });
 

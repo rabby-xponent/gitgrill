@@ -3,27 +3,22 @@
 import React, { useState, useEffect, useMemo, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { ThemeToggle } from '@/lib/theme';
-import { getDeveloperProfile } from '@/lib/workspace-profiles';
+import { getDeveloperProfile, DeveloperWorkspaceProfile } from '@/lib/workspace-profiles';
 import { ProofPagesCard } from '@/components/ProofPagesCard';
-import { AccountMenu } from '@/components/AccountMenu';
-import { QuotaMeter } from '@/components/QuotaMeter';
 import { CheckoutNotice } from '@/components/CheckoutNotice';
 import { useCapabilityLock } from '@/components/FeatureLock';
 import { useEntitlements } from '@/hooks/useEntitlements';
 import { useSession } from '@/components/SessionProvider';
 import { isAdmin } from '@/lib/admin';
 import { Icon } from '@/components/icons';
-import { GitGrillLogo } from '@/components/GitGrillLogo';
 import { Select, SearchInput, ConfirmModal, AlertModal } from '@/components/ui';
 import type { SelectOption } from '@/components/ui';
 import NewTargetRoleModal from '@/components/NewTargetRoleModal';
 import DefenseHub from '@/components/DefenseHub';
-import { ResumeVault } from '@/components/ResumeVault';
 import { ResumeTailorModal } from '@/components/ResumeTailorModal';
-import { JDResumeMatchmaker } from '@/components/JDResumeMatchmaker';
 import { CareerQuotaHUD } from '@/components/CareerQuotaHUD';
-import { PortfolioHub } from '@/components/PortfolioHub';
+import { getPortfolioSSOTLocal, countTotalMasterBullets } from '@/lib/portfolio';
+import { getResumes } from '@/lib/resumes';
 import {
   TargetRole,
   ApplicationStatus,
@@ -51,24 +46,54 @@ function DeveloperCareerContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  const [devProfile, setDevProfile] = useState<ReturnType<typeof getDeveloperProfile> | null>(null);
-  const [roles, setRoles] = useState<TargetRole[]>([]);
-  const [activeRoleId, setActiveRoleId] = useState('');
+  const [devProfile, setDevProfile] = useState<DeveloperWorkspaceProfile>(getDeveloperProfile);
+  const [roles, setRoles] = useState<TargetRole[]>(() => {
+    try {
+      return getTargetRoles();
+    } catch {
+      return [];
+    }
+  });
+  const [activeRoleId, setActiveRoleId] = useState<string>(() => {
+    try {
+      return getActiveTargetRoleId();
+    } catch {
+      return '';
+    }
+  });
   const [showNewRoleModal, setShowNewRoleModal] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
-  const [defenseCards, setDefenseCards] = useState<DefenseCard[]>([]);
-  const [activeTab, setActiveTab] = useState<'roles' | 'portfolio' | 'resumes' | 'matchmaker'>('roles');
+  const [defenseCards, setDefenseCards] = useState<DefenseCard[]>(() => {
+    try {
+      return syncDefenseCards(getTargetRoles());
+    } catch {
+      return [];
+    }
+  });
   const [selectedTailorRole, setSelectedTailorRole] = useState<TargetRole | null>(null);
   const [roleToRemove, setRoleToRemove] = useState<{ id: string; title: string } | null>(null);
+  const [resumeCount, setResumeCount] = useState<number>(() => {
+    try {
+      return getResumes().length;
+    } catch {
+      return 0;
+    }
+  });
+  const [bulletCount, setBulletCount] = useState<number>(() => {
+    try {
+      return countTotalMasterBullets(getPortfolioSSOTLocal());
+    } catch {
+      return 0;
+    }
+  });
   const [alertModal, setAlertModal] = useState<{ isOpen: boolean; title: string; description: string; variant?: 'error' | 'info' | 'warning' }>({
     isOpen: false,
     title: '',
     description: '',
   });
 
-  // Entitlements (M25A): the meter and every lock chip below read verdicts from
-  // the backend tier registry — the browser never decides a limit itself.
+  // Entitlements
   const { entitlements } = useEntitlements();
   const { user } = useSession();
   const isSuperAdmin = isAdmin(user);
@@ -78,6 +103,19 @@ function DeveloperCareerContent() {
     const list = getTargetRoles();
     setRoles(list);
     setDefenseCards(syncDefenseCards(list));
+
+    try {
+      setResumeCount(getResumes().length);
+    } catch {
+      setResumeCount(0);
+    }
+
+    try {
+      const ssot = getPortfolioSSOTLocal();
+      setBulletCount(countTotalMasterBullets(ssot));
+    } catch {
+      setBulletCount(0);
+    }
 
     const queryRole = searchParams.get('roleId');
     if (queryRole && list.some((r) => r.id === queryRole)) {
@@ -149,8 +187,6 @@ function DeveloperCareerContent() {
     router.push(`/profile/${encodeURIComponent(handle)}?${params.toString()}`);
   };
 
-  // `target_role.create` (1 on Free, unlimited on Pro). Existing roles stay
-  // fully usable when locked — only adding a new one is gated (§6).
   const roleLock = useCapabilityLock(entitlements, 'target_role.create', roles.length);
   const atRoleLimit = roleLock.locked;
 
@@ -161,65 +197,14 @@ function DeveloperCareerContent() {
     }
     setShowNewRoleModal(true);
   };
-
-  if (!devProfile) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-canvas font-mono text-sm text-muted">
-        Loading CareerOS Workspace…
-      </div>
-    );
-  }
-
   const strengthLabel =
     proof.score >= 80 ? 'Strong' : proof.score >= 60 ? 'Competitive' : proof.score > 0 ? 'Building' : 'Not assessed';
 
   return (
-    <main className="page-texture min-h-screen bg-canvas text-content pb-24 transition-colors">
-      {/* Top Navigation */}
-      <nav className="sticky top-0 z-30 border-b border-edge bg-card/90 backdrop-blur-md px-4 sm:px-6 py-3 sm:py-3.5 transition-colors">
-        <div className="mx-auto flex max-w-7xl items-center justify-between">
-          <div className="flex items-center gap-2 sm:gap-4 min-w-0">
-            <Link href="/" className="shrink-0 flex items-center">
-              <GitGrillLogo size="sm" />
-            </Link>
-            <span className="text-edge">/</span>
-            <div className="flex items-center gap-2 min-w-0">
-              <span className="shrink-0 rounded border border-signal/30 bg-signal/10 px-2 py-0.5 font-mono text-[10px] font-bold uppercase text-signal">
-                CareerOS
-              </span>
-              <span className="hidden sm:inline font-mono text-xs text-muted truncate">
-                Engineering Job Search Command Center
-              </span>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
-            {isSuperAdmin && (
-              <Link
-                href="/recruiter"
-                className="hidden sm:inline-flex items-center gap-1.5 rounded-lg border border-[#ea580c]/30 bg-[#ea580c]/10 px-2.5 sm:px-3 py-1.5 font-mono text-xs font-semibold text-[#ea580c] hover:bg-[#ea580c]/20 transition-colors shadow-2xs"
-                title="Super Admin: Access RecruiterOS Command Center"
-              >
-                <Icon.Briefcase className="h-3.5 w-3.5" />
-                <span>RecruiterOS</span>
-              </Link>
-            )}
-            <QuotaMeter />
-            <AccountMenu workspace="developer" />
-            <ThemeToggle />
-            <Link
-              href="/"
-              className="rounded-lg border border-edge bg-card px-2.5 sm:px-3 py-1.5 font-mono text-xs text-muted shadow-xs transition-colors hover:border-signal/50 hover:text-signal"
-            >
-              <span className="hidden xs:inline">← Public Home</span>
-              <span className="xs:hidden">← Home</span>
-            </Link>
-          </div>
-        </div>
-      </nav>
-
+    <div className="pb-24">
       <div className="mx-auto max-w-7xl space-y-8 px-4 pt-6 sm:pt-8 sm:px-6">
         <CheckoutNotice />
+
         {/* Welcome + Identity Card */}
         <div className="relative flex flex-col justify-between gap-5 overflow-hidden rounded-2xl border border-edge bg-card p-5 sm:p-7 shadow-card md:flex-row md:items-center">
           <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-signal/50 to-transparent" />
@@ -232,7 +217,7 @@ function DeveloperCareerContent() {
               <span className="font-mono text-xs text-muted">Job search campaign</span>
             </div>
             <h1 className="font-sans text-2xl font-bold tracking-tight text-content sm:text-3xl">
-              Developer Career OS
+              Target Roles & Campaigns
             </h1>
             <p className="max-w-2xl font-sans text-xs leading-relaxed text-muted">
               Track every role you&apos;re chasing, audit yourself against each JD before you apply,
@@ -274,95 +259,89 @@ function DeveloperCareerContent() {
         {/* Developer CareerOS Quota & Consumption HUD */}
         <CareerQuotaHUD username={devProfile.githubUsername} />
 
-        {/* Workspace Mode Switcher Tabs */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-edge pb-3">
-          <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1 max-w-full">
-            <button
-              onClick={() => setActiveTab('roles')}
-              className={`flex items-center gap-2 rounded-xl px-3.5 sm:px-4 py-2 font-mono text-xs font-bold transition-all shrink-0 whitespace-nowrap cursor-pointer ${
-                activeTab === 'roles'
-                  ? 'border border-signal/40 bg-signal/10 text-signal shadow-xs'
-                  : 'border border-transparent text-muted hover:border-edge hover:bg-card hover:text-content'
-              }`}
-            >
-              <Icon.Target className="h-4 w-4" />
-              <span>Target Roles & Campaigns</span>
-              <span className="ml-1 rounded-full bg-signal/20 px-2 py-0.5 font-mono text-[10px]">
-                {roles.length}
+        {/* Dedicated Studio Launcher Strip */}
+        <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-3">
+          <Link
+            href="/developer/portfolio"
+            className="group relative overflow-hidden rounded-2xl border border-edge bg-card p-4 transition-all hover:border-signal/50 hover:shadow-card"
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <span className="flex h-8 w-8 items-center justify-center rounded-xl border border-signal/30 bg-signal/10 text-signal">
+                  <Icon.Layers className="h-4 w-4" />
+                </span>
+                <span className="font-mono text-xs font-bold text-content group-hover:text-signal transition-colors">
+                  Living Portfolio SSOT
+                </span>
+              </div>
+              <span className="rounded-full bg-signal/15 px-2 py-0.5 font-mono text-[10px] text-signal font-semibold">
+                {bulletCount} bullets
               </span>
-            </button>
+            </div>
+            <p className="mt-2.5 font-sans text-[11px] leading-relaxed text-muted">
+              Master company hierarchy, sub-systems owned, and verified evidence bullets.
+            </p>
+            <div className="mt-3 flex items-center gap-1 font-mono text-[11px] font-semibold text-signal">
+              <span>Open Studio</span>
+              <Icon.ArrowRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" />
+            </div>
+          </Link>
 
-            <button
-              onClick={() => setActiveTab('portfolio')}
-              className={`flex items-center gap-2 rounded-xl px-3.5 sm:px-4 py-2 font-mono text-xs font-bold transition-all shrink-0 whitespace-nowrap cursor-pointer ${
-                activeTab === 'portfolio'
-                  ? 'border border-signal/40 bg-signal/10 text-signal shadow-xs'
-                  : 'border border-transparent text-muted hover:border-edge hover:bg-card hover:text-content'
-              }`}
-            >
-              <Icon.Layers className="h-4 w-4" />
-              <span>Living Portfolio (SSOT)</span>
-              <span className="ml-1 rounded-full bg-signal/20 px-2 py-0.5 font-mono text-[10px] text-signal uppercase tracking-wider font-bold">
-                Master
+          <Link
+            href="/developer/resumes"
+            className="group relative overflow-hidden rounded-2xl border border-edge bg-card p-4 transition-all hover:border-signal/50 hover:shadow-card"
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <span className="flex h-8 w-8 items-center justify-center rounded-xl border border-signal/30 bg-signal/10 text-signal">
+                  <Icon.FileText className="h-4 w-4" />
+                </span>
+                <span className="font-mono text-xs font-bold text-content group-hover:text-signal transition-colors">
+                  Resume Vault & Diagnostics
+                </span>
+              </div>
+              <span className="rounded-full bg-signal/15 px-2 py-0.5 font-mono text-[10px] text-signal font-semibold">
+                {resumeCount} files
               </span>
-            </button>
+            </div>
+            <p className="mt-2.5 font-sans text-[11px] leading-relaxed text-muted">
+              Upload resumes, audit ATS scores, and branch role-specialized variants.
+            </p>
+            <div className="mt-3 flex items-center gap-1 font-mono text-[11px] font-semibold text-signal">
+              <span>Open Studio</span>
+              <Icon.ArrowRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" />
+            </div>
+          </Link>
 
-            <button
-              onClick={() => setActiveTab('resumes')}
-              className={`flex items-center gap-2 rounded-xl px-3.5 sm:px-4 py-2 font-mono text-xs font-bold transition-all shrink-0 whitespace-nowrap cursor-pointer ${
-                activeTab === 'resumes'
-                  ? 'border border-signal/40 bg-signal/10 text-signal shadow-xs'
-                  : 'border border-transparent text-muted hover:border-edge hover:bg-card hover:text-content'
-              }`}
-            >
-              <Icon.FileText className="h-4 w-4" />
-              <span>Resume Vault & Diagnostics</span>
-              <span className="ml-1 rounded-full bg-signal/20 px-2 py-0.5 font-mono text-[10px] text-signal uppercase tracking-wider">
-                AI Audit
+          <Link
+            href="/developer/matchmaker"
+            className="group relative overflow-hidden rounded-2xl border border-edge bg-card p-4 transition-all hover:border-signal/50 hover:shadow-card"
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <span className="flex h-8 w-8 items-center justify-center rounded-xl border border-signal/30 bg-signal/10 text-signal">
+                  <Icon.Sparkle className="h-4 w-4" />
+                </span>
+                <span className="font-mono text-xs font-bold text-content group-hover:text-signal transition-colors">
+                  JD ↔ Resume Matchmaker
+                </span>
+              </div>
+              <span className="rounded-full bg-signal/15 px-2 py-0.5 font-mono text-[10px] text-signal font-semibold">
+                Compare
               </span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab('matchmaker')}
-              className={`flex items-center gap-2 rounded-xl px-3.5 sm:px-4 py-2 font-mono text-xs font-bold transition-all shrink-0 whitespace-nowrap cursor-pointer ${
-                activeTab === 'matchmaker'
-                  ? 'border border-signal/40 bg-signal/10 text-signal shadow-xs'
-                  : 'border border-transparent text-muted hover:border-edge hover:bg-card hover:text-content'
-              }`}
-            >
-              <Icon.Sparkle className="h-4 w-4" />
-              <span>JD ↔ Resume Matchmaker</span>
-              <span className="ml-1 rounded-full bg-signal/20 px-2 py-0.5 font-mono text-[10px] text-signal uppercase tracking-wider font-bold">
-                Combined
-              </span>
-            </button>
-          </div>
-
-          <div className="hidden lg:flex items-center gap-2 font-mono text-[11px] text-muted shrink-0">
-            <Icon.Sparkle className="h-3.5 w-3.5 text-signal" />
-            <span>Positioning & Evidence for Private & NDA Developers</span>
-          </div>
+            </div>
+            <p className="mt-2.5 font-sans text-[11px] leading-relaxed text-muted">
+              Benchmark resumes against target JDs, uncover blind spots, and auto-tailor bullets.
+            </p>
+            <div className="mt-3 flex items-center gap-1 font-mono text-[11px] font-semibold text-signal">
+              <span>Open Studio</span>
+              <Icon.ArrowRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" />
+            </div>
+          </Link>
         </div>
 
-        {activeTab === 'portfolio' ? (
-          <PortfolioHub />
-        ) : activeTab === 'resumes' ? (
-          <ResumeVault />
-        ) : activeTab === 'matchmaker' ? (
-          <JDResumeMatchmaker
-            initialRoleId={activeRoleId}
-            onNavigateToRole={(rId) => {
-              setActiveRoleId(rId);
-              setActiveTab('roles');
-            }}
-            onNavigateToResume={() => {
-              setActiveTab('resumes');
-            }}
-          />
-        ) : (
-          <>
-            {/* Proof Strength + Quick Stats */}
-            <div className="grid grid-cols-1 gap-3.5 lg:grid-cols-4">
+        {/* Proof Strength + Quick Stats */}
+        <div className="grid grid-cols-1 gap-3.5 lg:grid-cols-4">
           <div className="rounded-2xl border border-edge bg-card p-5 shadow-card lg:col-span-2">
             <div className="flex items-center justify-between">
               <span className="font-mono text-[10px] uppercase tracking-wider text-signal font-bold">
@@ -540,7 +519,7 @@ function DeveloperCareerContent() {
                           onClick={(e) => {
                             e.stopPropagation();
                             handleSelectRole(role.id);
-                            setActiveTab('matchmaker');
+                            router.push(`/developer/matchmaker?roleId=${encodeURIComponent(role.id)}`);
                           }}
                           className="flex items-center gap-1 rounded-lg border border-signal/35 bg-signal/10 px-2.5 py-1 font-mono text-[11px] font-semibold text-signal transition-colors hover:bg-signal/20 cursor-pointer"
                           title="Match and rank your resumes against this JD"
@@ -635,8 +614,25 @@ function DeveloperCareerContent() {
           </div>
         </div>
 
-        {/* Interview Defense Hub (practice deck) */}
-        <DefenseHub cards={defenseCards} />
+        {/* Interview Defense Hub (practice deck preview) */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <h2 className="font-mono text-lg font-bold text-content">Interview Defense Practice</h2>
+              <p className="font-sans text-xs text-muted">
+                Practice answering probe questions on unverified claims before the technical screen.
+              </p>
+            </div>
+            <Link
+              href="/developer/defense"
+              className="flex items-center gap-1 rounded-xl border border-signal/40 bg-signal/10 px-3 py-1.5 font-mono text-xs font-semibold text-signal hover:bg-signal/20 transition-colors shadow-2xs"
+            >
+              <span>Full Practice Mode</span>
+              <Icon.ArrowRight className="h-3 w-3" />
+            </Link>
+          </div>
+          <DefenseHub cards={defenseCards} />
+        </div>
 
         {/* Evidence-Building Tasks */}
         {tasks.length > 0 && (
@@ -659,8 +655,6 @@ function DeveloperCareerContent() {
               ))}
             </ol>
           </div>
-        )}
-          </>
         )}
       </div>
 
@@ -722,19 +716,30 @@ function DeveloperCareerContent() {
           variant={alertModal.variant}
         />
       )}
-    </main>
+    </div>
+  );
+}
+
+function CareerOSWorkspaceSkeleton() {
+  return (
+    <div className="pb-24 animate-pulse">
+      <div className="mx-auto max-w-7xl space-y-8 px-4 pt-6 sm:pt-8 sm:px-6">
+        <div className="h-32 rounded-2xl border border-edge bg-card/60 p-6" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="h-24 rounded-xl border border-edge bg-card/40" />
+          <div className="h-24 rounded-xl border border-edge bg-card/40" />
+          <div className="h-24 rounded-xl border border-edge bg-card/40" />
+          <div className="h-24 rounded-xl border border-edge bg-card/40" />
+        </div>
+        <div className="h-64 rounded-2xl border border-edge bg-card/40" />
+      </div>
+    </div>
   );
 }
 
 export default function DeveloperCareerPage() {
   return (
-    <Suspense
-      fallback={
-        <div className="flex min-h-screen items-center justify-center bg-canvas font-mono text-sm text-muted">
-          Loading CareerOS Workspace…
-        </div>
-      }
-    >
+    <Suspense fallback={<CareerOSWorkspaceSkeleton />}>
       <DeveloperCareerContent />
     </Suspense>
   );

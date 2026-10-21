@@ -97,6 +97,31 @@ export const Icon = {
       <path d="m9 18 6-6-6-6" />
     </svg>
   ),
+  ChevronLeft: (p: IconProps) => (
+    <svg {...base(p)}>
+      <path d="m15 18-6-6 6-6" />
+    </svg>
+  ),
+  PanelLeftClose: (p: IconProps) => (
+    <svg {...base(p)}>
+      <rect width="18" height="18" x="3" y="3" rx="2" />
+      <path d="M9 3v18" />
+      <path d="m16 15-3-3 3-3" />
+    </svg>
+  ),
+  PanelLeftOpen: (p: IconProps) => (
+    <svg {...base(p)}>
+      <rect width="18" height="18" x="3" y="3" rx="2" />
+      <path d="M9 3v18" />
+      <path d="m14 9 3 3-3 3" />
+    </svg>
+  ),
+  Sidebar: (p: IconProps) => (
+    <svg {...base(p)}>
+      <rect width="18" height="18" x="3" y="3" rx="2" />
+      <path d="M9 3v18" />
+    </svg>
+  ),
   ArrowUpRight: (p: IconProps) => (
     <svg {...base(p)}>
       <path d="M7 17 17 7M7 7h10v10" />
@@ -361,6 +386,26 @@ export const Icon = {
   ExternalLink: (p: IconProps) => (
     <svg {...base(p)}>
       <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14 21 3" />
+    </svg>
+  ),
+  CreditCard: (p: IconProps) => (
+    <svg {...base(p)}>
+      <rect width="20" height="14" x="2" y="5" rx="2" />
+      <line x1="2" x2="22" y1="10" y2="10" />
+    </svg>
+  ),
+  BarChart: (p: IconProps) => (
+    <svg {...base(p)}>
+      <line x1="12" x2="12" y1="20" y2="10" />
+      <line x1="18" x2="18" y1="20" y2="4" />
+      <line x1="6" x2="6" y1="20" y2="16" />
+    </svg>
+  ),
+  AlertTriangle: (p: IconProps) => (
+    <svg {...base(p)}>
+      <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" />
+      <line x1="12" x2="12" y1="9" y2="13" />
+      <line x1="12" x2="12.01" y1="17" y2="17" />
     </svg>
   ),
 };
