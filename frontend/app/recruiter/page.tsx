@@ -304,24 +304,24 @@ Live Evidence Dossier: ${window.location.origin}/profile/${cand.username}?jobId=
               title="Edit recruiter workspace settings & guardrails"
             >
               <div className="h-6 w-6 sm:h-7 sm:w-7 rounded-full border border-signal/30 bg-signal/10 flex items-center justify-center overflow-hidden shrink-0">
-                {account.avatarUrl ? (
+                {sessionUser && account.avatarUrl ? (
                   <img src={account.avatarUrl} alt={account.name} className="h-full w-full object-cover" />
                 ) : (
                   <span className="font-mono text-[10px] sm:text-xs font-bold text-signal">
-                    {account.name.slice(0, 2).toUpperCase()}
+                    {sessionUser ? (sessionUser.name || sessionUser.email || 'RC').slice(0, 2).toUpperCase() : 'DEMO'}
                   </span>
                 )}
               </div>
               <div className="hidden xl:block">
                 <div className="font-mono text-xs font-bold text-content leading-tight truncate max-w-[120px]">
-                  {account.name}
+                  {sessionUser ? (sessionUser.name || sessionUser.email?.split('@')[0]) : 'Recruiter Demo'}
                 </div>
                 <div className="font-mono text-[10px] text-muted truncate max-w-[120px]">
-                  {account.company}
+                  {sessionUser ? (account.company || 'My Workspace') : 'Sample Pipeline'}
                 </div>
               </div>
               <span className="hidden sm:inline-block rounded border border-signal/25 bg-signal/10 px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase text-signal whitespace-nowrap">
-                {isAdmin(sessionUser) ? 'Admin' : account.planTier}
+                {isAdmin(sessionUser) ? 'Admin' : sessionUser ? account.planTier : 'Preview'}
               </span>
             </button>
 
@@ -358,14 +358,29 @@ Live Evidence Dossier: ${window.location.origin}/profile/${cand.username}?jobId=
           <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-signal/50 to-transparent" />
           <div className="space-y-1.5">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-signal/30 bg-signal/10 px-2.5 py-0.5 font-mono text-[10px] uppercase tracking-wider font-bold text-signal">
-                <span className="h-1.5 w-1.5 rounded-full bg-signal" />
-                Welcome back, {account.name} {isAdmin(sessionUser) ? '(Super Admin)' : ''}
-              </span>
-              <span className="h-1 w-1 rounded-full bg-muted/50" />
-              <span className="font-mono text-xs text-muted">
-                {isAdmin(sessionUser) ? 'Full Unlimited Platform & Talent Pool Access' : account.department}
-              </span>
+              {sessionUser ? (
+                <>
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-signal/30 bg-signal/10 px-2.5 py-0.5 font-mono text-[10px] uppercase tracking-wider font-bold text-signal">
+                    <span className="h-1.5 w-1.5 rounded-full bg-signal" />
+                    Welcome back, {sessionUser.name || sessionUser.email?.split('@')[0]} {isAdmin(sessionUser) ? '(Super Admin)' : ''}
+                  </span>
+                  <span className="h-1 w-1 rounded-full bg-muted/50" />
+                  <span className="font-mono text-xs text-muted">
+                    {isAdmin(sessionUser) ? 'Full Unlimited Platform & Talent Pool Access' : account.department}
+                  </span>
+                </>
+              ) : (
+                <>
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-signal/30 bg-signal/10 px-2.5 py-0.5 font-mono text-[10px] uppercase tracking-wider font-bold text-signal">
+                    <span className="h-1.5 w-1.5 rounded-full bg-signal" />
+                    Recruiter Demo Sandbox
+                  </span>
+                  <span className="h-1 w-1 rounded-full bg-muted/50" />
+                  <span className="font-mono text-xs text-muted">
+                    Explore candidate code audits & hiring pipeline workflows
+                  </span>
+                </>
+              )}
             </div>
             <h1 className="font-sans text-2xl font-bold tracking-tight text-content sm:text-3xl">
               Recruiter Talent Operating System
@@ -393,6 +408,34 @@ Live Evidence Dossier: ${window.location.origin}/profile/${cand.username}?jobId=
             </button>
           </div>
         </div>
+
+        {/* Recruiter Guest Banner if not signed in */}
+        {!sessionUser && (
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 rounded-2xl border border-edge bg-card/80 p-3.5 sm:px-5 sm:py-3 shadow-xs">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-signal/30 bg-signal/10 text-signal">
+                <Icon.Briefcase className="h-4 w-4" />
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="font-mono text-xs font-bold text-content">Recruiter Preview Mode</span>
+                  <span className="rounded bg-well px-1.5 py-0.5 font-mono text-[9px] text-muted uppercase">Sample Data</span>
+                </div>
+                <p className="font-sans text-[11px] text-muted truncate">
+                  You are evaluating RecruiterOS with sample pipeline data. Sign in with your work email to create private requisitions.
+                </p>
+              </div>
+            </div>
+
+            <Link
+              href="/auth/signin"
+              className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-signal px-3.5 py-1.5 font-mono text-xs font-bold text-white shadow-xs transition-colors hover:bg-signal/90 shrink-0 cursor-pointer"
+            >
+              <Icon.User className="h-3.5 w-3.5" />
+              <span>Sign In to Save Requisitions</span>
+            </Link>
+          </div>
+        )}
 
         {/* Open Job Projects Selector Strip */}
         <div className="space-y-3">

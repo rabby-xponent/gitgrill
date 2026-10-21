@@ -34,47 +34,76 @@ router.post('/import', requireAuth, async (req: Request, res: Response) => {
     : [];
 
   try {
-    // Target roles: id comes from the payload (client-generated); insert with
-    // an explicit id and fall back to server-side dedupe by data->>'id'.
+    // Target roles: upsert by id to handle both fresh roles and updated audit history/status
     const payloadIds = roles.map((r) => String(r.id)).filter(Boolean);
     let insertedRoles = 0;
     if (payloadIds.length > 0) {
-      const { data: existing } = await admin
-        .from('target_roles')
-        .select('id')
-        .eq('user_id', userId);
-      const have = new Set((existing ?? []).map((row: any) => String(row.id)));
-      const fresh = roles.filter((r) => !have.has(String(r.id)));
-      if (fresh.length > 0) {
-        const { error } = await admin.from('target_roles').insert(
-          fresh.map((r) => ({ user_id: userId, id: String(r.id), data: r }))
-        );
-        if (error) throw new Error(`target_roles import: ${error.message}`);
-        insertedRoles = fresh.length;
-      }
+      const { error } = await admin.from('target_roles').upsert(
+        roles.map((r) => ({
+          user_id: userId,
+          id: String(r.id),
+          data: r,
+          updated_at: new Date().toISOString(),
+        }))
+      );
+      if (error) throw new Error(`target_roles import: ${error.message}`);
+      insertedRoles = roles.length;
     }
 
     let insertedCards = 0;
     if (cards.length > 0) {
-      const { data: existing } = await admin
-        .from('defense_cards')
-        .select('id')
-        .eq('user_id', userId);
-      const have = new Set((existing ?? []).map((row: any) => String(row.id)));
-      const fresh = cards.filter((c) => !have.has(String(c.id)));
-      if (fresh.length > 0) {
-        const { error } = await admin.from('defense_cards').insert(
-          fresh.map((c) => ({ user_id: userId, id: String(c.id), data: c }))
-        );
-        if (error) throw new Error(`defense_cards import: ${error.message}`);
-        insertedCards = fresh.length;
-      }
+      const { error } = await admin.from('defense_cards').upsert(
+        cards.map((c) => ({
+          user_id: userId,
+          id: String(c.id),
+          data: c,
+          updated_at: new Date().toISOString(),
+        }))
+      );
+      if (error) throw new Error(`defense_cards import: ${error.message}`);
+      insertedCards = cards.length;
     }
 
     res.json({ ok: true, imported: { roles: insertedRoles, defenseCards: insertedCards } });
   } catch (err: any) {
     res.status(500).json({ error: err?.message || 'Workspace import failed.' });
   }
+});
+
+/** DELETE /api/workspace/roles/:id — remove a single target role row. */
+router.delete('/roles/:id', requireAuth, async (req: Request, res: Response) => {
+  if (!isDbConfigured()) return serviceUnavailable(res);
+  const admin = getAdmin()!;
+  const userId = req.auth!.userId;
+  const roleId = req.params.id;
+  const { error } = await admin
+    .from('target_roles')
+    .delete()
+    .eq('user_id', userId)
+    .eq('id', roleId);
+  if (error) {
+    res.status(500).json({ error: error.message });
+    return;
+  }
+  res.json({ ok: true, deleted: roleId });
+});
+
+/** DELETE /api/workspace/cards/:id — remove a single defense card row. */
+router.delete('/cards/:id', requireAuth, async (req: Request, res: Response) => {
+  if (!isDbConfigured()) return serviceUnavailable(res);
+  const admin = getAdmin()!;
+  const userId = req.auth!.userId;
+  const cardId = req.params.id;
+  const { error } = await admin
+    .from('defense_cards')
+    .delete()
+    .eq('user_id', userId)
+    .eq('id', cardId);
+  if (error) {
+    res.status(500).json({ error: error.message });
+    return;
+  }
+  res.json({ ok: true, deleted: cardId });
 });
 
 /** GET /api/workspace/export — everything the user owns, as JSON. */
@@ -93,7 +122,7 @@ router.get('/export', requireAuth, async (req: Request, res: Response) => {
   });
 });
 
-/** DELETE /api/workspace/delete — remove the user's data (GDPR baseline). */
+/** DELETE /api/workspace/delete — remove all the user's data (GDPR baseline). */
 router.delete('/delete', requireAuth, async (req: Request, res: Response) => {
   if (!isDbConfigured()) return serviceUnavailable(res);
   const admin = getAdmin()!;

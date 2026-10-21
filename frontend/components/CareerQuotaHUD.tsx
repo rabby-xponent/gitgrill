@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
+import Link from 'next/link';
 import { Icon } from '@/components/icons';
 import { useSession } from '@/components/SessionProvider';
 import { useEntitlements } from '@/hooks/useEntitlements';
@@ -26,14 +27,20 @@ interface CapabilityCardData {
   subtext?: string;
 }
 
-export function CareerQuotaHUD({ username }: { username?: string }) {
-  const { user } = useSession();
+export function CareerQuotaHUD({
+  username,
+  variant = 'compact',
+}: {
+  username?: string;
+  variant?: 'compact' | 'full';
+}) {
+  const { user, openSignIn } = useSession();
   const { entitlements } = useEntitlements();
   const isSuperAdmin = isAdmin(user);
 
   const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
   const [selectedPlanForUpgrade, setSelectedPlanForUpgrade] = useState<PlanId>('pro_monthly');
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isExpandedInline, setIsExpandedInline] = useState(false);
   const [resumesCount, setResumesCount] = useState(0);
   const [rolesCount, setRolesCount] = useState(0);
   const [proofsCount, setProofsCount] = useState(0);
@@ -119,7 +126,7 @@ export function CareerQuotaHUD({ username }: { username?: string }) {
         limit: vaultLimit,
         remaining: vaultRemaining,
         status: helperStatus(resumesCount, vaultLimit, vaultRemaining),
-        subtext: 'Persistent slots',
+        subtext: isSuperAdmin ? 'Unlimited resume vault' : `${resumesCount} profile${resumesCount === 1 ? '' : 's'} stored`,
       },
       {
         id: 'target_role.create',
@@ -130,7 +137,7 @@ export function CareerQuotaHUD({ username }: { username?: string }) {
         limit: roleLimit,
         remaining: roleRemaining,
         status: helperStatus(rolesCount, roleLimit, roleRemaining),
-        subtext: 'Benchmark slots',
+        subtext: isSuperAdmin ? 'Unlimited campaign roles' : `${rolesCount} role${rolesCount === 1 ? '' : 's'} active`,
       },
       {
         id: 'audit.run',
@@ -203,6 +210,264 @@ export function CareerQuotaHUD({ username }: { username?: string }) {
     setIsUpgradeModalOpen(true);
   };
 
+  // 1. Anonymous / Signed-Out Visitor: Clean Guest Banner (Zero exhausted error cards!)
+  if (!user) {
+    return (
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 rounded-2xl border border-edge bg-card/80 p-3.5 sm:px-5 sm:py-3 shadow-xs">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-signal/30 bg-signal/10 text-signal">
+            <Icon.Sparkle className="h-4 w-4" />
+          </div>
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <span className="font-mono text-xs font-bold text-content">Guest Sandbox Mode</span>
+              <span className="rounded bg-well px-1.5 py-0.5 font-mono text-[9px] text-muted uppercase">Local Storage</span>
+            </div>
+            <p className="font-sans text-[11px] text-muted truncate">
+              You are exploring CareerOS locally. Sign in to cloud-sync your target roles, defense cards, and audits across devices.
+            </p>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => openSignIn()}
+          className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-signal px-3.5 py-1.5 font-mono text-xs font-bold text-white shadow-xs transition-colors hover:bg-signal/90 shrink-0 cursor-pointer"
+        >
+          <Icon.User className="h-3.5 w-3.5" />
+          <span>Sign In to Cloud Sync</span>
+        </button>
+      </div>
+    );
+  }
+
+  // 7-Card Matrix Grid Renderer
+  const renderCardsGrid = () => (
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      {cards.map((card) => {
+        const IconComp = Icon[card.icon] || Icon.Zap;
+        const isInfinite = card.limit === 'unlimited';
+        const percentUsed =
+          !isInfinite && typeof card.limit === 'number' && card.limit > 0
+            ? Math.min(100, Math.round((card.used / card.limit) * 100))
+            : 0;
+
+        return (
+          <div
+            key={card.id}
+            className={`group relative flex flex-col justify-between rounded-xl border p-3.5 transition-all duration-200 hover:border-signal/40 ${
+              card.status === 'exhausted'
+                ? 'border-signal/60 bg-signal/5'
+                : card.status === 'warning'
+                  ? 'border-amber-500/50 bg-amber-500/5'
+                  : 'border-edge bg-card/60 hover:bg-card'
+            }`}
+          >
+            <div>
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <div
+                    className={`flex h-7 w-7 items-center justify-center rounded-lg border ${
+                      card.status === 'exhausted'
+                        ? 'border-signal/40 bg-signal/10 text-signal'
+                        : card.status === 'warning'
+                          ? 'border-amber-500/40 bg-amber-500/10 text-amber-400'
+                          : isInfinite
+                            ? 'border-purple-500/30 bg-purple-500/10 text-purple-400'
+                            : 'border-edge bg-well text-muted group-hover:text-signal'
+                    }`}
+                  >
+                    <IconComp className="h-3.5 w-3.5" />
+                  </div>
+                  <span className="font-mono text-xs font-bold text-content">
+                    {card.title}
+                  </span>
+                </div>
+
+                {isInfinite ? (
+                  <span className="font-mono text-[10px] font-semibold text-purple-400">
+                    &infin; Uncapped
+                  </span>
+                ) : card.status === 'exhausted' ? (
+                  <span className="rounded bg-signal/20 px-1.5 py-0.5 font-mono text-[10px] font-bold text-signal">
+                    Exhausted
+                  </span>
+                ) : card.status === 'warning' ? (
+                  <span className="rounded bg-amber-500/20 px-1.5 py-0.5 font-mono text-[10px] font-bold text-amber-400">
+                    Low Quota
+                  </span>
+                ) : (
+                  <span className="font-mono text-[10px] text-muted">
+                    {card.subtext}
+                  </span>
+                )}
+              </div>
+
+              <p className="mt-1.5 line-clamp-2 font-sans text-[11px] leading-snug text-muted">
+                {card.description}
+              </p>
+            </div>
+
+            <div className="mt-3.5 pt-2 border-t border-edge/40">
+              <div className="flex items-baseline justify-between font-mono text-xs">
+                {isInfinite ? (
+                  <span className="text-base font-bold text-purple-400">&infin; / &infin;</span>
+                ) : (
+                  <span className="font-bold text-content">
+                    {card.used}
+                    <span className="text-muted font-normal"> / {card.limit} used</span>
+                  </span>
+                )}
+
+                {!isInfinite && card.remaining !== null && (
+                  <span
+                    className={`text-[11px] font-semibold ${
+                      card.status === 'exhausted'
+                        ? 'text-signal'
+                        : card.status === 'warning'
+                          ? 'text-amber-400'
+                          : 'text-emerald-400'
+                    }`}
+                  >
+                    {card.remaining} left
+                  </span>
+                )}
+              </div>
+
+              {!isInfinite && typeof card.limit === 'number' && (
+                <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-edge/60">
+                  <div
+                    className={`h-full rounded-full transition-all duration-500 ${
+                      card.status === 'exhausted'
+                        ? 'bg-signal'
+                        : card.status === 'warning'
+                          ? 'bg-amber-400'
+                          : 'bg-emerald-500'
+                    }`}
+                    style={{ width: `${Math.min(100, percentUsed)}%` }}
+                  />
+                </div>
+              )}
+
+              {card.resetAt && !isInfinite && (
+                <div className="mt-1.5 flex items-center gap-1 font-mono text-[10px] text-muted">
+                  <Icon.Refresh className="h-2.5 w-2.5" />
+                  <span>
+                    Refills{' '}
+                    {new Date(card.resetAt).toLocaleDateString('en-US', {
+                      month: 'short',
+                      day: 'numeric',
+                    })}
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+
+  // 2. Compact View for Main DeveloperOS Workspace: Ultra-clean 44px status ribbon
+  if (variant === 'compact') {
+    return (
+      <>
+        <section id="career-quota-hud" className="rounded-2xl border border-edge bg-card/90 p-3 sm:px-4 sm:py-2.5 shadow-card transition-all">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            {/* Left: Tier Badge + Key Metrics */}
+            <div className="flex flex-wrap items-center gap-2.5 min-w-0">
+              <div className="flex items-center gap-1.5 shrink-0">
+                {isSuperAdmin ? (
+                  <span className="inline-flex items-center gap-1 rounded-full border border-purple-500/30 bg-purple-500/10 px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-purple-400">
+                    <span className="h-1.5 w-1.5 rounded-full bg-purple-400 animate-pulse" />
+                    Super Admin (∞)
+                  </span>
+                ) : activeTier === 'pro' ? (
+                  <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-emerald-400">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                    Pro Tier
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 rounded-full border border-signal/30 bg-signal/10 px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-signal">
+                    Free Tier
+                  </span>
+                )}
+              </div>
+
+              <div className="h-3 w-px bg-edge hidden xs:block" />
+
+              <div className="flex flex-wrap items-center gap-3 font-mono text-xs text-muted">
+                <span className="flex items-center gap-1">
+                  <span className="text-content font-bold">{rolesCount}</span>
+                  <span className="text-[11px]">roles</span>
+                </span>
+                <span className="text-edge">·</span>
+                <span className="flex items-center gap-1">
+                  <span className="text-content font-bold">{resumesCount}</span>
+                  <span className="text-[11px]">resumes</span>
+                </span>
+                <span className="text-edge">·</span>
+                <span className="flex items-center gap-1">
+                  <span className="text-content font-bold">
+                    {isSuperAdmin ? '∞' : `${cards[2].used}/${cards[2].limit}`}
+                  </span>
+                  <span className="text-[11px]">audits</span>
+                </span>
+              </div>
+            </div>
+
+            {/* Right: Actions */}
+            <div className="flex items-center justify-between sm:justify-end gap-2 shrink-0">
+              {!isSuperAdmin && activeTier !== 'pro' && (
+                <button
+                  type="button"
+                  onClick={() => handleOpenUpgrade('pro_monthly')}
+                  className="inline-flex items-center gap-1 rounded-lg bg-gradient-to-r from-signal to-signal/90 px-2.5 py-1 font-mono text-[11px] font-bold text-white shadow-2xs hover:scale-[1.02] transition-transform cursor-pointer"
+                >
+                  <Icon.Sparkle className="h-3 w-3" />
+                  <span>Upgrade</span>
+                </button>
+              )}
+
+              <Link
+                href="/developer/profile"
+                className="inline-flex items-center gap-1 rounded-lg border border-edge bg-well px-2.5 py-1 font-mono text-[11px] font-semibold text-content hover:border-signal/50 hover:text-signal transition-colors"
+              >
+                <span>Full Quotas & Limits</span>
+                <Icon.ArrowRight className="h-3 w-3" />
+              </Link>
+
+              <button
+                type="button"
+                onClick={() => setIsExpandedInline(!isExpandedInline)}
+                className="flex items-center gap-1 rounded-lg border border-edge bg-well px-2 py-1 font-mono text-[11px] text-muted hover:text-content transition-colors cursor-pointer"
+                title={isExpandedInline ? 'Collapse inline view' : 'Quick peek cards'}
+              >
+                <Icon.ChevronDown className={`h-3 w-3 transition-transform ${isExpandedInline ? 'rotate-180' : ''}`} />
+              </button>
+            </div>
+          </div>
+
+          {/* Inline Expandable Peek */}
+          {isExpandedInline && (
+            <div className="mt-4 pt-4 border-t border-edge">
+              {renderCardsGrid()}
+            </div>
+          )}
+        </section>
+
+        {isUpgradeModalOpen && (
+          <BkashNagadModal
+            isOpen={isUpgradeModalOpen}
+            onClose={() => setIsUpgradeModalOpen(false)}
+            defaultPlan={selectedPlanForUpgrade}
+          />
+        )}
+      </>
+    );
+  }
+
+  // 3. Full View (Used on /developer/profile)
   return (
     <>
       <section id="career-quota-hud" className="relative scroll-mt-20 overflow-hidden rounded-2xl border border-edge bg-gradient-to-b from-card via-card/95 to-canvas p-4 sm:p-5 shadow-card transition-all">
@@ -268,49 +533,22 @@ export function CareerQuotaHUD({ username }: { username?: string }) {
             </div>
           </div>
 
-          {/* Quick Action Badges / Controls */}
           <div className="flex flex-wrap items-center justify-between sm:justify-end gap-2 w-full sm:w-auto">
             {!isSuperAdmin && activeTier !== 'pro' && (
               <button
                 type="button"
                 onClick={() => handleOpenUpgrade('pro_monthly')}
-                className="flex flex-1 sm:flex-none items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-signal to-signal/90 px-3.5 py-1.5 font-mono text-xs font-bold text-white shadow-xs transition-all hover:scale-[1.02] hover:shadow-signal/20 active:scale-[0.98] cursor-pointer"
+                className="flex flex-1 sm:flex-none items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-signal to-signal/90 px-3.5 py-1.5 font-mono text-xs font-bold text-white shadow-xs transition-all hover:scale-[1.02] cursor-pointer"
               >
                 <Icon.Sparkle className="h-3.5 w-3.5 shrink-0" />
                 <span>Upgrade to Pro (৳399/mo)</span>
               </button>
             )}
-
-            {isSuperAdmin && (
-              <button
-                type="button"
-                onClick={() => handleOpenUpgrade('pro_monthly')}
-                title="Test MFS payment modal as admin"
-                className="flex flex-1 sm:flex-none items-center justify-center gap-1.5 rounded-xl border border-purple-500/30 bg-purple-500/10 px-3 py-1.5 font-mono text-xs font-semibold text-purple-300 transition-colors hover:bg-purple-500/20 cursor-pointer"
-              >
-                <Icon.Shield className="h-3.5 w-3.5 shrink-0" />
-                <span>Test MFS Drawer</span>
-              </button>
-            )}
-
-            <button
-              type="button"
-              onClick={() => setIsCollapsed(!isCollapsed)}
-              className="flex items-center justify-center gap-1 rounded-xl border border-edge bg-well px-2.5 py-1.5 font-mono text-xs text-muted transition-colors hover:border-signal/50 hover:text-content cursor-pointer shrink-0"
-              title={isCollapsed ? 'Expand HUD' : 'Collapse HUD'}
-            >
-              <span>{isCollapsed ? 'Expand' : 'Collapse'}</span>
-              <Icon.ChevronDown
-                className={`h-3.5 w-3.5 transition-transform duration-200 ${
-                  isCollapsed ? '' : 'rotate-180'
-                }`}
-              />
-            </button>
           </div>
         </div>
 
-        {/* Super Admin Unrestricted Alert Banner */}
-        {isSuperAdmin && !isCollapsed && (
+        {/* Super Admin Notice */}
+        {isSuperAdmin && (
           <div className="mt-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 rounded-xl border border-purple-500/30 bg-gradient-to-r from-purple-500/10 via-purple-500/5 to-transparent p-3 sm:px-4 sm:py-2.5">
             <div className="flex items-center gap-2.5">
               <Icon.Shield className="h-4 w-4 text-purple-400 shrink-0" />
@@ -325,159 +563,30 @@ export function CareerQuotaHUD({ username }: { username?: string }) {
         )}
 
         {/* 7 Capability Quota Grid */}
-        {!isCollapsed && (
-          <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            {cards.map((card) => {
-              const IconComp = Icon[card.icon] || Icon.Zap;
-              const isInfinite = card.limit === 'unlimited';
-              const percentUsed =
-                !isInfinite && typeof card.limit === 'number' && card.limit > 0
-                  ? Math.min(100, Math.round((card.used / card.limit) * 100))
-                  : 0;
-
-              return (
-                <div
-                  key={card.id}
-                  className={`group relative flex flex-col justify-between rounded-xl border p-3.5 transition-all duration-200 hover:border-signal/40 ${
-                    card.status === 'exhausted'
-                      ? 'border-signal/60 bg-signal/5'
-                      : card.status === 'warning'
-                        ? 'border-amber-500/50 bg-amber-500/5'
-                        : 'border-edge bg-card/60 hover:bg-card'
-                  }`}
-                >
-                  {/* Card Header */}
-                  <div>
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex items-center gap-2">
-                        <div
-                          className={`flex h-7 w-7 items-center justify-center rounded-lg border ${
-                            card.status === 'exhausted'
-                              ? 'border-signal/40 bg-signal/10 text-signal'
-                              : card.status === 'warning'
-                                ? 'border-amber-500/40 bg-amber-500/10 text-amber-400'
-                                : isInfinite
-                                  ? 'border-purple-500/30 bg-purple-500/10 text-purple-400'
-                                  : 'border-edge bg-well text-muted group-hover:text-signal'
-                          }`}
-                        >
-                          <IconComp className="h-3.5 w-3.5" />
-                        </div>
-                        <span className="font-mono text-xs font-bold text-content">
-                          {card.title}
-                        </span>
-                      </div>
-
-                      {/* Status indicator tag */}
-                      {isInfinite ? (
-                        <span className="font-mono text-[10px] font-semibold text-purple-400">
-                          &infin; Uncapped
-                        </span>
-                      ) : card.status === 'exhausted' ? (
-                        <span className="rounded bg-signal/20 px-1.5 py-0.5 font-mono text-[10px] font-bold text-signal">
-                          Exhausted
-                        </span>
-                      ) : card.status === 'warning' ? (
-                        <span className="rounded bg-amber-500/20 px-1.5 py-0.5 font-mono text-[10px] font-bold text-amber-400">
-                          Low Quota
-                        </span>
-                      ) : (
-                        <span className="font-mono text-[10px] text-muted">
-                          {card.subtext}
-                        </span>
-                      )}
-                    </div>
-
-                    <p className="mt-1.5 line-clamp-2 font-sans text-[11px] leading-snug text-muted">
-                      {card.description}
-                    </p>
-                  </div>
-
-                  {/* Meter Value & Progress */}
-                  <div className="mt-3.5 pt-2 border-t border-edge/40">
-                    <div className="flex items-baseline justify-between font-mono text-xs">
-                      {isInfinite ? (
-                        <span className="text-base font-bold text-purple-400">&infin; / &infin;</span>
-                      ) : (
-                        <span className="font-bold text-content">
-                          {card.used}
-                          <span className="text-muted font-normal"> / {card.limit} used</span>
-                        </span>
-                      )}
-
-                      {!isInfinite && card.remaining !== null && (
-                        <span
-                          className={`text-[11px] font-semibold ${
-                            card.status === 'exhausted'
-                              ? 'text-signal'
-                              : card.status === 'warning'
-                                ? 'text-amber-400'
-                                : 'text-emerald-400'
-                          }`}
-                        >
-                          {card.remaining} left
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Progress Bar */}
-                    {!isInfinite && typeof card.limit === 'number' && (
-                      <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-edge/60">
-                        <div
-                          className={`h-full rounded-full transition-all duration-500 ${
-                            card.status === 'exhausted'
-                              ? 'bg-signal'
-                              : card.status === 'warning'
-                                ? 'bg-amber-400'
-                                : 'bg-emerald-500'
-                          }`}
-                          style={{ width: `${Math.min(100, percentUsed)}%` }}
-                        />
-                      </div>
-                    )}
-
-                    {/* Reset date note if applicable */}
-                    {card.resetAt && !isInfinite && (
-                      <div className="mt-1.5 flex items-center gap-1 font-mono text-[10px] text-muted">
-                        <Icon.Refresh className="h-2.5 w-2.5" />
-                        <span>
-                          Cycle refills{' '}
-                          {new Date(card.resetAt).toLocaleDateString('en-US', {
-                            month: 'short',
-                            day: 'numeric',
-                          })}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
+        <div className="mt-4">
+          {renderCardsGrid()}
+        </div>
 
         {/* Footer info strip */}
-        {!isCollapsed && (
-          <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-edge/40 pt-3 font-mono text-[11px] text-muted">
-            <div className="flex items-center gap-2">
-              <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              <span>Direct backend ledger connection &bull; No cached limit gates</span>
-            </div>
-
-            {!isSuperAdmin && activeTier !== 'pro' && (
-              <div className="flex items-center gap-2">
-                <span>Need 50 target roles & 150 AI tailorings?</span>
-                <button
-                  type="button"
-                  onClick={() => handleOpenUpgrade('pro_monthly')}
-                  className="font-bold text-signal underline underline-offset-2 hover:text-signal/80"
-                >
-                  Upgrade via bKash / Nagad &rarr;
-                </button>
-              </div>
-            )}
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-edge/40 pt-3 font-mono text-[11px] text-muted">
+          <div className="flex items-center gap-2">
+            <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            <span>Direct backend ledger connection &bull; No cached limit gates</span>
           </div>
-        )}
+
+          {!isSuperAdmin && activeTier !== 'pro' && (
+            <div className="flex items-center gap-2">
+              <span>Need 50 target roles & 150 AI tailorings?</span>
+              <button
+                type="button"
+                onClick={() => handleOpenUpgrade('pro_monthly')}
+                className="font-bold text-signal underline underline-offset-2 hover:text-signal/80 cursor-pointer"
+              >
+                Upgrade via bKash / Nagad &rarr;
+              </button>
+            </div>
+          )}
+        </div>
       </section>
 
       {/* Embedded One-Click bKash / Nagad Upgrade Modal */}

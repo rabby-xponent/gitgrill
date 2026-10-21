@@ -277,6 +277,16 @@ export function AccountMenu({ workspace }: { workspace?: 'developer' | 'recruite
                   <Icon.ArrowRight className="h-3 w-3 opacity-60 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all" />
                 </Link>
               )}
+
+              <Link
+                href="/developer/profile"
+                onClick={() => setOpen(false)}
+                className="flex items-center gap-2 rounded-lg px-2.5 py-1.5 font-mono text-xs text-muted hover:text-signal hover:bg-well transition-colors"
+              >
+                <Icon.Zap className="h-3.5 w-3.5 text-signal shrink-0" />
+                <span className="flex-1">Profile & Limits Ledger</span>
+                <span className="font-mono text-[10px] text-muted">&rarr;</span>
+              </Link>
             </div>
 
             {/* Plan & Upgrade Section */}

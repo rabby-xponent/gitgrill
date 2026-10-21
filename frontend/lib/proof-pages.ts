@@ -1,4 +1,5 @@
 import { API_URL } from './config';
+import { authHeaders } from './auth';
 import type { DevProfile } from '@/types/profile';
 
 /**
@@ -49,11 +50,15 @@ export async function publishProofPage(input: {
   profile: DevProfile;
   note?: string;
 }): Promise<PublishResult> {
+  const headers = await authHeaders();
   const res = await fetch(
     `${API_URL}/api/proofs/${encodeURIComponent(input.username)}/${encodeURIComponent(input.roleId)}`,
     {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...headers,
+      },
       body: JSON.stringify({
         profile: input.profile,
         roleTitle: input.roleTitle,
@@ -81,9 +86,13 @@ export async function unpublishProofPage(
   username: string,
   roleId: string
 ): Promise<void> {
+  const headers = await authHeaders();
   const res = await fetch(
     `${API_URL}/api/proofs/${encodeURIComponent(username)}/${encodeURIComponent(roleId)}`,
-    { method: 'DELETE' }
+    {
+      method: 'DELETE',
+      headers,
+    }
   );
   if (!res.ok && res.status !== 404) {
     const detail = await res.json().catch(() => ({}));

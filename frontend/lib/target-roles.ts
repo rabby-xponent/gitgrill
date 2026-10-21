@@ -75,19 +75,19 @@ export const APPLICATION_STATUS_META: Record<
   rejected: { label: 'Closed', order: 5 },
 };
 
-function getRolesKey(): string {
+export function getRolesKey(): string {
   if (typeof window === 'undefined') return STORAGE_KEY;
   const uid = localStorage.getItem('gitgrill_current_user_id');
   return uid ? `gitgrill_${uid}_target_roles_v1` : STORAGE_KEY;
 }
 
-function getActiveRoleKey(): string {
+export function getActiveRoleKey(): string {
   if (typeof window === 'undefined') return ACTIVE_ROLE_KEY;
   const uid = localStorage.getItem('gitgrill_current_user_id');
   return uid ? `gitgrill_${uid}_active_target_role_v1` : ACTIVE_ROLE_KEY;
 }
 
-function getDefenseKey(): string {
+export function getDefenseKey(): string {
   if (typeof window === 'undefined') return DEFENSE_KEY;
   const uid = localStorage.getItem('gitgrill_current_user_id');
   return uid ? `gitgrill_${uid}_defense_cards_v1` : DEFENSE_KEY;
@@ -117,6 +117,14 @@ export function saveTargetRole(role: TargetRole): TargetRole {
   } catch {
     /* ignore */
   }
+
+  // Non-blocking background cloud sync
+  if (typeof window !== 'undefined') {
+    import('./workspace-sync').then(({ syncTargetRoleToCloud }) => {
+      syncTargetRoleToCloud(stamped).catch(() => {});
+    });
+  }
+
   return stamped;
 }
 
@@ -128,6 +136,13 @@ export function deleteTargetRole(id: string): void {
     /* ignore */
   }
   if (getActiveTargetRoleId() === id) setActiveTargetRoleId('');
+
+  // Non-blocking background cloud deletion
+  if (typeof window !== 'undefined') {
+    import('./workspace-sync').then(({ deleteTargetRoleFromCloud }) => {
+      deleteTargetRoleFromCloud(id).catch(() => {});
+    });
+  }
 }
 
 export function getTargetRoleById(id: string): TargetRole | undefined {
