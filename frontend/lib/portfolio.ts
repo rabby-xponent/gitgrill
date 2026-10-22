@@ -732,7 +732,7 @@ export async function bootstrapPortfolioFromResume(
 ): Promise<{ ok: boolean; imported: { companies: number; products: number; projects: number; bullets: number } }> {
   const headers = await authHeaders();
   if (headers.Authorization) {
-    const res = await fetch(`${API_URL}/api/portfolio/bootstrap-from-resume`, {
+    let res = await fetch(`${API_URL}/api/portfolio/import-resume`, {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
@@ -740,6 +740,18 @@ export async function bootstrapPortfolioFromResume(
       },
       body: JSON.stringify({ experience, projects }),
     });
+
+    // Fallback if backend route uses alternate naming
+    if (res.status === 404) {
+      res = await fetch(`${API_URL}/api/portfolio/bootstrap-from-resume`, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          ...headers,
+        },
+        body: JSON.stringify({ experience, projects }),
+      });
+    }
 
     if (!res.ok) {
       const errJson = await res.json().catch(() => ({}));

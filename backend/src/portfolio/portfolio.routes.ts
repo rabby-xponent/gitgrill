@@ -608,9 +608,9 @@ router.delete('/bullets/:id', requireAuth, async (req: Request, res: Response) =
 });
 
 // ---------------------------------------------------------------------------
-// 6. POST /api/portfolio/import-resume — 1-Click Bootstrap from existing resume
+// 6. POST /api/portfolio/import-resume (and alias /bootstrap-from-resume)
 // ---------------------------------------------------------------------------
-router.post('/import-resume', requireAuth, async (req: Request, res: Response) => {
+const handleImportResume = async (req: Request, res: Response) => {
   if (!isDbConfigured()) return serviceUnavailable(res);
   const admin = getAdmin()!;
   const userId = req.auth!.userId;
@@ -742,6 +742,9 @@ router.post('/import-resume', requireAuth, async (req: Request, res: Response) =
     console.error('[Portfolio] Import resume error:', err);
     res.status(500).json({ error: formatPortfolioError(err, 'Failed to import resume into portfolio.') });
   }
-});
+};
+
+router.post('/import-resume', requireAuth, handleImportResume);
+router.post('/bootstrap-from-resume', requireAuth, handleImportResume);
 
 export default router;

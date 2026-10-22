@@ -24,7 +24,14 @@ import {
   humanizePortfolioError,
   getStoredCompanyRoles,
 } from '@/lib/portfolio';
-import { getResumes, ResumeProfile } from '@/lib/resumes';
+import {
+  getResumes,
+  ResumeProfile,
+  saveResume,
+  extractDocxText,
+  extractPdfText,
+  parseUploadedResumeText,
+} from '@/lib/resumes';
 import {
   ConfirmModal,
   AlertModal,
@@ -2431,8 +2438,12 @@ function ResumeImportModal({
   const [resumes, setResumes] = useState<ResumeProfile[]>([]);
   const [selectedResumeId, setSelectedResumeId] = useState<string>('');
   const [importing, setImporting] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [uploadedNotice, setUploadedNotice] = useState<string>('');
+  const [isDragging, setIsDragging] = useState(false);
   const [error, setError] = useState('');
   const [successResult, setSuccessResult] = useState<any>(null);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const list = getResumes();
@@ -2442,10 +2453,75 @@ function ResumeImportModal({
     }
   }, []);
 
+  const handleUploadFile = async (file: File) => {
+    setUploading(true);
+    setError('');
+    setUploadedNotice('');
+    try {
+      const ext = file.name.split('.').pop()?.toLowerCase() || '';
+      if (!['pdf', 'docx', 'doc', 'md', 'txt', 'json'].includes(ext)) {
+        throw new Error('Unsupported format. Please upload a .pdf, .docx, or .md file.');
+      }
+
+      const dataUrl = await new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.readAsDataURL(file);
+      });
+
+      let cleanText = '';
+      if (ext === 'docx') {
+        const arrayBuffer = await file.arrayBuffer();
+        cleanText = await extractDocxText(arrayBuffer);
+      } else if (ext === 'pdf') {
+        const arrayBuffer = await file.arrayBuffer();
+        cleanText = await extractPdfText(arrayBuffer);
+      } else if (ext === 'md' || ext === 'txt' || ext === 'json') {
+        cleanText = await file.text();
+      }
+
+      const parsed = cleanText ? parseUploadedResumeText(cleanText, file.name) : {};
+      const cleanTitle = parsed.title || file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ');
+
+      const saved = saveResume({
+        title: cleanTitle,
+        targetRoleType: parsed.targetRoleType || 'Software Engineer',
+        fullName: parsed.fullName || cleanTitle,
+        email: parsed.email || '',
+        phone: parsed.phone || '',
+        location: parsed.location || '',
+        githubUrl: parsed.githubUrl || '',
+        linkedinUrl: parsed.linkedinUrl || '',
+        portfolioUrl: parsed.portfolioUrl || '',
+        summary: parsed.summary || `Master copy uploaded from ${file.name}`,
+        skills: parsed.skills && parsed.skills.length > 0 ? parsed.skills : [{ category: 'Core Stack', items: ['TypeScript', 'Go', 'PostgreSQL', 'Docker', 'AWS'] }],
+        experience: parsed.experience && parsed.experience.length > 0 ? parsed.experience : [],
+        education: parsed.education || [],
+        projects: parsed.projects || [],
+        identifiedSections: parsed.identifiedSections,
+        isMasterCopy: true,
+        versionLabel: 'v1.0 (Master Copy)',
+        sourceFileName: file.name,
+        sourceFileType: ext,
+        sourceFileSize: file.size,
+        sourceFileDataUrl: dataUrl,
+        rawCleanText: cleanText,
+      });
+
+      setResumes((prev) => [saved, ...prev.filter((r) => r.id !== saved.id)]);
+      setSelectedResumeId(saved.id);
+      setUploadedNotice(`Uploaded and selected: ${file.name} (${saved.experience?.length || 0} companies, ${saved.projects?.length || 0} projects detected). Click "Bootstrap SSOT Now" below to import.`);
+    } catch (err: any) {
+      setError(err?.message || 'Failed to process and parse uploaded resume file.');
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const handleImport = async () => {
     const target = resumes.find((r) => r.id === selectedResumeId);
     if (!target) {
-      setError('Please select a resume profile to import.');
+      setError('Please select or upload a resume profile to import.');
       return;
     }
 
@@ -2485,7 +2561,7 @@ function ResumeImportModal({
       onClick={onClose}
     >
       <div
-        className="relative w-full max-w-lg rounded-2xl border border-edge bg-card p-6 shadow-2xl animate-in zoom-in-95 duration-150"
+        className="relative w-full max-w-lg rounded-2xl border border-edge bg-card p-6 shadow-2xl animate-in zoom-in-95 duration-150 max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between pb-4 border-b border-edge">
@@ -2510,7 +2586,7 @@ function ResumeImportModal({
                 Portfolio SSOT Bootstrapped Successfully!
               </h4>
               <p className="font-sans text-xs text-muted">
-                Imported {successResult.companies} companies, {successResult.products} products, {successResult.projects} projects, and {successResult.bullets} atomic master bullets.
+                Imported {successResult.companies} companies, {successResult.products} products, {successResult.projects} projects, and {successResult.bullets} atomic master bullets into your permanent SSOT.
               </p>
             </div>
             <div className="flex justify-end">
@@ -2525,7 +2601,7 @@ function ResumeImportModal({
         ) : (
           <div className="mt-4 space-y-4">
             <p className="font-sans text-xs text-muted leading-relaxed">
-              Extract company histories, products, and bullet points from an existing resume in your Resume Vault into atomic master records. This establishes your permanent SSOT without altering your original files.
+              Extract company histories, products, and bullet points from a resume into atomic master records. This establishes your permanent SSOT without altering your original files.
             </p>
 
             {error && (
@@ -2534,43 +2610,96 @@ function ResumeImportModal({
               </div>
             )}
 
-            {resumes.length === 0 ? (
-              <div className="rounded-xl border border-dashed border-edge p-6 text-center">
-                <p className="font-mono text-xs text-muted">No parsed resumes found in your Resume Vault yet.</p>
-                <p className="mt-1 font-sans text-xs text-muted">
-                  Upload a DOCX, PDF, or Markdown resume in the Resume Vault tab first.
-                </p>
+            {/* Hidden File Input */}
+            <input
+              type="file"
+              ref={fileInputRef}
+              accept=".pdf,.docx,.doc,.md,.txt,.json"
+              onChange={(e) => {
+                if (e.target.files && e.target.files[0]) {
+                  handleUploadFile(e.target.files[0]);
+                }
+              }}
+              className="hidden"
+            />
+
+            {/* Drag & Drop / Click to Upload Box */}
+            <div
+              onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+              onDragLeave={() => setIsDragging(false)}
+              onDrop={(e) => {
+                e.preventDefault();
+                setIsDragging(false);
+                if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+                  handleUploadFile(e.dataTransfer.files[0]);
+                }
+              }}
+              onClick={() => !uploading && fileInputRef.current?.click()}
+              className={`rounded-xl border-2 border-dashed p-4 text-center cursor-pointer transition-all select-none ${
+                isDragging
+                  ? 'border-signal bg-signal/10 scale-[1.01]'
+                  : 'border-edge hover:border-signal/50 hover:bg-well/50 bg-well/20'
+              }`}
+            >
+              <div className="flex flex-col items-center justify-center gap-1.5">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-signal/10 text-signal">
+                  {uploading ? (
+                    <Icon.Spinner className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Icon.Upload className="h-4 w-4" />
+                  )}
+                </div>
+                <div>
+                  <p className="font-mono text-xs font-bold text-content">
+                    {uploading ? 'Parsing & Extracting Document AST...' : 'Upload New Resume (.pdf, .docx, .md)'}
+                  </p>
+                  <p className="font-sans text-[11px] text-muted">
+                    Drag & drop here or click to browse. Automatically extracts companies, roles, and bullets.
+                  </p>
+                </div>
               </div>
-            ) : (
+            </div>
+
+            {uploadedNotice && (
+              <div className="rounded-xl border border-signal/30 bg-signal/10 p-3 text-xs text-signal font-mono flex items-center gap-2">
+                <Icon.CheckCircle className="h-4 w-4 shrink-0" />
+                <span>{uploadedNotice}</span>
+              </div>
+            )}
+
+            {resumes.length > 0 && (
               <div>
-                <label className="block font-mono text-[11px] uppercase tracking-wider text-muted font-bold mb-1.5">
-                  Select Source Resume Profile:
-                </label>
-                <div className="space-y-2 max-h-56 overflow-y-auto">
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block font-mono text-[10px] uppercase tracking-wider text-muted font-bold">
+                    Or Select From Resume Vault ({resumes.length}):
+                  </label>
+                  <span className="font-mono text-[10px] text-muted">Click to select</span>
+                </div>
+                <div className="space-y-1.5 max-h-48 overflow-y-auto thin-scroll">
                   {resumes.map((r) => {
                     const isSelected = selectedResumeId === r.id;
                     return (
                       <div
                         key={r.id}
                         onClick={() => setSelectedResumeId(r.id)}
-                        className={`flex items-start gap-3 rounded-xl border p-3 cursor-pointer transition-all select-none ${
+                        className={`flex items-start gap-2.5 rounded-xl border p-2.5 cursor-pointer transition-all select-none ${
                           isSelected
                             ? 'border-signal bg-signal/5'
                             : 'border-edge bg-surface/50 hover:border-edge/80'
                         }`}
                       >
                         <div
-                          className={`mt-0.5 flex h-4 w-4 flex-none items-center justify-center rounded-full border transition-all ${
+                          className={`mt-0.5 flex h-3.5 w-3.5 flex-none items-center justify-center rounded-full border transition-all ${
                             isSelected
                               ? 'border-signal bg-signal text-white'
                               : 'border-edge bg-card'
                           }`}
                         >
-                          {isSelected && <span className="h-1.5 w-1.5 rounded-full bg-white" />}
+                          {isSelected && <span className="h-1 w-1 rounded-full bg-white" />}
                         </div>
-                        <div className="flex-1 space-y-0.5">
-                          <div className="font-mono text-xs font-bold text-content">{r.title}</div>
-                          <div className="font-sans text-[11px] text-muted">
+                        <div className="flex-1 space-y-0.5 min-w-0">
+                          <div className="font-mono text-xs font-bold text-content truncate">{r.title}</div>
+                          <div className="font-sans text-[11px] text-muted truncate">
                             {r.fullName} · {r.experience?.length || 0} companies · {r.projects?.length || 0} projects
                           </div>
                         </div>
@@ -2591,7 +2720,7 @@ function ResumeImportModal({
               </button>
               <button
                 type="button"
-                disabled={importing || resumes.length === 0}
+                disabled={importing || uploading || !selectedResumeId}
                 onClick={handleImport}
                 className="inline-flex items-center gap-2 rounded-xl bg-signal hover:bg-signal-hover text-surface px-5 py-2 font-mono text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
               >
