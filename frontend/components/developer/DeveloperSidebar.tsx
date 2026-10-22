@@ -141,6 +141,7 @@ export function DeveloperSidebar({
         >
           <Link
             href="/developer"
+            prefetch={true}
             onClick={(e) => {
               if (isCollapsed) {
                 e.preventDefault();
@@ -205,6 +206,7 @@ export function DeveloperSidebar({
                   <Link
                     key={item.href}
                     href={item.href}
+                    prefetch={true}
                     onClick={onCloseMobile}
                     title={isCollapsed ? item.title : undefined}
                     className={`group relative flex items-center rounded-xl font-mono text-xs font-medium transition-all ${
@@ -274,6 +276,7 @@ export function DeveloperSidebar({
                   <Link
                     key={item.href}
                     href={item.href}
+                    prefetch={true}
                     onClick={onCloseMobile}
                     title={isCollapsed ? item.title : undefined}
                     className={`group relative flex items-center rounded-xl font-mono text-xs font-medium transition-all ${
@@ -299,6 +302,7 @@ export function DeveloperSidebar({
               {isSuperAdmin && (
                 <Link
                   href="/recruiter"
+                  prefetch={true}
                   onClick={onCloseMobile}
                   title={isCollapsed ? 'RecruiterOS Command' : undefined}
                   className={`group relative flex items-center rounded-xl font-mono text-xs font-medium text-[#ea580c] hover:bg-[#ea580c]/10 border border-[#ea580c]/25 transition-all ${

@@ -122,10 +122,27 @@ export function AccountMenu({ workspace }: { workspace?: 'developer' | 'recruite
             )}
           </div>
 
-          {/* Clean Links */}
-          <div className="p-1.5 space-y-0.5">
+          {/* Navigation Links */}
+          <div className="p-1.5 space-y-1">
+            {/* When on Home page (no workspace specified), provide the single primary portal access link */}
+            {!workspace && (
+              <Link
+                href={user.role === 'recruiter' ? '/recruiter' : '/developer'}
+                prefetch={true}
+                onClick={() => setOpen(false)}
+                className="flex items-center justify-between rounded-lg px-2.5 py-2 font-mono text-xs font-bold text-signal bg-signal/10 hover:bg-signal/20 transition-colors group"
+              >
+                <div className="flex items-center gap-2.5">
+                  <Icon.Briefcase className="h-4 w-4 shrink-0 text-signal" />
+                  <span>{user.role === 'recruiter' ? 'RecruiterOS Portal' : 'Developer CareerOS'}</span>
+                </div>
+                <Icon.ArrowRight className="h-3.5 w-3.5 opacity-70 group-hover:translate-x-0.5 transition-transform" />
+              </Link>
+            )}
+
             <Link
               href="/developer/profile"
+              prefetch={true}
               onClick={() => setOpen(false)}
               className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 font-mono text-xs font-medium text-content hover:bg-well hover:text-signal transition-colors group"
             >
@@ -133,23 +150,27 @@ export function AccountMenu({ workspace }: { workspace?: 'developer' | 'recruite
               <span>Account & Settings</span>
             </Link>
 
-            <Link
-              href="/developer/portfolio"
-              onClick={() => setOpen(false)}
-              className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 font-mono text-xs font-medium text-content hover:bg-well hover:text-signal transition-colors group"
-            >
-              <Icon.Code className="h-4 w-4 text-muted group-hover:text-signal shrink-0 transition-colors" />
-              <span>Living Portfolio SSOT</span>
-            </Link>
-
-            {isSuperAdmin && (
+            {isSuperAdmin && workspace !== 'recruiter' && (
               <Link
                 href="/recruiter"
+                prefetch={true}
                 onClick={() => setOpen(false)}
                 className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 font-mono text-xs font-medium text-[#ea580c] hover:bg-[#ea580c]/10 transition-colors group"
               >
                 <Icon.Briefcase className="h-4 w-4 text-[#ea580c] shrink-0" />
                 <span>RecruiterOS Portal</span>
+              </Link>
+            )}
+
+            {isSuperAdmin && workspace === 'recruiter' && (
+              <Link
+                href="/developer"
+                prefetch={true}
+                onClick={() => setOpen(false)}
+                className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 font-mono text-xs font-medium text-signal hover:bg-signal/10 transition-colors group"
+              >
+                <Icon.Code className="h-4 w-4 text-signal shrink-0" />
+                <span>Developer CareerOS</span>
               </Link>
             )}
           </div>
