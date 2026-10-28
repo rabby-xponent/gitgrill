@@ -2442,6 +2442,7 @@ function ResumeImportModal({
   const [uploadedNotice, setUploadedNotice] = useState<string>('');
   const [isDragging, setIsDragging] = useState(false);
   const [error, setError] = useState('');
+  const [replaceExisting, setReplaceExisting] = useState(true);
   const [successResult, setSuccessResult] = useState<any>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
@@ -2528,7 +2529,18 @@ function ResumeImportModal({
     setImporting(true);
     setError('');
     try {
-      const res = await bootstrapPortfolioFromResume(target.experience || [], target.projects || []);
+      let expToImport = target.experience || [];
+      let projToImport = target.projects || [];
+      if (target.rawCleanText && target.rawCleanText.trim().length > 40) {
+        const reparsed = parseUploadedResumeText(target.rawCleanText, target.sourceFileName);
+        if (reparsed.experience && reparsed.experience.length > 0) {
+          expToImport = reparsed.experience;
+        }
+        if (reparsed.projects && reparsed.projects.length > 0) {
+          projToImport = reparsed.projects;
+        }
+      }
+      const res = await bootstrapPortfolioFromResume(expToImport, projToImport, { replaceExisting });
       setSuccessResult(res.imported);
     } catch (err: any) {
       setError(err.message || 'Failed to import resume.');
@@ -2709,6 +2721,18 @@ function ResumeImportModal({
                 </div>
               </div>
             )}
+
+            <label className="flex items-center gap-2.5 rounded-xl border border-edge bg-surface/60 px-3.5 py-2.5 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={replaceExisting}
+                onChange={(e) => setReplaceExisting(e.target.checked)}
+                className="h-3.5 w-3.5 rounded border-edge accent-signal cursor-pointer"
+              />
+              <span className="font-sans text-xs text-content">
+                Clean slate: replace existing SSOT records with this import
+              </span>
+            </label>
 
             <div className="flex items-center justify-end gap-2.5 pt-4 border-t border-edge">
               <button

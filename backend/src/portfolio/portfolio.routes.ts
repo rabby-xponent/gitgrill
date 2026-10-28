@@ -117,7 +117,9 @@ router.get('/', requireAuth, async (req: Request, res: Response) => {
       ok: true,
       companies: structuredCompanies,
       projects: structuredProjects,
+      standalone_projects: structuredProjects,
       unattachedBullets,
+      unattached_bullets: unattachedBullets,
       summary: {
         totalCompanies: companies.length,
         totalProducts: products.length,
@@ -147,7 +149,7 @@ function normalizeDateToISO(val: string | null | undefined): string | null {
     return `${mmyyyy[2]}-${month}-01`;
   }
 
-  // If Month Year (e.g. "Jun 2026", "June 2026", "Jan 2022")
+  // If Month Year (e.g. "Jun 2026", "June 2026", "Jan 2022", "Jul '19")
   const monthMap: Record<string, string> = {
     jan: '01', january: '01',
     feb: '02', february: '02',
@@ -163,10 +165,11 @@ function normalizeDateToISO(val: string | null | undefined): string | null {
     dec: '12', december: '12',
   };
 
-  const nameMatch = s.match(/^([a-zA-Z]+)[,\s]+(\d{4})$/);
+  const nameMatch = s.match(/^([a-zA-Z]+)\.?\s*['’]?(\d{2,4})$/);
   if (nameMatch) {
     const mStr = nameMatch[1].toLowerCase();
-    const year = nameMatch[2];
+    let year = nameMatch[2];
+    if (year.length === 2) year = `20${year}`;
     const mNum = monthMap[mStr];
     if (mNum) return `${year}-${mNum}-01`;
   }
@@ -184,6 +187,26 @@ function normalizeDateToISO(val: string | null | undefined): string | null {
   }
 
   return null;
+}
+
+function parsePeriodRange(period: string | null | undefined): {
+  start_date: string;
+  end_date: string | null;
+  is_current: boolean;
+} {
+  const fallbackStart = new Date().toISOString().slice(0, 10);
+  if (!period || typeof period !== 'string' || !period.trim()) {
+    return { start_date: fallbackStart, end_date: null, is_current: false };
+  }
+  const parts = period.split(/\s*(?:[-—–―]+|to)\s*/i).map((p) => p.trim()).filter(Boolean);
+  if (parts.length >= 2) {
+    const start_date = normalizeDateToISO(parts[0]) || fallbackStart;
+    const is_current = /^(present|current|now|ongoing)$/i.test(parts[1]);
+    const end_date = is_current ? null : normalizeDateToISO(parts[1]);
+    return { start_date, end_date, is_current };
+  }
+  const single = normalizeDateToISO(period) || fallbackStart;
+  return { start_date: single, end_date: null, is_current: false };
 }
 
 async function ensureUserRow(admin: any, auth: { userId: string; email?: string | null; handle?: string | null }): Promise<void> {
@@ -269,7 +292,6 @@ router.post('/companies', requireAuth, async (req: Request, res: Response) => {
 
     if (error) {
       if (error.message?.includes('role_title') || (error as any).code === '42703') {
-        // DB column role_title not yet added via SQL, retry without role_title so company is saved
         delete payload.role_title;
         const retry = await admin
           .from('portfolio_companies')
@@ -297,7 +319,6 @@ router.post('/companies', requireAuth, async (req: Request, res: Response) => {
     }
 
     // Persist company metadata (role_title & company_domains) directly in user preferences
-    // guaranteeing 100% persistence in Supabase even when role_title column is not yet on portfolio_companies
     const domainVal = (website_url || domain)?.trim() || null;
     if (savedCompany?.id) {
       try {
@@ -608,13 +629,157 @@ router.delete('/bullets/:id', requireAuth, async (req: Request, res: Response) =
 });
 
 // ---------------------------------------------------------------------------
+// Defensive Server-Side Resume Experience & Bullet Normalizer
+// ---------------------------------------------------------------------------
+const SERVER_ROLE_REGEX =
+  /\b(software|hardware|systems?|backend|frontend|full[\s-]*stack|cloud|devops|site\s+reliability|sre|data|machine\s+learning|ml|ai|security|qa|test|quality|platform|infrastructure|mobile|ios|android|web|application|network|database|embedded|firmware|principal|staff|senior|lead|junior|associate|chief|vp|director|head|manager|engineer|engineering|developer|architect|intern|internship|trainee|apprentice|consultant|analyst|specialist|administrator|designer|founder|co-founder|cto|ceo|member\s+of\s+technical\s+staff|mts|sde|sdet|r&d|research\s+and\s+development|researcher)\b/i;
+
+const SERVER_DEGREE_REGEX =
+  /\b(bachelor(?:'?s)?|master(?:'?s)?|b\.?\s?s\.?(?:\s+in\b|$)|m\.?\s?s\.?(?:\s+in\b|$)|b\.?\s?tech\.?|m\.?\s?tech\.?|b\.?\s?e\.?(?:\s+in\b|$)|m\.?\s?e\.?(?:\s+in\b|$)|b\.?\s?sc\.?|m\.?\s?sc\.?|ph\.?\s?d\.?|b\.?\s?a\.?(?:\s+in\b|$)|m\.?\s?b\.?\s?a\.?|m\.?\s?c\.?\s?a\.?|b\.?\s?c\.?\s?a\.?|associate(?:'?s)?\s+degree|diploma\s+in|gpa\s*[:=]|cgpa\s*[:=])\b/i;
+
+const SERVER_INSTITUTION_REGEX =
+  /\b(university|institute\s+of\s+technology|indian\s+institute|national\s+institute|college\s+of|school\s+of\s+(?:engineering|computer|business|computing|information|sciences?)|polytechnic|high\s+school|secondary\s+school|iit\b|nit\b|bits\b|iiit\b)\b/i;
+
+const SERVER_ACTION_VERB_REGEX =
+  /^(built|developed|engineered|led|designed|implemented|created|architected|reduced|increased|transformed|solved|extended|released|enhanced|collaborated|innovated|strategized|contributed|mentored|mentoring|managed|optimized|refactored|automated|spearheaded|launched|delivered|maintained|migrated|integrated|scaled|established|owned|drove|authored|deployed|configured|debugged|resolved|streamlined|accelerated|orchestrated|modernized|conducted|analyzed|tested|validated|supported|assisted|worked|participated|expertise\s+in|extensive\s+contributions)\b/i;
+
+function isServerBulletLine(line: string): boolean {
+  const t = line.trim();
+  if (!t) return false;
+  if (/^[•●▪▫◆◇▸▹►▻➢➣➤⁃∙◦○◌*+»›]\s*/.test(t)) return true;
+  if (/^[-–—]\s+(?=[A-Za-z0-9"'])/.test(t)) return true;
+  if (/^[oO]\s+(?=[A-Z0-9"'])/.test(t)) return true;
+  if (/^(?:\d{1,2}[.)]|\([a-z\d]\))\s+(?=[A-Z0-9"'])/.test(t)) return true;
+  return false;
+}
+
+function stripServerBulletPrefix(line: string): string {
+  let clean = line.trim();
+  let prev = '';
+  while (clean !== prev) {
+    prev = clean;
+    clean = clean
+      .replace(/^[•●▪▫◆◇▸▹►▻➢➣➤⁃∙◦○◌*+»›]\s*/, '')
+      .replace(/^[-–—]\s+(?=[A-Za-z0-9"'])/, '')
+      .replace(/^[oO]\s+(?=[A-Z0-9"'])/, '')
+      .replace(/^(?:\d{1,2}[.)]|\([a-z\d]\))\s+(?=[A-Z0-9"'])/, '')
+      .trim();
+  }
+  return clean;
+}
+
+function isServerCategorySubheader(line: string): boolean {
+  const clean = stripServerBulletPrefix(line);
+  if (!clean.endsWith(':') || clean.length > 65) return false;
+  if (clean.includes('http://') || clean.includes('https://')) return false;
+  const words = clean.slice(0, -1).trim().split(/\s+/).length;
+  return words >= 1 && words <= 6;
+}
+
+function stitchServerBullets(rawBullets: any[]): { bullets: string[]; subtitle?: string } {
+  const bullets: string[] = [];
+  let subtitle: string | undefined;
+  let sawExplicit = false;
+
+  for (const item of rawBullets) {
+    if (typeof item !== 'string' || !item.trim()) continue;
+    const raw = item.trim();
+
+    if (isServerCategorySubheader(raw)) {
+      sawExplicit = true;
+      continue;
+    }
+
+    const explicit = isServerBulletLine(raw);
+    const cleaned = stripServerBulletPrefix(raw);
+    if (!cleaned || cleaned.length < 2) continue;
+
+    if (
+      bullets.length === 0 &&
+      !subtitle &&
+      !explicit &&
+      !sawExplicit &&
+      (!SERVER_ACTION_VERB_REGEX.test(cleaned) || /https?:\/\//i.test(cleaned) || /\bteam\s+for\b/i.test(cleaned))
+    ) {
+      subtitle = cleaned;
+      continue;
+    }
+
+    if (explicit) {
+      sawExplicit = true;
+      bullets.push(cleaned);
+      continue;
+    }
+
+    if (bullets.length > 0) {
+      const prev = bullets[bullets.length - 1];
+      const startsLowerOrPunct = /^[a-z,;:)&\d]/.test(cleaned);
+      const prevEndsIncomplete =
+        !/[.!?]$/.test(prev) ||
+        /[,;:\-–—/]$/.test(prev) ||
+        /\b(and|or|to|for|with|in|on|of|by|from|that|which|as|into|across|through|using|via|including|between|within|fellow|multiple|the|a|an|like|such)\s*$/i.test(prev);
+
+      if (sawExplicit || startsLowerOrPunct || prevEndsIncomplete || !SERVER_ACTION_VERB_REGEX.test(cleaned)) {
+        bullets[bullets.length - 1] = `${prev} ${cleaned}`.replace(/\s+/g, ' ').trim();
+        continue;
+      }
+    }
+
+    bullets.push(cleaned);
+  }
+
+  return {
+    bullets: bullets.filter((b) => b.length > 5 && !isServerCategorySubheader(b)),
+    subtitle,
+  };
+}
+
+function splitServerHeaderIfMerged(exp: any): {
+  company: string;
+  role: string;
+  productTitle?: string;
+  location?: string;
+} {
+  let company = (exp.company || '').trim();
+  let role = (exp.role || 'Software Engineer').trim();
+  let location = exp.location?.trim() || undefined;
+  let productTitle = exp.productTitle?.trim() || undefined;
+
+  // Extract trailing dash location e.g. "– Seattle, Washington, USA" or "- Chicago, Illinois, USA"
+  const dashLocMatch = company.match(/^(.*?)\s*[–—-]\s*([A-Z][A-Za-z.\s-]{1,28}(?:,\s*[A-Z][A-Za-z.\s-]{1,28}){1,2}|Remote|Hybrid)\s*$/);
+  if (dashLocMatch && !SERVER_ROLE_REGEX.test(dashLocMatch[2])) {
+    company = dashLocMatch[1].trim();
+    if (!location) location = dashLocMatch[2].trim();
+  }
+
+  if (company.includes(',')) {
+    const parts = company.split(',').map((p: string) => p.trim()).filter(Boolean);
+    if (parts.length >= 3 && SERVER_ROLE_REGEX.test(parts[0])) {
+      role = parts[0];
+      company = parts[parts.length - 1];
+      productTitle = parts.slice(1, -1).join(', ');
+    } else if (parts.length === 2) {
+      if (SERVER_ROLE_REGEX.test(parts[0]) && !SERVER_ROLE_REGEX.test(parts[1])) {
+        role = parts[0];
+        company = parts[1];
+      } else if (SERVER_ROLE_REGEX.test(parts[1]) && !SERVER_ROLE_REGEX.test(parts[0])) {
+        company = parts[0];
+        role = parts[1];
+      }
+    }
+  }
+
+  return { company, role, productTitle, location };
+}
+
+// ---------------------------------------------------------------------------
 // 6. POST /api/portfolio/import-resume (and alias /bootstrap-from-resume)
 // ---------------------------------------------------------------------------
 const handleImportResume = async (req: Request, res: Response) => {
   if (!isDbConfigured()) return serviceUnavailable(res);
   const admin = getAdmin()!;
   const userId = req.auth!.userId;
-  const { experience, projects } = req.body || {};
+  const { experience, projects, replaceExisting } = req.body || {};
 
   if (!Array.isArray(experience) && !Array.isArray(projects)) {
     res.status(400).json({ error: 'experience or projects array is required.' });
@@ -629,21 +794,48 @@ const handleImportResume = async (req: Request, res: Response) => {
   try {
     await ensureUserRow(admin, req.auth!);
 
+    // If replaceExisting is requested, clear old companies/projects/bullets for a clean SSOT slate
+    if (replaceExisting) {
+      await Promise.all([
+        admin.from('portfolio_companies').delete().eq('user_id', userId),
+        admin.from('portfolio_projects').delete().eq('user_id', userId),
+        admin.from('master_bullets').delete().eq('user_id', userId),
+      ]);
+    }
+
+    const newCompanyRolesMap: Record<string, string> = {};
+
     // 1. Import Experience -> Company + Product + Bullets
     if (Array.isArray(experience)) {
       for (let i = 0; i < experience.length; i++) {
         const exp = experience[i];
-        if (!exp.company) continue;
+        if (!exp || !exp.company) continue;
 
-        // Create or find Company
+        // Guardrail: skip Education / University entries that leaked into experience
+        const combinedCheck = `${exp.company} ${exp.role || ''}`;
+        if (
+          SERVER_DEGREE_REGEX.test(combinedCheck) ||
+          (SERVER_INSTITUTION_REGEX.test(exp.company) && !SERVER_ROLE_REGEX.test(combinedCheck))
+        ) {
+          continue;
+        }
+
+        const decomposed = splitServerHeaderIfMerged(exp);
+        const parsedDates = parsePeriodRange(exp.period);
+        const { bullets: cleanBullets, subtitle } = stitchServerBullets(
+          Array.isArray(exp.bullets) ? exp.bullets : []
+        );
+
+        // Create Company
         const { data: comp, error: cErr } = await admin
           .from('portfolio_companies')
           .insert({
             user_id: userId,
-            name: exp.company.trim(),
-            location: exp.location?.trim() || null,
-            start_date: new Date().toISOString().slice(0, 10),
-            is_current: false,
+            name: decomposed.company,
+            location: decomposed.location || null,
+            start_date: parsedDates.start_date,
+            end_date: parsedDates.end_date,
+            is_current: parsedDates.is_current,
             display_order: i,
           })
           .select()
@@ -651,6 +843,22 @@ const handleImportResume = async (req: Request, res: Response) => {
 
         if (cErr) continue;
         importedCompanies++;
+        if (decomposed.role && comp?.id) {
+          newCompanyRolesMap[comp.id] = decomposed.role;
+        }
+
+        const prodTitle = decomposed.productTitle
+          ? decomposed.productTitle
+          : decomposed.role
+          ? `${decomposed.role} Initiatives`
+          : `${decomposed.company} Core Systems`;
+
+        const prodDescription = [
+          subtitle || exp.teamDescription,
+          exp.period && exp.period !== 'Recent' ? `Tenure: ${exp.period}` : null,
+        ]
+          .filter(Boolean)
+          .join(' · ') || null;
 
         // Create Product / Sub-system entry for this role
         const { data: prod, error: pErr } = await admin
@@ -658,9 +866,9 @@ const handleImportResume = async (req: Request, res: Response) => {
           .insert({
             user_id: userId,
             company_id: comp.id,
-            title: exp.role ? `${exp.role.trim()} Initiatives` : `${exp.company.trim()} Core Systems`,
-            role_title: exp.role?.trim() || 'Software Engineer',
-            description: exp.period ? `Tenure: ${exp.period}` : null,
+            title: prodTitle,
+            role_title: decomposed.role || 'Software Engineer',
+            description: prodDescription,
             display_order: 0,
           })
           .select()
@@ -669,31 +877,59 @@ const handleImportResume = async (req: Request, res: Response) => {
         if (pErr) continue;
         importedProducts++;
 
-        // Insert Bullets
-        if (Array.isArray(exp.bullets)) {
-          const bulletRows = exp.bullets
-            .filter((b: any) => typeof b === 'string' && b.trim())
-            .map((b: string) => ({
+        // Insert Atomic Master Bullets
+        if (cleanBullets.length > 0) {
+          const bulletRows = cleanBullets.map((b: string) => {
+            const firstWord = b.split(/\s+/)[0]?.replace(/[^a-zA-Z]/g, '') || null;
+            const metricMatch = b.match(/\b(\d+(?:\.\d+)?%|\d+x|\$\d+[kKmMbB]?|\d+\s*(?:ms|seconds|minutes|hours|days|req\/s|rps|users|clients|microservices|pipelines))\b/i);
+            return {
               user_id: userId,
               product_id: prod.id,
-              bullet_text: b.trim(),
+              bullet_text: b,
+              action_verb: firstWord,
+              impact_metric: metricMatch ? metricMatch[0] : null,
               source_type: 'docx_import',
               review_status: 'approved',
-            }));
+            };
+          });
 
-          if (bulletRows.length > 0) {
-            const { error: bErr } = await admin.from('master_bullets').insert(bulletRows);
-            if (!bErr) importedBullets += bulletRows.length;
-          }
+          const { error: bErr } = await admin.from('master_bullets').insert(bulletRows);
+          if (!bErr) importedBullets += bulletRows.length;
         }
       }
+    }
+
+    // Persist company role titles in users.preferences
+    if (Object.keys(newCompanyRolesMap).length > 0) {
+      try {
+        const { data: userRow } = await admin
+          .from('users')
+          .select('preferences')
+          .eq('id', userId)
+          .single();
+        const prefs = (userRow?.preferences && typeof userRow.preferences === 'object')
+          ? (userRow.preferences as Record<string, any>)
+          : {};
+        const mergedRoles = replaceExisting
+          ? newCompanyRolesMap
+          : { ...(prefs.company_roles || {}), ...newCompanyRolesMap };
+        await admin
+          .from('users')
+          .update({
+            preferences: {
+              ...prefs,
+              company_roles: mergedRoles,
+            },
+          })
+          .eq('id', userId);
+      } catch {}
     }
 
     // 2. Import Standalone Projects + Bullets
     if (Array.isArray(projects)) {
       for (let j = 0; j < projects.length; j++) {
         const proj = projects[j];
-        if (!proj.name) continue;
+        if (!proj || !proj.name) continue;
 
         const { data: projectRow, error: prErr } = await admin
           .from('portfolio_projects')
@@ -710,21 +946,21 @@ const handleImportResume = async (req: Request, res: Response) => {
         if (prErr) continue;
         importedProjects++;
 
-        if (Array.isArray(proj.bullets)) {
-          const projectBullets = proj.bullets
-            .filter((b: any) => typeof b === 'string' && b.trim())
-            .map((b: string) => ({
-              user_id: userId,
-              project_id: projectRow.id,
-              bullet_text: b.trim(),
-              source_type: 'docx_import',
-              review_status: 'approved',
-            }));
+        const { bullets: cleanProjBullets } = stitchServerBullets(
+          Array.isArray(proj.bullets) ? proj.bullets : []
+        );
 
-          if (projectBullets.length > 0) {
-            const { error: pbErr } = await admin.from('master_bullets').insert(projectBullets);
-            if (!pbErr) importedBullets += projectBullets.length;
-          }
+        if (cleanProjBullets.length > 0) {
+          const projectBullets = cleanProjBullets.map((b: string) => ({
+            user_id: userId,
+            project_id: projectRow.id,
+            bullet_text: b,
+            source_type: 'docx_import',
+            review_status: 'approved',
+          }));
+
+          const { error: pbErr } = await admin.from('master_bullets').insert(projectBullets);
+          if (!pbErr) importedBullets += projectBullets.length;
         }
       }
     }

@@ -12,6 +12,7 @@
 
 import { API_URL } from './config';
 import { authHeaders } from './auth';
+import { sanitizeResumeExperienceList, stitchAndCleanBullets } from './resumes';
 
 export interface MasterBullet {
   id: string;
@@ -205,12 +206,12 @@ export async function fetchPortfolio(): Promise<PortfolioSSOT> {
 
         const ssot: PortfolioSSOT = {
           companies: normalizedCompanies,
-          standalone_projects: (data.standalone_projects || []).map((pr: any) => ({
+          standalone_projects: (data.standalone_projects || data.projects || []).map((pr: any) => ({
             ...pr,
             tech_stack: Array.isArray(pr.tech_stack) ? pr.tech_stack : [],
             bullets: Array.isArray(pr.bullets) ? pr.bullets : [],
           })),
-          unattached_bullets: data.unattached_bullets || [],
+          unattached_bullets: data.unattached_bullets || data.unattachedBullets || [],
         };
         // Update local cache
         saveLocalPortfolio(ssot);
@@ -261,10 +262,11 @@ export function normalizeDateToISO(val: string | null | undefined): string | nul
     dec: '12', december: '12',
   };
 
-  const nameMatch = s.match(/^([a-zA-Z]+)[,\s]+(\d{4})$/);
+  const nameMatch = s.match(/^([a-zA-Z]+)\.?\s*['’]?(\d{2,4})$/);
   if (nameMatch) {
     const mStr = nameMatch[1].toLowerCase();
-    const year = nameMatch[2];
+    let year = nameMatch[2];
+    if (year.length === 2) year = `20${year}`;
     const mNum = monthMap[mStr];
     if (mNum) return `${year}-${mNum}-01`;
   }
@@ -282,6 +284,25 @@ export function normalizeDateToISO(val: string | null | undefined): string | nul
   }
 
   return null;
+}
+
+export function parsePeriodRange(period: string | null | undefined): {
+  start_date: string | null;
+  end_date: string | null;
+  is_current: boolean;
+} {
+  if (!period || typeof period !== 'string') {
+    return { start_date: null, end_date: null, is_current: false };
+  }
+  const parts = period.split(/\s*(?:[-—–―]+|to)\s*/i).map((p) => p.trim()).filter(Boolean);
+  if (parts.length >= 2) {
+    const start_date = normalizeDateToISO(parts[0]);
+    const is_current = /^(present|current|now|ongoing)$/i.test(parts[1]);
+    const end_date = is_current ? null : normalizeDateToISO(parts[1]);
+    return { start_date, end_date, is_current };
+  }
+  const single = normalizeDateToISO(period);
+  return { start_date: single, end_date: null, is_current: false };
 }
 
 /**
@@ -728,8 +749,18 @@ export async function deleteBullet(id: string): Promise<void> {
  */
 export async function bootstrapPortfolioFromResume(
   experience: any[],
-  projects: any[]
+  projects: any[],
+  options?: { replaceExisting?: boolean }
 ): Promise<{ ok: boolean; imported: { companies: number; products: number; projects: number; bullets: number } }> {
+  const cleanExperience = sanitizeResumeExperienceList(Array.isArray(experience) ? experience : []);
+  const cleanProjects = Array.isArray(projects)
+    ? projects.map((p: any) => ({
+        ...p,
+        bullets: Array.isArray(p.bullets) ? stitchAndCleanBullets(p.bullets).bullets : [],
+      }))
+    : [];
+  const replaceExisting = !!options?.replaceExisting;
+
   const headers = await authHeaders();
   if (headers.Authorization) {
     let res = await fetch(`${API_URL}/api/portfolio/import-resume`, {
@@ -738,7 +769,11 @@ export async function bootstrapPortfolioFromResume(
         'content-type': 'application/json',
         ...headers,
       },
-      body: JSON.stringify({ experience, projects }),
+      body: JSON.stringify({
+        experience: cleanExperience,
+        projects: cleanProjects,
+        replaceExisting,
+      }),
     });
 
     // Fallback if backend route uses alternate naming
@@ -749,7 +784,11 @@ export async function bootstrapPortfolioFromResume(
           'content-type': 'application/json',
           ...headers,
         },
-        body: JSON.stringify({ experience, projects }),
+        body: JSON.stringify({
+          experience: cleanExperience,
+          projects: cleanProjects,
+          replaceExisting,
+        }),
       });
     }
 
@@ -761,81 +800,89 @@ export async function bootstrapPortfolioFromResume(
   }
 
   // Local bootstrap simulation
-  const local = getLocalPortfolio();
+  const local = replaceExisting
+    ? { companies: [], standalone_projects: [], unattached_bullets: [] }
+    : getLocalPortfolio();
   let compCount = 0;
   let prodCount = 0;
   let projCount = 0;
   let bulletCount = 0;
 
-  if (Array.isArray(experience)) {
-    for (let i = 0; i < experience.length; i++) {
-      const exp = experience[i];
-      if (!exp.company) continue;
-      const compId = `comp_${Date.now()}_${i}`;
-      const prodId = `prod_${Date.now()}_${i}`;
+  for (let i = 0; i < cleanExperience.length; i++) {
+    const exp = cleanExperience[i];
+    if (!exp.company) continue;
+    const compId = `comp_${Date.now()}_${i}`;
+    const prodId = `prod_${Date.now()}_${i}`;
+    const parsedDates = parsePeriodRange(exp.period);
 
-      const bullets: MasterBullet[] = Array.isArray(exp.bullets)
-        ? exp.bullets.map((b: string, bIdx: number) => ({
-            id: `bullet_${Date.now()}_${i}_${bIdx}`,
-            product_id: prodId,
-            bullet_text: b,
-            source_type: 'docx_import',
-            review_status: 'approved',
-          }))
-        : [];
+    const bullets: MasterBullet[] = Array.isArray(exp.bullets)
+      ? exp.bullets.map((b: string, bIdx: number) => ({
+          id: `bullet_${Date.now()}_${i}_${bIdx}`,
+          product_id: prodId,
+          bullet_text: b,
+          source_type: 'docx_import',
+          review_status: 'approved',
+        }))
+      : [];
 
-      const product: PortfolioProduct = {
-        id: prodId,
-        company_id: compId,
-        name: 'Core System & Product Line',
-        architecture_type: 'monolith_to_microservices',
-        bullets,
-      };
+    const prodName = exp.productTitle
+      ? exp.productTitle
+      : exp.role
+      ? `${exp.role} Initiatives`
+      : 'Core System & Product Line';
 
-      const company: PortfolioCompany = {
-        id: compId,
-        name: exp.company,
-        role_title: exp.role || null,
-        location: exp.location || null,
-        display_order: i,
-        products: [product],
-      };
+    const product: PortfolioProduct = {
+      id: prodId,
+      company_id: compId,
+      name: prodName,
+      architecture_type: 'monolith_to_microservices',
+      bullets,
+    };
 
-      local.companies.push(company);
-      compCount++;
-      prodCount++;
-      bulletCount += bullets.length;
-    }
+    const company: PortfolioCompany = {
+      id: compId,
+      name: exp.company,
+      role_title: exp.role || null,
+      location: exp.location || null,
+      start_date: parsedDates.start_date,
+      end_date: parsedDates.end_date,
+      is_current: parsedDates.is_current,
+      display_order: i,
+      products: [product],
+    };
+
+    local.companies.push(company);
+    compCount++;
+    prodCount++;
+    bulletCount += bullets.length;
   }
 
-  if (Array.isArray(projects)) {
-    for (let j = 0; j < projects.length; j++) {
-      const p = projects[j];
-      if (!p.name) continue;
-      const projId = `proj_${Date.now()}_${j}`;
+  for (let j = 0; j < cleanProjects.length; j++) {
+    const p = cleanProjects[j];
+    if (!p.name) continue;
+    const projId = `proj_${Date.now()}_${j}`;
 
-      const bullets: MasterBullet[] = Array.isArray(p.bullets)
-        ? p.bullets.map((b: string, bIdx: number) => ({
-            id: `bullet_proj_${Date.now()}_${j}_${bIdx}`,
-            project_id: projId,
-            bullet_text: b,
-            source_type: 'docx_import',
-            review_status: 'approved',
-          }))
-        : [];
+    const bullets: MasterBullet[] = Array.isArray(p.bullets)
+      ? p.bullets.map((b: string, bIdx: number) => ({
+          id: `bullet_proj_${Date.now()}_${j}_${bIdx}`,
+          project_id: projId,
+          bullet_text: b,
+          source_type: 'docx_import',
+          review_status: 'approved',
+        }))
+      : [];
 
-      local.standalone_projects.push({
-        id: projId,
-        name: p.name,
-        headline: p.description || null,
-        live_url: p.link || null,
-        display_order: j,
-        bullets,
-      });
+    local.standalone_projects.push({
+      id: projId,
+      name: p.name,
+      headline: p.description || null,
+      live_url: p.link || null,
+      display_order: j,
+      bullets,
+    });
 
-      projCount++;
-      bulletCount += bullets.length;
-    }
+    projCount++;
+    bulletCount += bullets.length;
   }
 
   saveLocalPortfolio(local);
