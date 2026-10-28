@@ -1,8 +1,8 @@
 # GitGrill (formerly DevScope) — Build Tracker & Technical Changelog
 
 > Real-time tracker of implemented features, bug fixes, schema evolutions, and upcoming roadmap milestones.  
-> **Current Version:** `v1.4.0` (Living Portfolio SSOT & Decoupled CareerOS Architecture)  
-> **Status:** Portfolio SSOT live, non-breaking multi-resume database migration verified, guest sandbox hardened.
+> **Current Version:** `v1.4.1` (Universal Resume Parser, Bullet Stitching & Ingestion Hardening)  
+> **Status:** Parser & CORS code deployed; Living Portfolio SSOT ingestion undergoing active manual verification.
 
 ---
 
@@ -625,6 +625,37 @@ pie title Roadmap Milestone Status
   - Built a persistent, responsive, top sub-navigation bar shared across all `/developer/*` pages with active state indicators, count chips, zero truncation, and instant Next.js page transitions.
 * **Build & Typecheck Verification:**
   - Verified with `npx tsc --noEmit` (0 errors) and `next build` (all 16 routes compiled cleanly with 0 errors).
+
+---
+
+### Milestone 33 — Universal Resume Parser, Robust Bullet Stitching & CORS Resolution (In Verification) 🟡
+
+* **Current Status:** Code implementation and offline test suites verified (100% pass); Living Portfolio SSOT ingestion is in active manual verification (not yet marked fully done pending user validation).
+* **1. CORS & Deployment Resolution ([`backend/src/index.ts`](file:///e:/rabby-xponent/Projects/devscope/backend/src/index.ts)):**
+  - **The Bug:** Deployed Vercel domains (`https://gitgrill-gr.vercel.app`) failed preflight `OPTIONS` requests against Render backend with `net::ERR_FAILED`, triggering generic `TypeError: "Failed to fetch"` in the client.
+  - **Root Cause:** In [`backend/src/index.ts`](file:///e:/rabby-xponent/Projects/devscope/backend/src/index.ts), `isVercelPreview` regex was `/^[a-z0-9-]+\.vercel\.app$/`, which failed because normalized incoming origins contain the `https://` protocol prefix.
+  - **The Fix:** Replaced with URL-based hostname matching (`isVercelDeployment`), defaulted preview deployment allowance to active, and added standard production domains (`https://gitgrill-gr.vercel.app`, `https://gitgrill.vercel.app`, `https://devscope.vercel.app`) to `defaultAllowedOrigins`.
+* **2. Universal Multi-Pattern Resume Parser ([`frontend/lib/resumes.ts`](file:///e:/rabby-xponent/Projects/devscope/frontend/lib/resumes.ts)):**
+  - **Section Boundary Detection:** Strips decorative underlines (`____`), box-drawing characters, dashes, and Roman numerals so sections like `EDUCATION` or `SKILLS` are not swallowed into `EXPERIENCE`. Handles 2-column PDF headers on the same horizontal line.
+  - **Education & Non-Work Guardrail:** Automatically diverts academic degrees (`B.S.`, `M.S.`, `B.Tech`, `Bachelor`, `Master`, `Ph.D.`, `GPA`) and universities to `education[]` instead of creating fake work experience companies.
+  - **Header Decomposer (`parseExperienceHeader`):** Accurately extracts `Company`, `Role`, `Product/Team`, `Location`, and `Period` across date-first comma+dash formats, pipe-separated, dash-separated, two-line LaTeX templates, and `"Role at/@ Company"` patterns.
+  - **Smart Bullet Stitching (`stitchAndCleanBullets`):**
+    * Stitches multi-line wrapped PDF lines back into complete sentences.
+    * Strips all bullet markers (`•`, `●`, `▪`, `◦`, `○`, `o `).
+    * Filters category subheaders ending in colons (`• Major deliveries:`, `• Operations and Infrastructure:`).
+    * Captures non-bulleted team intro lines as the product `description`.
+* **3. SSOT Ingestion & Auto-Healing Vault ([`portfolio.routes.ts`](file:///e:/rabby-xponent/Projects/devscope/backend/src/portfolio/portfolio.routes.ts), [`portfolio.ts`](file:///e:/rabby-xponent/Projects/devscope/frontend/lib/portfolio.ts), [`PortfolioHub.tsx`](file:///e:/rabby-xponent/Projects/devscope/frontend/components/PortfolioHub.tsx)):**
+  - **Real Dates:** Parses `period` into actual Postgres `start_date` and `end_date` rather than defaulting to today's date (`Oct 2026`).
+  - **Server-Side Guardrail:** Defensive normalizer cleans incoming payloads even if sent from older cached clients.
+  - **Self-Healing Vault:** Existing resumes in `localStorage` auto-upgrade to the new clean parse on load.
+  - **Clean Slate Bootstrap:** Added a `"Clean slate: replace existing SSOT records with this import"` toggle (checked by default) to wipe previous broken attempts and import a clean SSOT in 1 click.
+* **4. Verification & Next Steps:**
+  - Verified with `npm run build` across both `backend` (0 errors) and `frontend` (all 16 routes compiled, 0 errors).
+  - Parser test script verified with 100% accuracy on multi-line wrapped bullets, nested sub-bullets, and diverse resume layouts.
+  - **Pending Next Steps:**
+    1. User manual testing & verification of SSOT import on deployed / local environment.
+    2. Phase 2: Dynamic Multi-Resume studio views linked directly to Living Portfolio SSOT.
+
 
 
 
