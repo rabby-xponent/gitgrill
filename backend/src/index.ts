@@ -30,11 +30,18 @@ const normalizeOrigin = (origin: string): string => {
   }
 };
 
+const defaultAllowedOrigins = [
+  'https://gitgrill-gr.vercel.app',
+  'https://gitgrill.vercel.app',
+  'https://devscope.vercel.app',
+];
+
 // FRONTEND_URL (single value, legacy) + ALLOWED_ORIGINS (comma-separated) both
 // feed the allowlist. Production frontends move around (apex vs www, Vercel
 // project domains, preview URLs), so being too strict here silently kills the
 // entire product with a dataless EventSource error.
 const allowedOrigins = [
+  ...defaultAllowedOrigins,
   ...(process.env.FRONTEND_URL || '').split(','),
   ...(process.env.ALLOWED_ORIGINS || '').split(','),
 ]
@@ -42,11 +49,17 @@ const allowedOrigins = [
   .filter(Boolean)
   .map(normalizeOrigin);
 
-// Opt-in wildcard: allow all Vercel preview deployments (NOT the `*` CORS
-// wildcard — an explicit allowlist response header is still emitted per
-// request). Preview URLs are random and unguessable, so this is low risk.
-const allowVercelPreviews = process.env.ALLOW_VERCEL_PREVIEWS === 'true';
-const isVercelPreview = (origin: string) => /^[a-z0-9-]+\.vercel\.app$/.test(origin);
+// Allow Vercel preview/production deployments (*.vercel.app) by default unless explicitly disabled.
+const allowVercelPreviews = process.env.ALLOW_VERCEL_PREVIEWS !== 'false';
+const isVercelDeployment = (origin: string): boolean => {
+  try {
+    const parsed = new URL(origin);
+    const hostname = parsed.hostname.toLowerCase();
+    return hostname === 'vercel.app' || hostname.endsWith('.vercel.app');
+  } catch {
+    return /^https?:\/\/[a-z0-9-.]+\.vercel\.app(:\d+)?$/i.test(origin);
+  }
+};
 const isLocalhost = (origin: string) => /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);
 
 if (process.env.NODE_ENV === 'production' && allowedOrigins.length === 0) {
@@ -62,7 +75,7 @@ app.use(
       if (
         !clean ||
         allowedOrigins.includes(clean) ||
-        (allowVercelPreviews && isVercelPreview(clean)) ||
+        (allowVercelPreviews && isVercelDeployment(clean)) ||
         isLocalhost(clean)
       ) {
         cb(null, origin || true);
