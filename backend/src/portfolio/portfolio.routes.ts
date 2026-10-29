@@ -679,14 +679,12 @@ function isServerCategorySubheader(line: string): boolean {
 function stitchServerBullets(rawBullets: any[]): { bullets: string[]; subtitle?: string } {
   const bullets: string[] = [];
   let subtitle: string | undefined;
-  let sawExplicit = false;
 
   for (const item of rawBullets) {
     if (typeof item !== 'string' || !item.trim()) continue;
     const raw = item.trim();
 
     if (isServerCategorySubheader(raw)) {
-      sawExplicit = true;
       continue;
     }
 
@@ -698,7 +696,6 @@ function stitchServerBullets(rawBullets: any[]): { bullets: string[]; subtitle?:
       bullets.length === 0 &&
       !subtitle &&
       !explicit &&
-      !sawExplicit &&
       (!SERVER_ACTION_VERB_REGEX.test(cleaned) || /https?:\/\//i.test(cleaned) || /\bteam\s+for\b/i.test(cleaned))
     ) {
       subtitle = cleaned;
@@ -706,7 +703,6 @@ function stitchServerBullets(rawBullets: any[]): { bullets: string[]; subtitle?:
     }
 
     if (explicit) {
-      sawExplicit = true;
       bullets.push(cleaned);
       continue;
     }
@@ -714,12 +710,17 @@ function stitchServerBullets(rawBullets: any[]): { bullets: string[]; subtitle?:
     if (bullets.length > 0) {
       const prev = bullets[bullets.length - 1];
       const startsLowerOrPunct = /^[a-z,;:)&\d]/.test(cleaned);
-      const prevEndsIncomplete =
-        !/[.!?]$/.test(prev) ||
-        /[,;:\-–—/]$/.test(prev) ||
-        /\b(and|or|to|for|with|in|on|of|by|from|that|which|as|into|across|through|using|via|including|between|within|fellow|multiple|the|a|an|like|such)\s*$/i.test(prev);
+      const prevEndsConnector =
+        /[,;:\-–—/(]\s*$/.test(prev) ||
+        /\b(and|or|to|for|with|in|on|of|by|from|that|which|as|into|across|through|using|via|including|between|within|fellow|multiple|the|a|an|such|both)\s*$/i.test(prev);
 
-      if (sawExplicit || startsLowerOrPunct || prevEndsIncomplete || !SERVER_ACTION_VERB_REGEX.test(cleaned)) {
+      const isActionStart = SERVER_ACTION_VERB_REGEX.test(cleaned);
+      const isContinuation =
+        startsLowerOrPunct ||
+        prevEndsConnector ||
+        (!isActionStart && cleaned.split(/\s+/).length < 12);
+
+      if (isContinuation) {
         bullets[bullets.length - 1] = `${prev} ${cleaned}`.replace(/\s+/g, ' ').trim();
         continue;
       }

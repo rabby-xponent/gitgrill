@@ -93,7 +93,7 @@ export interface ResumeProfile {
 
 const STORAGE_KEY = 'gitgrill_resumes_v1';
 const ACTIVE_RESUME_KEY = 'gitgrill_active_resume_id_v1';
-export const CURRENT_PARSER_VERSION = 3;
+export const CURRENT_PARSER_VERSION = 4;
 
 function getResumesKey(): string {
   if (typeof window === 'undefined') return STORAGE_KEY;
@@ -1158,6 +1158,51 @@ function cleanCompanyOrRole(val: string): string {
 }
 
 /**
+ * Cleans an already-split array of bullet strings without destructively
+ * merging separate bullets into giant text blocks.
+ */
+export function cleanArrayBullets(
+  bullets: string[],
+  options?: { captureLeadingSubtitle?: boolean }
+): { bullets: string[]; subtitle?: string } {
+  const result: string[] = [];
+  let subtitle: string | undefined;
+
+  for (const b of bullets) {
+    if (!b || typeof b !== 'string') continue;
+    const trimmed = b.trim();
+    if (!trimmed) continue;
+    if (isCategorySubheader(trimmed)) continue;
+
+    const explicit = isBulletLine(trimmed);
+    const clean = stripBulletPrefix(trimmed);
+    if (!clean || clean.length < 5 || isCategorySubheader(clean)) continue;
+
+    // Check if leading item is a non-bulleted team subtitle
+    if (
+      options?.captureLeadingSubtitle &&
+      result.length === 0 &&
+      !subtitle &&
+      !explicit &&
+      (!ACTION_VERB_START_REGEX.test(clean) || /https?:\/\//i.test(clean) || /\bteam\s+for\b/i.test(clean))
+    ) {
+      subtitle = clean;
+      continue;
+    }
+
+    // Only stitch onto previous if this array element is an obvious orphaned fragment
+    // (starts with lowercase or dangling connector)
+    if (result.length > 0 && /^[a-z,;:)&]/.test(clean)) {
+      result[result.length - 1] = `${result[result.length - 1]} ${clean}`.replace(/\s+/g, ' ').trim();
+    } else {
+      result.push(clean);
+    }
+  }
+
+  return { bullets: result, subtitle };
+}
+
+/**
  * Stitches wrapped multi-line bullet fragments back into complete atomic bullets,
  * removes category subheaders (like "• Major deliveries:"), and strips all bullet prefixes ("• ", "o ").
  */
@@ -1167,7 +1212,6 @@ export function stitchAndCleanBullets(
 ): { bullets: string[]; subtitle?: string } {
   const bullets: string[] = [];
   let subtitle: string | undefined;
-  let sawExplicitBullet = false;
 
   for (let i = 0; i < rawLines.length; i++) {
     const raw = rawLines[i].trim();
@@ -1175,7 +1219,6 @@ export function stitchAndCleanBullets(
 
     // Skip category subheaders like "• Major deliveries:" or "• Operations and Infrastructure:"
     if (isCategorySubheader(raw)) {
-      sawExplicitBullet = true;
       continue;
     }
 
@@ -1190,7 +1233,6 @@ export function stitchAndCleanBullets(
       bullets.length === 0 &&
       !subtitle &&
       !explicitBullet &&
-      !sawExplicitBullet &&
       (!ACTION_VERB_START_REGEX.test(cleaned) || /https?:\/\//i.test(cleaned) || /\bteam\s+for\b/i.test(cleaned))
     ) {
       subtitle = cleaned;
@@ -1198,7 +1240,6 @@ export function stitchAndCleanBullets(
     }
 
     if (explicitBullet) {
-      sawExplicitBullet = true;
       bullets.push(cleaned);
       continue;
     }
@@ -1207,13 +1248,17 @@ export function stitchAndCleanBullets(
     if (bullets.length > 0) {
       const prev = bullets[bullets.length - 1];
       const startsLowerOrPunct = /^[a-z,;:)&\d]/.test(cleaned);
-      const prevEndsIncomplete =
-        !/[.!?]$/.test(prev) ||
-        /[,;:\-–—/]$/.test(prev) ||
-        /\b(and|or|to|for|with|in|on|of|by|from|that|which|as|into|across|through|using|via|including|between|within|fellow|multiple|the|a|an|like|such)\s*$/i.test(prev);
+      const prevEndsConnector =
+        /[,;:\-–—/(]\s*$/.test(prev) ||
+        /\b(and|or|to|for|with|in|on|of|by|from|that|which|as|into|across|through|using|via|including|between|within|fellow|multiple|the|a|an|such|both)\s*$/i.test(prev);
 
-      // If we are inside an explicitly bulleted list, or if the line is a grammatical continuation, stitch it!
-      if (sawExplicitBullet || startsLowerOrPunct || prevEndsIncomplete || !ACTION_VERB_START_REGEX.test(cleaned)) {
+      const isActionStart = ACTION_VERB_START_REGEX.test(cleaned);
+      const isContinuation =
+        startsLowerOrPunct ||
+        prevEndsConnector ||
+        (!isActionStart && cleaned.split(/\s+/).length < 12);
+
+      if (isContinuation) {
         bullets[bullets.length - 1] = `${prev} ${cleaned}`.replace(/\s+/g, ' ').trim();
         continue;
       }
@@ -1281,7 +1326,8 @@ export function sanitizeResumeExperienceList(
       if (decomposed.period && period === 'Recent') period = decomposed.period;
     }
 
-    const { bullets, subtitle } = stitchAndCleanBullets(exp.bullets || [], {
+    // Clean bullets without collapsing already-separated array items
+    const { bullets, subtitle } = cleanArrayBullets(exp.bullets || [], {
       captureLeadingSubtitle: true,
     });
 
