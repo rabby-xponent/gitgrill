@@ -72,6 +72,14 @@ export function PortfolioHub() {
   });
   const [searchQuery, setSearchQuery] = useState('');
   const [filterReviewStatus, setFilterReviewStatus] = useState<'all' | 'approved' | 'needs_review' | 'draft'>('all');
+  const [selectedTechFilter, setSelectedTechFilter] = useState<string | null>(null);
+
+  // Drag & drop state for bullets
+  const [draggedBullet, setDraggedBullet] = useState<{
+    bullet: MasterBullet;
+    sourceParentId: string;
+  } | null>(null);
+  const [dragOverTargetId, setDragOverTargetId] = useState<string | null>(null);
 
   // Modals state
   const [companyModal, setCompanyModal] = useState<{ isOpen: boolean; company?: PortfolioCompany } | null>(null);
@@ -205,46 +213,279 @@ export function PortfolioHub() {
     };
   }, [portfolio]);
 
+  // Dynamic Tech Stacks aggregated from products and projects
+  const allTechStacks = useMemo(() => {
+    const counts = new Map<string, number>();
+    portfolio.companies.forEach((c) => {
+      (c.products || []).forEach((p) => {
+        (p.tech_stack || []).forEach((t) => {
+          if (t && t.trim()) {
+            const clean = t.trim();
+            counts.set(clean, (counts.get(clean) || 0) + 1);
+          }
+        });
+        (p.bullets || []).forEach((b) => {
+          (b.tech_stack || []).forEach((t) => {
+            if (t && t.trim()) {
+              const clean = t.trim();
+              counts.set(clean, (counts.get(clean) || 0) + 1);
+            }
+          });
+        });
+      });
+    });
+    portfolio.standalone_projects.forEach((pr) => {
+      (pr.tech_stack || []).forEach((t) => {
+        if (t && t.trim()) {
+          const clean = t.trim();
+          counts.set(clean, (counts.get(clean) || 0) + 1);
+        }
+      });
+    });
+    return Array.from(counts.entries())
+      .sort((a, b) => b[1] - a[1])
+      .map(([t]) => t)
+      .slice(0, 10);
+  }, [portfolio]);
+
+  // All valid move targets for bullets across companies and products
+  const allMoveTargets = useMemo(() => {
+    const targets: Array<{ id: string; name: string; type: 'company' | 'product'; companyName: string }> = [];
+    portfolio.companies.forEach((c) => {
+      targets.push({ id: c.id, name: `${c.name} (Direct)`, type: 'company', companyName: c.name });
+      (c.products || []).forEach((p) => {
+        targets.push({ id: p.id, name: p.name, type: 'product', companyName: c.name });
+      });
+    });
+    return targets;
+  }, [portfolio.companies]);
+
   // Filtering
   const filteredCompanies = useMemo(() => {
     const q = searchQuery.toLowerCase().trim();
-    if (!q && filterReviewStatus === 'all') return portfolio.companies;
+    const techFilter = selectedTechFilter?.toLowerCase().trim();
+    if (!q && filterReviewStatus === 'all' && !techFilter) return portfolio.companies;
 
     return portfolio.companies
       .map((c) => {
         const matchesComp = c.name.toLowerCase().includes(q) || (c.role_title && c.role_title.toLowerCase().includes(q));
         const filteredProds = (c.products || []).filter((p) => {
+          const matchesTech = !techFilter ||
+            (p.tech_stack || []).some((t) => t.toLowerCase() === techFilter) ||
+            (p.bullets || []).some((b) =>
+              (b.tech_stack || []).some((t) => t.toLowerCase() === techFilter) ||
+              b.bullet_text.toLowerCase().includes(techFilter)
+            );
           const matchesProd = p.name.toLowerCase().includes(q) || (p.architecture_type && p.architecture_type.toLowerCase().includes(q));
           const matchesBullets = (p.bullets || []).some((b) => {
             const matchesText = b.bullet_text.toLowerCase().includes(q) || (b.tech_stack || []).some((t) => t.toLowerCase().includes(q));
             const matchesStatus = filterReviewStatus === 'all' || b.review_status === filterReviewStatus;
             return matchesText && matchesStatus;
           });
-          return matchesProd || matchesBullets;
+          return matchesTech && (matchesProd || matchesBullets);
         });
 
-        if (matchesComp || filteredProds.length > 0) {
-          return { ...c, products: filteredProds.length > 0 ? filteredProds : c.products };
+        const filteredDirectBullets = (c.bullets || []).filter((b) => {
+          const matchesTech = !techFilter ||
+            (b.tech_stack || []).some((t) => t.toLowerCase() === techFilter) ||
+            b.bullet_text.toLowerCase().includes(techFilter);
+          const matchesText = b.bullet_text.toLowerCase().includes(q) || (b.tech_stack || []).some((t) => t.toLowerCase().includes(q));
+          const matchesStatus = filterReviewStatus === 'all' || b.review_status === filterReviewStatus;
+          return matchesTech && matchesText && matchesStatus;
+        });
+
+        if ((matchesComp && !techFilter) || filteredProds.length > 0 || filteredDirectBullets.length > 0) {
+          return {
+            ...c,
+            products: filteredProds.length > 0 ? filteredProds : (techFilter ? [] : c.products),
+            bullets: filteredDirectBullets.length > 0 ? filteredDirectBullets : (techFilter ? [] : c.bullets),
+          };
         }
         return null;
       })
       .filter(Boolean) as PortfolioCompany[];
-  }, [portfolio.companies, searchQuery, filterReviewStatus]);
+  }, [portfolio.companies, searchQuery, filterReviewStatus, selectedTechFilter]);
 
   const filteredProjects = useMemo(() => {
     const q = searchQuery.toLowerCase().trim();
-    if (!q && filterReviewStatus === 'all') return portfolio.standalone_projects;
+    const techFilter = selectedTechFilter?.toLowerCase().trim();
+    if (!q && filterReviewStatus === 'all' && !techFilter) return portfolio.standalone_projects;
 
     return portfolio.standalone_projects.filter((p) => {
+      const matchesTech = !techFilter ||
+        (p.tech_stack || []).some((t) => t.toLowerCase() === techFilter) ||
+        (p.bullets || []).some((b) =>
+          (b.tech_stack || []).some((t) => t.toLowerCase() === techFilter) ||
+          b.bullet_text.toLowerCase().includes(techFilter)
+        );
       const matchesText = p.name.toLowerCase().includes(q) || (p.headline && p.headline.toLowerCase().includes(q));
       const matchesBullets = (p.bullets || []).some((b) => {
         const matchesBText = b.bullet_text.toLowerCase().includes(q) || (b.tech_stack || []).some((t) => t.toLowerCase().includes(q));
         const matchesStatus = filterReviewStatus === 'all' || b.review_status === filterReviewStatus;
         return matchesBText && matchesStatus;
       });
-      return matchesText || matchesBullets;
+      return matchesTech && (matchesText || matchesBullets);
     });
-  }, [portfolio.standalone_projects, searchQuery, filterReviewStatus]);
+  }, [portfolio.standalone_projects, searchQuery, filterReviewStatus, selectedTechFilter]);
+
+  // Bullet inline save handler
+  const handleSaveBulletInline = async (bulletId: string, newText: string) => {
+    const trimmed = newText.trim();
+    if (!trimmed) return;
+    const words = trimmed.split(/\s+/);
+    const firstWord = words[0]?.replace(/[^a-zA-Z]/g, '') || null;
+    const metricMatch = extractImpactMetric(trimmed);
+
+    let existing: MasterBullet | null = null;
+    for (const c of portfolio.companies) {
+      for (const p of c.products || []) {
+        const b = (p.bullets || []).find((x) => x.id === bulletId);
+        if (b) { existing = b; break; }
+      }
+      if (existing) break;
+      const directB = (c.bullets || []).find((x) => x.id === bulletId);
+      if (directB) { existing = directB; break; }
+    }
+    if (!existing) {
+      for (const pr of portfolio.standalone_projects) {
+        const b = (pr.bullets || []).find((x) => x.id === bulletId);
+        if (b) { existing = b; break; }
+      }
+    }
+
+    const updatedPayload: MasterBullet = {
+      ...(existing || { id: bulletId, source_type: 'manual', review_status: 'approved' }),
+      bullet_text: trimmed,
+      action_verb: firstWord,
+      metric_primary: metricMatch || existing?.metric_primary || null,
+    };
+
+    setPortfolio((prev) => {
+      const next = { ...prev };
+      next.companies = next.companies.map((c) => ({
+        ...c,
+        bullets: (c.bullets || []).map((b) => (b.id === bulletId ? updatedPayload : b)),
+        products: (c.products || []).map((p) => ({
+          ...p,
+          bullets: (p.bullets || []).map((b) => (b.id === bulletId ? updatedPayload : b)),
+        })),
+      }));
+      next.standalone_projects = next.standalone_projects.map((pr) => ({
+        ...pr,
+        bullets: (pr.bullets || []).map((b) => (b.id === bulletId ? updatedPayload : b)),
+      }));
+      return next;
+    });
+
+    try {
+      await saveBullet(updatedPayload);
+    } catch (err) {
+      console.error('Failed to save bullet inline:', err);
+      await loadData();
+    }
+  };
+
+  // Move bullet between company and products
+  const handleMoveBullet = async (
+    bullet: MasterBullet,
+    targetType: 'company' | 'product',
+    targetId: string
+  ) => {
+    let nextProductId: string | null = null;
+    if (targetType === 'product') {
+      nextProductId = targetId;
+    }
+
+    const updatedPayload: MasterBullet = {
+      ...bullet,
+      product_id: nextProductId,
+      project_id: null,
+    };
+
+    setPortfolio((prev) => {
+      const next = { ...prev };
+      next.companies = next.companies.map((c) => {
+        const filteredDirect = (c.bullets || []).filter((b) => b.id !== bullet.id);
+        const updatedProds = (c.products || []).map((p) => {
+          let prodsBullets = (p.bullets || []).filter((b) => b.id !== bullet.id);
+          if (targetType === 'product' && p.id === targetId) {
+            prodsBullets = [...prodsBullets, updatedPayload];
+          }
+          return { ...p, bullets: prodsBullets };
+        });
+        let compBullets = filteredDirect;
+        if (targetType === 'company' && c.id === targetId) {
+          compBullets = [...compBullets, updatedPayload];
+        }
+        return { ...c, bullets: compBullets, products: updatedProds };
+      });
+      return next;
+    });
+
+    try {
+      await saveBullet(updatedPayload);
+    } catch (err) {
+      console.error('Failed to re-parent bullet:', err);
+      await loadData();
+    }
+  };
+
+  // Toggle review status (approved -> needs_review -> draft -> approved)
+  const handleToggleBulletStatus = async (bullet: MasterBullet) => {
+    const cycle: Record<MasterBullet['review_status'], MasterBullet['review_status']> = {
+      approved: 'needs_review',
+      needs_review: 'draft',
+      draft: 'approved',
+    };
+    const nextStatus = cycle[bullet.review_status] || 'approved';
+    const updated = { ...bullet, review_status: nextStatus };
+
+    setPortfolio((prev) => {
+      const next = { ...prev };
+      next.companies = next.companies.map((c) => ({
+        ...c,
+        bullets: (c.bullets || []).map((b) => (b.id === bullet.id ? updated : b)),
+        products: (c.products || []).map((p) => ({
+          ...p,
+          bullets: (p.bullets || []).map((b) => (b.id === bullet.id ? updated : b)),
+        })),
+      }));
+      next.standalone_projects = next.standalone_projects.map((pr) => ({
+        ...pr,
+        bullets: (pr.bullets || []).map((b) => (b.id === bullet.id ? updated : b)),
+      }));
+      return next;
+    });
+
+    try {
+      await saveBullet(updated);
+    } catch {
+      await loadData();
+    }
+  };
+
+  // Drag and drop handlers
+  const handleBulletDragStart = (e: React.DragEvent, bullet: MasterBullet, sourceParentId: string) => {
+    setDraggedBullet({ bullet, sourceParentId });
+    e.dataTransfer.setData('text/plain', bullet.id);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDropOnProduct = async (e: React.DragEvent, targetProductId: string) => {
+    e.preventDefault();
+    setDragOverTargetId(null);
+    if (!draggedBullet || draggedBullet.bullet.product_id === targetProductId) return;
+    await handleMoveBullet(draggedBullet.bullet, 'product', targetProductId);
+    setDraggedBullet(null);
+  };
+
+  const handleDropOnCompany = async (e: React.DragEvent, targetCompanyId: string) => {
+    e.preventDefault();
+    setDragOverTargetId(null);
+    if (!draggedBullet) return;
+    await handleMoveBullet(draggedBullet.bullet, 'company', targetCompanyId);
+    setDraggedBullet(null);
+  };
 
   // Handle Deletions
   const handleConfirmDelete = async () => {
@@ -489,31 +730,67 @@ export function PortfolioHub() {
         </div>
       </div>
 
-      {/* Search & Filter Toolbar */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-        <SearchInput
-          value={searchQuery}
-          onChange={setSearchQuery}
-          placeholder="Search by company, tech stack, architecture, or metric..."
-          className="w-full max-w-md py-1"
-        />
+      {/* Search & Dynamic Tech Stack Filter Toolbar */}
+      <div className="space-y-2.5">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+          <SearchInput
+            value={searchQuery}
+            onChange={setSearchQuery}
+            placeholder="Search by company, tech stack, architecture, or metric..."
+            className="w-full max-w-md py-1"
+          />
 
-        <div className="flex items-center gap-2">
-          <span className="font-mono text-[11px] text-muted uppercase font-bold shrink-0">Status:</span>
-          {(['all', 'approved', 'needs_review', 'draft'] as const).map((status) => (
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="font-mono text-[11px] text-muted uppercase font-bold shrink-0">Status:</span>
+            {(['all', 'approved', 'needs_review', 'draft'] as const).map((status) => (
+              <button
+                key={status}
+                onClick={() => setFilterReviewStatus(status)}
+                className={`rounded-lg px-2.5 py-1 font-mono text-xs font-semibold capitalize transition-all cursor-pointer ${
+                  filterReviewStatus === status
+                    ? 'border border-signal/40 bg-signal/10 text-signal'
+                    : 'border border-transparent text-muted hover:border-edge hover:bg-card hover:text-content'
+                }`}
+              >
+                {status.replace('_', ' ')}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Dynamic Tech Stack Filter Chips (Linear / VS Code style) */}
+        {allTechStacks.length > 0 && (
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs font-mono">
+            <span className="text-muted/70 text-[10px] uppercase font-bold tracking-wider shrink-0 mr-1">
+              Product Stacks:
+            </span>
             <button
-              key={status}
-              onClick={() => setFilterReviewStatus(status)}
-              className={`rounded-lg px-2.5 py-1 font-mono text-xs font-semibold capitalize transition-all cursor-pointer ${
-                filterReviewStatus === status
-                  ? 'border border-signal/40 bg-signal/10 text-signal'
-                  : 'border border-transparent text-muted hover:border-edge hover:bg-card hover:text-content'
+              type="button"
+              onClick={() => setSelectedTechFilter(null)}
+              className={`rounded px-2 py-0.5 text-[11px] font-semibold transition-all shrink-0 cursor-pointer ${
+                selectedTechFilter === null
+                  ? 'bg-signal text-surface font-bold shadow-xs'
+                  : 'bg-surface/80 text-muted hover:text-content border border-edge/60'
               }`}
             >
-              {status.replace('_', ' ')}
+              All
             </button>
-          ))}
-        </div>
+            {allTechStacks.map((tech) => (
+              <button
+                key={tech}
+                type="button"
+                onClick={() => setSelectedTechFilter(selectedTechFilter === tech ? null : tech)}
+                className={`rounded px-2 py-0.5 text-[11px] font-medium transition-all shrink-0 cursor-pointer ${
+                  selectedTechFilter === tech
+                    ? 'bg-signal text-surface font-bold shadow-xs'
+                    : 'bg-zinc-800/80 text-zinc-300 hover:bg-zinc-700/80 border border-zinc-700/50'
+                }`}
+              >
+                #{tech}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Main Content Area */}
@@ -554,300 +831,318 @@ export function PortfolioHub() {
       ) : (
         /* Active Portfolio List */
         <div className="space-y-6">
-          {/* Companies Hierarchy */}
-          <div className="space-y-4">
-            <div className="flex items-center justify-between flex-wrap gap-2">
-              <h2 className="font-mono text-sm font-bold uppercase tracking-wider text-muted flex items-center gap-2">
-                <Icon.Building className="h-4 w-4 text-signal" />
-                <span>Companies & Products Hierarchy ({filteredCompanies.length})</span>
-              </h2>
+          {/* Master Ledger Frame */}
+          <div className="rounded-xl border border-edge/80 bg-card/70 backdrop-blur-md overflow-hidden divide-y divide-edge/40 shadow-xl">
+            {/* Ledger Top Header / Actions Bar */}
+            <div className="px-4 py-3 bg-surface/60 border-b border-edge/60 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs font-mono">
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <span className="font-bold text-content uppercase tracking-wider text-[11px] flex items-center gap-1.5">
+                  <span className="text-signal font-black">λ</span>
+                  <span>Master Portfolio Ledger</span>
+                </span>
+                <span className="rounded bg-signal/15 text-signal px-1.5 py-0.2 text-[9px] font-bold uppercase tracking-wider border border-signal/25">
+                  Living DB
+                </span>
+                <span className="text-muted/50 hidden sm:inline">•</span>
+                <span className="text-muted text-[11px] hidden sm:inline">
+                  {stats.totalCompanies} companies · {stats.totalProducts} products · {stats.totalBullets} master bullets
+                </span>
+              </div>
+
               <div className="flex items-center gap-3">
                 {allProductIds.length > 0 && (
                   <button
                     type="button"
                     onClick={toggleAllProducts}
-                    className="font-mono text-xs text-muted hover:text-signal transition-colors flex items-center gap-1 cursor-pointer"
-                    title="Toggle all products expanded or collapsed"
+                    className="text-muted hover:text-signal transition-colors flex items-center gap-1 cursor-pointer text-[11px]"
+                    title="Toggle all product branches"
                   >
-                    <Icon.ChevronDown className={`h-3.5 w-3.5 transition-transform ${areAllProductsCollapsed ? '-rotate-90' : ''}`} />
-                    <span>{areAllProductsCollapsed ? 'Expand All Products' : 'Collapse All Products'}</span>
+                    <Icon.ChevronDown className={`h-3 w-3 transition-transform ${areAllProductsCollapsed ? '-rotate-90' : ''}`} />
+                    <span>{areAllProductsCollapsed ? 'Expand All' : 'Collapse All'}</span>
                   </button>
                 )}
                 <button
                   onClick={() => setCompanyModal({ isOpen: true })}
-                  className="font-mono text-xs text-signal hover:underline flex items-center gap-1 cursor-pointer"
+                  className="rounded-lg bg-signal/15 hover:bg-signal/25 text-signal border border-signal/30 px-2.5 py-1 hover:underline flex items-center gap-1 cursor-pointer font-bold text-[11px] transition-all"
                 >
-                  <Icon.Plus className="h-3.5 w-3.5" />
+                  <Icon.Plus className="h-3 w-3" />
                   <span>Add Company</span>
                 </button>
               </div>
             </div>
 
+            {/* Companies List */}
             {filteredCompanies.length === 0 ? (
-              <div className="rounded-xl border border-edge bg-card p-6 text-center text-xs text-muted font-mono">
-                No companies match your search or filter.
+              <div className="p-8 text-center text-xs text-muted font-mono">
+                No organizations or initiatives match your active filter.
               </div>
             ) : (
               filteredCompanies.map((company) => {
                 const isCompanyCollapsed = Boolean(collapsedCompanies[company.id]);
-                const compBulletsCount = (company.products || []).reduce((sum, p) => sum + (p.bullets?.length || 0), 0);
+                const compBulletsCount = (company.products || []).reduce((sum, p) => sum + (p.bullets?.length || 0), 0) + (company.bullets?.length || 0);
+                const isDragOverComp = dragOverTargetId === company.id;
 
                 return (
                   <div
                     key={company.id}
-                    className="rounded-2xl border border-edge bg-card overflow-hidden shadow-card transition-all"
+                    onDragOver={(e) => { e.preventDefault(); setDragOverTargetId(company.id); }}
+                    onDragLeave={() => setDragOverTargetId(null)}
+                    onDrop={(e) => handleDropOnCompany(e, company.id)}
+                    className={`transition-colors divide-y divide-edge/30 ${isDragOverComp ? 'bg-signal/10' : ''}`}
                   >
-                    {/* Company Header */}
-                    <div className="p-4 sm:p-5 border-b border-edge/60 bg-surface/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                      <div
-                        onClick={() => toggleCompany(company.id)}
-                        className="space-y-1 cursor-pointer select-none flex-1 group"
-                      >
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <button
-                            type="button"
-                            className="text-muted group-hover:text-signal transition-colors p-0.5"
-                            title={isCompanyCollapsed ? 'Expand company' : 'Collapse company'}
-                          >
-                            <Icon.ChevronDown className={`h-4 w-4 transition-transform ${isCompanyCollapsed ? '-rotate-90' : ''}`} />
-                          </button>
-                          <span className="font-mono text-base sm:text-lg font-black text-content group-hover:text-signal transition-colors">
-                            {company.name}
+                    {/* Level 0: Company Header Row */}
+                    <div className="py-2.5 px-3 sm:px-4 bg-surface/30 hover:bg-surface/50 transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-2 group">
+                      <div className="flex items-center gap-2 min-w-0 flex-1">
+                        <button
+                          type="button"
+                          onClick={() => toggleCompany(company.id)}
+                          className="text-muted group-hover:text-signal transition-colors p-0.5 cursor-pointer shrink-0"
+                          title={isCompanyCollapsed ? 'Expand company' : 'Collapse company'}
+                        >
+                          <Icon.ChevronDown className={`h-3.5 w-3.5 transition-transform ${isCompanyCollapsed ? '-rotate-90' : ''}`} />
+                        </button>
+                        <span
+                          onClick={() => toggleCompany(company.id)}
+                          className="font-mono text-sm sm:text-base font-bold text-content hover:text-signal transition-colors cursor-pointer truncate"
+                        >
+                          {company.name}
+                        </span>
+                        {company.role_title && (
+                          <span className="font-mono text-xs sm:text-[13px] text-zinc-300 truncate">
+                            <span className="text-muted/50 mx-1">/</span>
+                            {company.role_title}
                           </span>
-                          {company.is_current && (
-                            <span className="rounded-full bg-signal/20 px-2 py-0.5 font-mono text-[10px] font-bold text-signal uppercase tracking-wider">
-                              Present
-                            </span>
-                          )}
-                          <span className="rounded-md border border-edge bg-surface/80 px-2 py-0.5 font-mono text-[10px] text-muted font-medium">
-                            {company.products?.length || 0} {company.products?.length === 1 ? 'product' : 'products'} · {compBulletsCount} {compBulletsCount === 1 ? 'bullet' : 'bullets'}
+                        )}
+                        {company.is_current && (
+                          <span className="rounded-full bg-signal/20 px-1.5 py-0.2 font-mono text-[9px] font-bold text-signal uppercase tracking-wider shrink-0">
+                            Present
                           </span>
-                          {(company.domain || company.website_url) && (
-                            <a
-                              href={(company.domain || company.website_url)!.startsWith('http') ? (company.domain || company.website_url)! : `https://${company.domain || company.website_url}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              onClick={(e) => e.stopPropagation()}
-                              className="font-mono text-xs text-muted hover:text-signal flex items-center gap-1"
-                            >
-                              <span>{(company.domain || company.website_url)!.replace(/^https?:\/\//, '')}</span>
-                              <Icon.ExternalLink className="h-3 w-3" />
-                            </a>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-2 text-xs text-muted font-mono flex-wrap pl-6">
-                          {company.role_title && <span className="text-content font-medium">{company.role_title}</span>}
-                          {(company.start_date || company.end_date) && (
-                            <span>{company.role_title ? '· ' : ''}{formatISODateToDisplay(company.start_date)} — {company.is_current ? 'Present' : formatISODateToDisplay(company.end_date)}</span>
-                          )}
-                          {company.location && <span>· {company.location}</span>}
-                        </div>
+                        )}
                       </div>
 
-                      <div className="flex items-center gap-2 shrink-0">
-                        <button
-                          onClick={() => setProductModal({ isOpen: true, companyId: company.id })}
-                          className="inline-flex items-center gap-1.5 rounded-lg border border-edge bg-surface hover:border-signal hover:text-signal px-3 py-1.5 font-mono text-xs font-semibold text-content transition-all cursor-pointer"
-                        >
-                          <Icon.Plus className="h-3.5 w-3.5" />
-                          <span>Add Product</span>
-                        </button>
-                        <button
-                          onClick={() => setCompanyModal({ isOpen: true, company })}
-                          className="rounded-lg border border-edge bg-surface hover:border-edge/80 p-1.5 text-muted hover:text-content transition-all cursor-pointer"
-                          title="Edit Company"
-                        >
-                          <Icon.Pencil className="h-3.5 w-3.5" />
-                        </button>
-                        <button
-                          onClick={() => setItemToDelete({ type: 'company', id: company.id, title: company.name })}
-                          className="rounded-lg border border-edge bg-surface hover:border-red-500/40 hover:text-red-400 p-1.5 text-muted transition-all cursor-pointer"
-                          title="Delete Company"
-                        >
-                          <Icon.Trash className="h-3.5 w-3.5" />
-                        </button>
+                      <div className="flex items-center gap-3 shrink-0 text-xs font-mono text-muted pl-6 sm:pl-0">
+                        {(company.start_date || company.end_date) && (
+                          <span>
+                            {formatISODateToDisplay(company.start_date)} — {company.is_current ? 'Present' : formatISODateToDisplay(company.end_date)}
+                          </span>
+                        )}
+                        {company.location && <span className="hidden md:inline">· {company.location}</span>}
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-edge/40 text-muted/90 font-medium">
+                          {company.products?.length || 0} {company.products?.length === 1 ? 'product' : 'products'} · {compBulletsCount} {compBulletsCount === 1 ? 'bullet' : 'bullets'}
+                        </span>
+
+                        {/* Hover Action Icons */}
+                        <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => setProductModal({ isOpen: true, companyId: company.id })}
+                            className="px-2 py-0.5 rounded bg-signal/10 hover:bg-signal/20 text-signal text-[10px] font-mono font-bold transition-all cursor-pointer"
+                            title="Add Product / Sub-system"
+                          >
+                            + Product
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setCompanyModal({ isOpen: true, company })}
+                            className="p-1 rounded text-muted hover:text-content hover:bg-surface transition-colors cursor-pointer"
+                            title="Edit Company"
+                          >
+                            <Icon.Pencil className="h-3 w-3" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setItemToDelete({ type: 'company', id: company.id, title: company.name })}
+                            className="p-1 rounded text-muted hover:text-red-400 hover:bg-surface transition-colors cursor-pointer"
+                            title="Delete Company"
+                          >
+                            <Icon.Trash className="h-3 w-3" />
+                          </button>
+                        </div>
                       </div>
                     </div>
 
-                    {/* Company Products */}
+                    {/* Company Children (Direct Bullets & Products) */}
                     {!isCompanyCollapsed && (
-                      <div className="p-4 sm:p-5 space-y-3">
-                        {!company.products || company.products.length === 0 ? (
-                          <div className="rounded-xl border border-dashed border-edge/60 p-4 text-center">
-                            <p className="font-mono text-xs text-muted">No products or sub-systems recorded for this company yet.</p>
-                            <button
-                              onClick={() => setProductModal({ isOpen: true, companyId: company.id })}
-                              className="mt-2 font-mono text-xs text-signal font-semibold hover:underline inline-flex items-center gap-1 cursor-pointer"
-                            >
-                              <Icon.Plus className="h-3.5 w-3.5" />
-                              <span>Define First Product / Module</span>
-                            </button>
+                      <div className="py-1 px-2 sm:px-3 space-y-1 bg-card/30">
+                        {/* Direct Company Bullets (Level 1) */}
+                        {company.bullets && company.bullets.length > 0 && (
+                          <div className="ml-4 pl-3.5 border-l border-zinc-800/80 space-y-0.5 py-1">
+                            {company.bullets.map((b) => (
+                              <TreeBulletRow
+                                key={b.id}
+                                bullet={b}
+                                parentType="company"
+                                parentId={company.id}
+                                allTargets={allMoveTargets}
+                                onSaveInline={handleSaveBulletInline}
+                                onMoveBullet={handleMoveBullet}
+                                onDelete={() => setItemToDelete({ type: 'bullet', id: b.id, title: 'bullet' })}
+                                onToggleStatus={handleToggleBulletStatus}
+                                onDragStart={handleBulletDragStart}
+                              />
+                            ))}
                           </div>
-                        ) : (
-                          company.products.map((product) => {
-                            const isProdCollapsed = Boolean(collapsedProducts[product.id]);
-                            const bulletCount = product.bullets?.length || 0;
+                        )}
 
-                            return (
-                              <div
-                                key={product.id}
-                                className="rounded-xl border border-edge/70 bg-card/60 overflow-hidden shadow-xs transition-all"
-                              >
-                                {/* Product Header Row (Click to toggle collapse) */}
+                        {/* Products / Initiatives (Level 1) */}
+                        {company.products && company.products.length > 0 ? (
+                          <div className="ml-4 pl-3.5 border-l border-zinc-800/80 space-y-1.5 py-1">
+                            {company.products.map((product) => {
+                              const isProdCollapsed = Boolean(collapsedProducts[product.id]);
+                              const bulletCount = product.bullets?.length || 0;
+                              const isDragTarget = dragOverTargetId === product.id;
+
+                              return (
                                 <div
-                                  onClick={() => toggleProduct(product.id)}
-                                  className={`p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 cursor-pointer select-none hover:bg-surface/40 transition-colors ${
-                                    !isProdCollapsed ? 'border-b border-edge/50 bg-surface/20' : ''
-                                  }`}
+                                  key={product.id}
+                                  onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); setDragOverTargetId(product.id); }}
+                                  onDragLeave={() => setDragOverTargetId(null)}
+                                  onDrop={(e) => { e.stopPropagation(); handleDropOnProduct(e, product.id); }}
+                                  className={`rounded-md transition-colors ${isDragTarget ? 'bg-signal/15 ring-1 ring-signal' : ''}`}
                                 >
-                                  <div className="space-y-1.5 flex-1 min-w-0">
-                                    <div className="flex items-center gap-2 flex-wrap">
+                                  {/* Product Header Row */}
+                                  <div className="flex items-center justify-between py-1.5 px-2 rounded hover:bg-surface/50 transition-colors group">
+                                    <div
+                                      onClick={() => toggleProduct(product.id)}
+                                      className="flex items-center gap-2 min-w-0 cursor-pointer select-none flex-1"
+                                    >
                                       <button
                                         type="button"
-                                        className="text-muted hover:text-signal transition-colors p-0.5"
-                                        title={isProdCollapsed ? 'Expand product bullets' : 'Collapse product bullets'}
+                                        className="text-muted group-hover:text-signal transition-colors p-0.5"
+                                        title={isProdCollapsed ? 'Expand product' : 'Collapse product'}
                                       >
                                         <Icon.ChevronDown className={`h-3.5 w-3.5 transition-transform ${isProdCollapsed ? '-rotate-90' : ''}`} />
                                       </button>
-                                      <span className="font-mono text-sm font-bold text-content">
-                                        {product.name || (product as any).title || 'Untitled Subsystem'}
+                                      <span className="font-mono text-xs sm:text-[13px] font-bold text-content hover:text-signal transition-colors">
+                                        {product.name}
                                       </span>
-                                      {(product.architecture_type || (product as any).architectural_notes) && (
-                                        <span className="rounded-md border border-edge bg-surface px-2 py-0.5 font-mono text-[10px] font-bold text-muted uppercase">
-                                          {String(product.architecture_type || (product as any).architectural_notes).replace(/_/g, ' ')}
-                                        </span>
-                                      )}
-                                      <span className="rounded-full bg-signal/15 px-2 py-0.5 font-mono text-[10px] font-bold text-signal">
-                                        {bulletCount} {bulletCount === 1 ? 'bullet' : 'bullets'}
+                                      <span className="rounded bg-amber-500/10 border border-amber-500/25 px-1.5 py-0.2 font-mono text-[10px] text-amber-400 font-semibold shrink-0">
+                                        {bulletCount} {bulletCount === 1 ? 'contribution' : 'contributions'}
                                       </span>
-                                      {(product.repo_url || (Array.isArray((product as any).repo_links) && (product as any).repo_links[0]?.url)) && (
-                                        <a
-                                          href={product.repo_url || (product as any).repo_links[0].url}
-                                          target="_blank"
-                                          rel="noopener noreferrer"
-                                          onClick={(e) => e.stopPropagation()}
-                                          className="text-muted hover:text-signal p-0.5"
-                                          title="Repository"
-                                        >
-                                          <Icon.Github className="h-3.5 w-3.5" />
-                                        </a>
-                                      )}
-                                      {(product.live_url || (typeof (product as any).description === 'string' && (product as any).description.startsWith('Live: ') ? (product as any).description.slice(6) : null)) && (
-                                        <a
-                                          href={product.live_url || (product as any).description.slice(6)}
-                                          target="_blank"
-                                          rel="noopener noreferrer"
-                                          onClick={(e) => e.stopPropagation()}
-                                          className="text-muted hover:text-signal p-0.5"
-                                          title="Live URL"
-                                        >
-                                          <Icon.ExternalLink className="h-3.5 w-3.5" />
-                                        </a>
-                                      )}
                                     </div>
 
-                                    {/* Core Tech Stack Badges */}
-                                    {product.tech_stack && product.tech_stack.length > 0 && (
-                                      <div className="flex items-center gap-1.5 flex-wrap pt-0.5 pl-5">
-                                        {product.tech_stack.map((tech) => (
+                                    <div className="flex items-center gap-2 shrink-0">
+                                      {/* Product-Level Monochrome Tech Stack Chips */}
+                                      <div className="hidden sm:flex items-center gap-1">
+                                        {(product.tech_stack || []).slice(0, 4).map((tech) => (
                                           <span
                                             key={tech}
-                                            className="rounded bg-edge/40 px-1.5 py-0.5 font-mono text-[10px] text-content/85 font-medium border border-edge/60"
+                                            className="rounded bg-zinc-800/90 border border-zinc-700/60 px-1.5 py-0.5 font-mono text-[10px] text-zinc-300"
                                           >
-                                            {tech}
+                                            #{tech}
                                           </span>
                                         ))}
                                       </div>
-                                    )}
-                                  </div>
 
-                                  <div
-                                    onClick={(e) => e.stopPropagation()}
-                                    className="flex items-center gap-1.5 shrink-0 pt-0.5"
-                                  >
-                                    <button
-                                      onClick={() => setBulletModal({ isOpen: true, productId: product.id })}
-                                      className="inline-flex items-center gap-1 rounded-md border border-signal/30 bg-signal/5 hover:bg-signal/15 px-2.5 py-1 font-mono text-[11px] font-semibold text-signal transition-all cursor-pointer"
-                                    >
-                                      <Icon.Plus className="h-3 w-3" />
-                                      <span>Add Bullet</span>
-                                    </button>
-                                    <button
-                                      onClick={() => setProductModal({ isOpen: true, companyId: company.id, product })}
-                                      className="rounded-md p-1 text-muted hover:text-content hover:bg-surface transition-all cursor-pointer"
-                                      title="Edit Product"
-                                    >
-                                      <Icon.Pencil className="h-3.5 w-3.5" />
-                                    </button>
-                                    <button
-                                      onClick={() => setItemToDelete({ type: 'product', id: product.id, title: product.name })}
-                                      className="rounded-md p-1 text-muted hover:text-red-400 hover:bg-surface transition-all cursor-pointer"
-                                      title="Delete Product"
-                                    >
-                                      <Icon.Trash className="h-3.5 w-3.5" />
-                                    </button>
-                                  </div>
-                                </div>
-
-                                {/* Bullets List (Rendered when expanded) */}
-                                {!isProdCollapsed && (
-                                  <div className="p-3.5 space-y-2.5">
-                                    {!product.bullets || product.bullets.length === 0 ? (
-                                      <div className="rounded-xl border border-dashed border-edge/80 bg-surface/30 p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-in fade-in">
-                                        <div className="space-y-0.5">
-                                          <div className="flex items-center gap-1.5">
-                                            <Icon.Sparkle className="h-3.5 w-3.5 text-signal" />
-                                            <span className="font-mono text-xs font-bold text-content">No atomic bullets added yet</span>
-                                          </div>
-                                          <p className="font-sans text-[11px] text-muted max-w-lg leading-relaxed">
-                                            Quantify contributions for <span className="font-mono text-content font-semibold">{product.name || (product as any).title}</span> with metrics, action verbs, and interview defense rationale.
-                                          </p>
-                                        </div>
+                                      {/* Hover Micro-Actions */}
+                                      <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
                                         <button
                                           type="button"
                                           onClick={() => setBulletModal({ isOpen: true, productId: product.id })}
-                                          className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-signal/10 hover:bg-signal/20 text-signal border border-signal/30 px-3 py-1 font-mono text-xs font-bold transition-all shadow-xs cursor-pointer shrink-0"
+                                          className="px-2 py-0.5 rounded bg-signal/10 hover:bg-signal/20 text-signal font-mono text-[10px] font-bold transition-all cursor-pointer"
+                                          title="Add Bullet"
                                         >
-                                          <Icon.Plus className="h-3 w-3" />
-                                          <span>Add First Bullet</span>
+                                          + Bullet
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => setProductModal({ isOpen: true, companyId: company.id, product })}
+                                          className="p-1 rounded text-muted hover:text-content hover:bg-surface transition-colors cursor-pointer"
+                                          title="Edit Product & Stack"
+                                        >
+                                          <Icon.Pencil className="h-3 w-3" />
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => setItemToDelete({ type: 'product', id: product.id, title: product.name })}
+                                          className="p-1 rounded text-muted hover:text-red-400 hover:bg-surface transition-colors cursor-pointer"
+                                          title="Delete Product"
+                                        >
+                                          <Icon.Trash className="h-3 w-3" />
                                         </button>
                                       </div>
-                                    ) : (
-                                      <div className="space-y-2.5 pt-1">
-                                        {product.bullets.map((b) => (
-                                          <BulletItem
+                                    </div>
+                                  </div>
+
+                                  {/* Level 2: Product Bullets */}
+                                  {!isProdCollapsed && (
+                                    <div className="ml-4 pl-3.5 border-l border-zinc-800/60 space-y-0.5 py-0.5">
+                                      {product.bullets && product.bullets.length > 0 ? (
+                                        product.bullets.map((b) => (
+                                          <TreeBulletRow
                                             key={b.id}
                                             bullet={b}
-                                            onEdit={() => setBulletModal({ isOpen: true, productId: product.id, bullet: b })}
+                                            parentType="product"
+                                            parentId={product.id}
+                                            allTargets={allMoveTargets}
+                                            onSaveInline={handleSaveBulletInline}
+                                            onMoveBullet={handleMoveBullet}
                                             onDelete={() => setItemToDelete({ type: 'bullet', id: b.id, title: 'bullet' })}
+                                            onToggleStatus={handleToggleBulletStatus}
+                                            onDragStart={handleBulletDragStart}
                                           />
-                                        ))}
-                                      </div>
-                                    )}
-                                  </div>
-                                )}
-                              </div>
-                            );
-                          })
-                        )}
+                                        ))
+                                      ) : (
+                                        <div className="py-1 px-2 text-muted text-xs font-mono flex items-center justify-between">
+                                          <span>No contributions added yet.</span>
+                                          <button
+                                            type="button"
+                                            onClick={() => setBulletModal({ isOpen: true, productId: product.id })}
+                                            className="text-signal hover:underline font-bold text-[11px] cursor-pointer"
+                                          >
+                                            + Add First Bullet
+                                          </button>
+                                        </div>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        ) : !company.bullets || company.bullets.length === 0 ? (
+                          <div className="ml-4 pl-3.5 border-l border-zinc-800/80 py-2 px-2 text-muted text-xs font-mono flex items-center justify-between">
+                            <span>No initiatives or bullets recorded for this organization yet.</span>
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => setProductModal({ isOpen: true, companyId: company.id })}
+                                className="text-signal hover:underline font-bold text-[11px] cursor-pointer"
+                              >
+                                + Define Product
+                              </button>
+                            </div>
+                          </div>
+                        ) : null}
                       </div>
                     )}
                   </div>
                 );
               })
             )}
+
+            {/* Ledger Bottom Status Bar */}
+            <div className="px-4 py-2 bg-surface/40 border-t border-edge/40 flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-[11px] font-mono text-muted">
+              <span className="flex items-center gap-1.5 text-emerald-400">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                <span>Ready for ATS Ingestion & Resume Tailoring</span>
+              </span>
+              <span className="text-muted/70">
+                Double-click bullet text to edit inline · Drag ⠿ handle to reposition
+              </span>
+            </div>
           </div>
 
-          {/* Standalone Projects Section */}
-          <div className="space-y-4 pt-4 border-t border-edge">
+          {/* Standalone & Open-Source Projects Section (Compact Ledger) */}
+          <div className="space-y-3 pt-2">
             <div className="flex items-center justify-between">
-              <h2 className="font-mono text-sm font-bold uppercase tracking-wider text-muted flex items-center gap-2">
+              <h2 className="font-mono text-xs sm:text-sm font-bold uppercase tracking-wider text-muted flex items-center gap-2">
                 <Icon.Code className="h-4 w-4 text-signal" />
                 <span>Standalone & Open-Source Projects ({filteredProjects.length})</span>
               </h2>
               <button
                 onClick={() => setProjectModal({ isOpen: true })}
-                className="font-mono text-xs text-signal hover:underline flex items-center gap-1 cursor-pointer"
+                className="font-mono text-xs text-signal hover:underline flex items-center gap-1 cursor-pointer font-semibold"
               >
                 <Icon.Plus className="h-3.5 w-3.5" />
                 <span>Add Project</span>
@@ -855,37 +1150,35 @@ export function PortfolioHub() {
             </div>
 
             {filteredProjects.length === 0 ? (
-              <div className="rounded-xl border border-dashed border-edge/60 p-6 text-center">
-                <p className="font-mono text-xs text-muted">No standalone or open-source projects recorded.</p>
+              <div className="rounded-xl border border-dashed border-edge/60 bg-surface/30 p-5 text-center text-xs text-muted font-mono">
+                No standalone or open-source projects recorded.
               </div>
             ) : (
-              filteredProjects.map((proj) => {
-                const isProjCollapsed = Boolean(collapsedProjects[proj.id]);
-                const projBulletCount = proj.bullets?.length || 0;
+              <div className="rounded-xl border border-edge/80 bg-card/70 backdrop-blur-md overflow-hidden divide-y divide-edge/40 shadow-md">
+                {filteredProjects.map((proj) => {
+                  const isProjCollapsed = Boolean(collapsedProjects[proj.id]);
+                  const projBulletCount = proj.bullets?.length || 0;
 
-                return (
-                  <div
-                    key={proj.id}
-                    className="rounded-2xl border border-edge bg-card overflow-hidden shadow-card transition-all"
-                  >
-                    {/* Project Header Row (Click to toggle collapse) */}
-                    <div
-                      onClick={() => toggleProject(proj.id)}
-                      className={`p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 cursor-pointer select-none hover:bg-surface/30 transition-colors ${
-                        !isProjCollapsed ? 'border-b border-edge/60 bg-surface/20' : ''
-                      }`}
-                    >
-                      <div className="space-y-1 flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
+                  return (
+                    <div key={proj.id} className="transition-colors divide-y divide-edge/30">
+                      {/* Project Header Row */}
+                      <div className="py-2.5 px-3 sm:px-4 bg-surface/30 hover:bg-surface/50 transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-2 group">
+                        <div className="flex items-center gap-2 min-w-0 flex-1">
                           <button
                             type="button"
-                            className="text-muted hover:text-signal transition-colors p-0.5"
-                            title={isProjCollapsed ? 'Expand project bullets' : 'Collapse project bullets'}
+                            onClick={() => toggleProject(proj.id)}
+                            className="text-muted group-hover:text-signal transition-colors p-0.5 cursor-pointer shrink-0"
+                            title={isProjCollapsed ? 'Expand project' : 'Collapse project'}
                           >
-                            <Icon.ChevronDown className={`h-4 w-4 transition-transform ${isProjCollapsed ? '-rotate-90' : ''}`} />
+                            <Icon.ChevronDown className={`h-3.5 w-3.5 transition-transform ${isProjCollapsed ? '-rotate-90' : ''}`} />
                           </button>
-                          <span className="font-mono text-base font-bold text-content">{proj.name}</span>
-                          <span className="rounded-full bg-signal/15 px-2 py-0.5 font-mono text-[10px] font-bold text-signal">
+                          <span
+                            onClick={() => toggleProject(proj.id)}
+                            className="font-mono text-sm font-bold text-content hover:text-signal transition-colors cursor-pointer truncate"
+                          >
+                            {proj.name}
+                          </span>
+                          <span className="rounded bg-signal/15 text-signal px-1.5 py-0.2 font-mono text-[10px] font-bold">
                             {projBulletCount} {projBulletCount === 1 ? 'bullet' : 'bullets'}
                           </span>
                           {proj.repo_url && (
@@ -893,11 +1186,10 @@ export function PortfolioHub() {
                               href={proj.repo_url}
                               target="_blank"
                               rel="noopener noreferrer"
-                              onClick={(e) => e.stopPropagation()}
                               className="text-muted hover:text-signal p-0.5"
                               title="GitHub Repository"
                             >
-                              <Icon.Github className="h-4 w-4" />
+                              <Icon.Github className="h-3.5 w-3.5" />
                             </a>
                           )}
                           {proj.live_url && (
@@ -905,99 +1197,95 @@ export function PortfolioHub() {
                               href={proj.live_url}
                               target="_blank"
                               rel="noopener noreferrer"
-                              onClick={(e) => e.stopPropagation()}
                               className="text-muted hover:text-signal p-0.5"
                               title="Live Project URL"
                             >
-                              <Icon.ExternalLink className="h-4 w-4" />
+                              <Icon.ExternalLink className="h-3.5 w-3.5" />
                             </a>
                           )}
                         </div>
-                        {proj.headline && (
-                          <p className="font-sans text-xs text-muted pl-6">{proj.headline}</p>
-                        )}
-                        {proj.tech_stack && proj.tech_stack.length > 0 && (
-                          <div className="flex items-center gap-1.5 flex-wrap pt-0.5 pl-6">
-                            {proj.tech_stack.map((tech) => (
+
+                        <div className="flex items-center gap-2.5 shrink-0 pl-6 sm:pl-0">
+                          {/* Project Tech Stack Chips */}
+                          <div className="hidden sm:flex items-center gap-1">
+                            {(proj.tech_stack || []).slice(0, 4).map((tech) => (
                               <span
                                 key={tech}
-                                className="rounded bg-edge/40 px-1.5 py-0.5 font-mono text-[10px] text-content/85 font-medium border border-edge/60"
+                                className="rounded bg-zinc-800/90 border border-zinc-700/60 px-1.5 py-0.5 font-mono text-[10px] text-zinc-300"
                               >
-                                {tech}
+                                #{tech}
                               </span>
                             ))}
                           </div>
-                        )}
-                      </div>
 
-                      <div
-                        onClick={(e) => e.stopPropagation()}
-                        className="flex items-center gap-2 shrink-0"
-                      >
-                        <button
-                          onClick={() => setBulletModal({ isOpen: true, projectId: proj.id })}
-                          className="inline-flex items-center gap-1.5 rounded-lg border border-signal/30 bg-signal/5 hover:bg-signal/15 px-3 py-1 font-mono text-xs font-semibold text-signal transition-all cursor-pointer"
-                        >
-                          <Icon.Plus className="h-3.5 w-3.5" />
-                          <span>Add Bullet</span>
-                        </button>
-                        <button
-                          onClick={() => setProjectModal({ isOpen: true, project: proj })}
-                          className="rounded-lg border border-edge bg-surface hover:border-edge/80 p-1.5 text-muted hover:text-content transition-all cursor-pointer"
-                          title="Edit Project"
-                        >
-                          <Icon.Pencil className="h-3.5 w-3.5" />
-                        </button>
-                        <button
-                          onClick={() => setItemToDelete({ type: 'project', id: proj.id, title: proj.name })}
-                          className="rounded-lg border border-edge bg-surface hover:border-red-500/40 hover:text-red-400 p-1.5 text-muted transition-all cursor-pointer"
-                          title="Delete Project"
-                        >
-                          <Icon.Trash className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Bullets List (Rendered when expanded) */}
-                    {!isProjCollapsed && (
-                      <div className="p-4 sm:p-5 space-y-3">
-                        {!proj.bullets || proj.bullets.length === 0 ? (
-                          <div className="rounded-xl border border-dashed border-edge/80 bg-surface/30 p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-in fade-in">
-                            <div className="space-y-0.5">
-                              <div className="flex items-center gap-1.5">
-                                <Icon.Sparkle className="h-3.5 w-3.5 text-signal" />
-                                <span className="font-mono text-xs font-bold text-content">No project bullets added yet</span>
-                              </div>
-                              <p className="font-sans text-[11px] text-muted max-w-lg leading-relaxed">
-                                Highlight technical architectural choices, starred repos, or performance optimizations for <span className="font-mono text-content font-semibold">{proj.name}</span>.
-                              </p>
-                            </div>
+                          {/* Hover Actions */}
+                          <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
                             <button
                               type="button"
                               onClick={() => setBulletModal({ isOpen: true, projectId: proj.id })}
-                              className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-signal/10 hover:bg-signal/20 text-signal border border-signal/30 px-3 py-1 font-mono text-xs font-bold transition-all shadow-xs cursor-pointer shrink-0"
+                              className="px-2 py-0.5 rounded bg-signal/10 hover:bg-signal/20 text-signal font-mono text-[10px] font-bold transition-all cursor-pointer"
+                              title="Add Bullet"
                             >
-                              <Icon.Plus className="h-3 w-3" />
-                              <span>Add First Bullet</span>
+                              + Bullet
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setProjectModal({ isOpen: true, project: proj })}
+                              className="p-1 rounded text-muted hover:text-content hover:bg-surface transition-colors cursor-pointer"
+                              title="Edit Project"
+                            >
+                              <Icon.Pencil className="h-3 w-3" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setItemToDelete({ type: 'project', id: proj.id, title: proj.name })}
+                              className="p-1 rounded text-muted hover:text-red-400 hover:bg-surface transition-colors cursor-pointer"
+                              title="Delete Project"
+                            >
+                              <Icon.Trash className="h-3 w-3" />
                             </button>
                           </div>
-                        ) : (
-                          <div className="space-y-2.5 pt-1">
-                            {proj.bullets.map((b) => (
-                              <BulletItem
-                                key={b.id}
-                                bullet={b}
-                                onEdit={() => setBulletModal({ isOpen: true, projectId: proj.id, bullet: b })}
-                                onDelete={() => setItemToDelete({ type: 'bullet', id: b.id, title: 'bullet' })}
-                              />
-                            ))}
-                          </div>
-                        )}
+                        </div>
                       </div>
-                    )}
-                  </div>
-                );
-              })
+
+                      {/* Project Bullets */}
+                      {!isProjCollapsed && (
+                        <div className="py-1 px-3 sm:px-4 bg-card/30">
+                          <div className="ml-4 pl-3.5 border-l border-zinc-800/60 space-y-0.5 py-1">
+                            {proj.bullets && proj.bullets.length > 0 ? (
+                              proj.bullets.map((b) => (
+                                <TreeBulletRow
+                                  key={b.id}
+                                  bullet={b}
+                                  parentType="project"
+                                  parentId={proj.id}
+                                  allTargets={allMoveTargets}
+                                  onSaveInline={handleSaveBulletInline}
+                                  onMoveBullet={handleMoveBullet}
+                                  onDelete={() => setItemToDelete({ type: 'bullet', id: b.id, title: 'bullet' })}
+                                  onToggleStatus={handleToggleBulletStatus}
+                                  onDragStart={handleBulletDragStart}
+                                />
+                              ))
+                            ) : (
+                              <div className="py-1 px-2 text-muted text-xs font-mono flex items-center justify-between">
+                                <span>No project bullets added yet.</span>
+                                <button
+                                  type="button"
+                                  onClick={() => setBulletModal({ isOpen: true, projectId: proj.id })}
+                                  className="text-signal hover:underline font-bold text-[11px] cursor-pointer"
+                                >
+                                  + Add First Bullet
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             )}
           </div>
         </div>
@@ -1106,130 +1394,262 @@ export function PortfolioHub() {
 }
 
 // -----------------------------------------------------------------------------
-// Sub-component: Bullet Item display with provenance & defense preview
+// Sub-component: High-Density Tree-Ledger Bullet Row (Linear / VS Code style)
 // -----------------------------------------------------------------------------
-function BulletItem({
+
+function splitBulletLead(text: string): { lead: string; rest: string } {
+  const words = (text || '').trim().split(/\s+/);
+  if (words.length <= 4) return { lead: text || '', rest: '' };
+  const cut = Math.min(words.length, 4);
+  const lead = words.slice(0, cut).join(' ');
+  const rest = words.slice(cut).join(' ');
+  return { lead, rest };
+}
+
+function extractImpactMetric(text: string): string | null {
+  const match = (text || '').match(/(\d+(?:\.\d+)?%|\$\d+[kKmMbB]?|\b\d+x\b|\b\d+\s*(?:ms|seconds|minutes|hours|days|req\/s|rps|users|clients|microservices|pipelines)\b)/i);
+  return match ? match[0] : null;
+}
+
+function TreeBulletRow({
   bullet,
-  onEdit,
+  parentType,
+  parentId,
+  allTargets,
+  onSaveInline,
+  onMoveBullet,
   onDelete,
+  onToggleStatus,
+  onDragStart,
 }: {
   bullet: MasterBullet;
-  onEdit: () => void;
+  parentType: 'company' | 'product' | 'project';
+  parentId: string;
+  allTargets: Array<{ id: string; name: string; type: 'company' | 'product'; companyName: string }>;
+  onSaveInline: (bulletId: string, newText: string) => Promise<void>;
+  onMoveBullet: (bullet: MasterBullet, targetType: 'company' | 'product', targetId: string) => Promise<void>;
   onDelete: () => void;
+  onToggleStatus: (bullet: MasterBullet) => Promise<void>;
+  onDragStart: (e: React.DragEvent, bullet: MasterBullet, parentId: string) => void;
 }) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [editText, setEditText] = useState(bullet.bullet_text || '');
+  const [saving, setSaving] = useState(false);
+  const [showMoveMenu, setShowMoveMenu] = useState(false);
   const [showDefense, setShowDefense] = useState(false);
 
-  // Format bullet text with bolded metrics
-  const highlightedHtml = useMemo(() => {
-    const raw = bullet.bullet_text || '';
-    // Highlight numbers/percentages/metrics
-    return raw.replace(
-      /(\d+[%kKmMbBxX]|\b\d+\s*(ms|seconds|minutes|hours|days|x|users|req\/s|rps|queries|events)\b|\$\d+)/g,
-      '<strong class="text-signal font-bold">$1</strong>'
-    );
-  }, [bullet.bullet_text]);
+  const { lead, rest } = useMemo(() => splitBulletLead(bullet.bullet_text), [bullet.bullet_text]);
+  const primaryMetric = useMemo(
+    () => bullet.metric_primary || extractImpactMetric(bullet.bullet_text),
+    [bullet.bullet_text, bullet.metric_primary]
+  );
+
+  const handleSave = async () => {
+    if (!editText.trim()) return;
+    setSaving(true);
+    try {
+      await onSaveInline(bullet.id, editText.trim());
+      setIsEditing(false);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleCancel = () => {
+    setEditText(bullet.bullet_text || '');
+    setIsEditing(false);
+  };
 
   return (
-    <div className="group rounded-lg border border-edge/60 bg-surface/40 p-3 hover:border-edge transition-all">
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex-1 space-y-1.5">
-          <div className="flex items-center gap-2 flex-wrap">
-            {/* Status indicator */}
+    <div
+      draggable={!isEditing}
+      onDragStart={(e) => onDragStart(e, bullet, parentId)}
+      className="group flex flex-col py-1 px-2 rounded-md hover:bg-surface/50 transition-colors relative"
+    >
+      <div className="flex items-start justify-between gap-2.5">
+        {/* Left: Drag Handle + Status Indicator Dot + Content */}
+        <div className="flex items-start gap-2 flex-1 min-w-0">
+          {/* 6-dot Drag Handle */}
+          <span
+            className="opacity-0 group-hover:opacity-60 hover:!opacity-100 cursor-grab active:cursor-grabbing text-muted transition-opacity pt-1 shrink-0"
+            title="Drag to reposition or drop onto another product"
+          >
+            <Icon.GripVertical className="h-3.5 w-3.5" />
+          </span>
+
+          {/* 6px Status Dot (Clickable cycle: approved -> needs_review -> draft) */}
+          <button
+            type="button"
+            onClick={() => onToggleStatus(bullet)}
+            className="pt-1.5 shrink-0 focus:outline-none cursor-pointer"
+            title={`Status: ${bullet.review_status.replace('_', ' ')}. Click to toggle.`}
+          >
             <span
-              className={`rounded-full px-2 py-0.5 font-mono text-[9px] font-bold uppercase tracking-wider ${
+              className={`block h-1.5 w-1.5 rounded-full transition-all ${
                 bullet.review_status === 'approved'
-                  ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                  ? 'bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.6)]'
                   : bullet.review_status === 'needs_review'
-                  ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
-                  : 'bg-muted/10 text-muted border border-edge'
+                  ? 'bg-amber-400'
+                  : 'bg-zinc-500'
               }`}
+            />
+          </button>
+
+          {/* Inline Edit Mode vs Normal Presentation */}
+          {isEditing ? (
+            <div className="flex-1 space-y-1.5 animate-in fade-in duration-100">
+              <textarea
+                value={editText}
+                onChange={(e) => setEditText(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSave();
+                  } else if (e.key === 'Escape') {
+                    handleCancel();
+                  }
+                }}
+                autoFocus
+                rows={2}
+                disabled={saving}
+                className="w-full rounded bg-surface border border-signal px-2 py-1 text-xs text-content focus:outline-none font-sans leading-relaxed resize-y"
+              />
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleSave}
+                  disabled={saving}
+                  className="px-2.5 py-0.5 rounded bg-signal hover:bg-signal-hover text-surface font-mono text-[11px] font-bold transition-all cursor-pointer flex items-center gap-1"
+                >
+                  {saving && <Icon.Spinner className="h-3 w-3 animate-spin" />}
+                  <span>Save</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCancel}
+                  className="px-2 py-0.5 rounded border border-edge text-muted hover:text-content font-mono text-[11px] transition-all cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <span className="text-[10px] font-mono text-muted/60">
+                  Press Enter to save · Esc to cancel
+                </span>
+              </div>
+            </div>
+          ) : (
+            <div
+              onDoubleClick={() => setIsEditing(true)}
+              className="flex-1 min-w-0 text-xs sm:text-[13px] leading-relaxed cursor-text select-text"
+              title="Double-click to edit inline"
             >
-              {bullet.review_status.replace('_', ' ')}
-            </span>
+              <span className="font-semibold text-zinc-100">{lead}</span>{' '}
+              <span className="text-zinc-400">{rest}</span>
+            </div>
+          )}
+        </div>
 
-            {/* Source Provenance */}
-            <span className="rounded bg-edge/50 px-1.5 py-0.5 font-mono text-[9px] text-muted uppercase">
-              {bullet.source_type.replace('_', ' ')}
-            </span>
-
-            {/* Metric pill */}
-            {bullet.metric_primary && (
-              <span className="rounded-full bg-signal/15 px-2 py-0.5 font-mono text-[10px] font-bold text-signal">
-                {bullet.metric_primary}
+        {/* Right: Detected Impact Metric Pill + Hover Micro-Actions */}
+        {!isEditing && (
+          <div className="flex items-center gap-2 shrink-0 pt-0.5">
+            {primaryMetric && (
+              <span
+                className="rounded bg-emerald-500/10 border border-emerald-500/25 px-1.5 py-0.5 font-mono text-[10px] font-bold text-emerald-400 shrink-0"
+                title={`Impact Metric: ${primaryMetric}`}
+              >
+                {primaryMetric}
               </span>
             )}
-          </div>
 
-          {/* Bullet Text */}
-          <p
-            className="font-sans text-xs text-content leading-relaxed"
-            dangerouslySetInnerHTML={{ __html: highlightedHtml }}
-          />
-
-          {/* Tech Stack Chips */}
-          {bullet.tech_stack && bullet.tech_stack.length > 0 && (
-            <div className="flex items-center gap-1 flex-wrap pt-1">
-              {bullet.tech_stack.map((tech) => (
-                <span
-                  key={tech}
-                  className="rounded bg-edge/40 px-1.5 py-0.5 font-mono text-[10px] text-muted font-medium"
+            {/* Hover Actions: Edit inline, Move to target, Toggle Trade-offs, Delete */}
+            <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-0.5">
+              {(bullet.context_challenge || bullet.defense_notes) && (
+                <button
+                  type="button"
+                  onClick={() => setShowDefense(!showDefense)}
+                  className={`p-1 rounded transition-colors cursor-pointer ${showDefense ? 'text-signal bg-surface' : 'text-muted hover:text-content hover:bg-surface'}`}
+                  title="View Architectural Defense & Trade-offs"
                 >
-                  {tech}
-                </span>
-              ))}
-            </div>
-          )}
+                  <Icon.Shield className="h-3 w-3" />
+                </button>
+              )}
 
-          {/* Technical Context / Defense Expandable */}
-          {(bullet.context_challenge || bullet.defense_notes) && (
-            <div className="pt-1">
               <button
-                onClick={() => setShowDefense(!showDefense)}
-                className="font-mono text-[10px] text-muted hover:text-signal flex items-center gap-1 cursor-pointer"
+                type="button"
+                onClick={() => setIsEditing(true)}
+                className="p-1 rounded text-muted hover:text-content hover:bg-surface transition-colors cursor-pointer"
+                title="Edit Bullet (or double-click text)"
               >
-                <Icon.Shield className="h-3 w-3" />
-                <span>{showDefense ? 'Hide Architectural Trade-offs' : 'View Architectural Trade-offs'}</span>
-                <Icon.ChevronDown className={`h-3 w-3 transition-transform ${showDefense ? 'rotate-180' : ''}`} />
+                <Icon.Pencil className="h-3 w-3" />
               </button>
 
-              {showDefense && (
-                <div className="mt-2 rounded-md border border-edge/80 bg-surface/80 p-2.5 font-mono text-[11px] space-y-1.5 text-muted">
-                  {bullet.context_challenge && (
-                    <div>
-                      <strong className="text-content uppercase text-[9px] block">Engineering Challenge:</strong>
-                      <span className="font-sans text-xs text-content/90">{bullet.context_challenge}</span>
+              {/* Move to target dropdown menu */}
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setShowMoveMenu(!showMoveMenu)}
+                  className={`p-1 rounded transition-colors cursor-pointer ${showMoveMenu ? 'text-signal bg-surface' : 'text-muted hover:text-content hover:bg-surface'}`}
+                  title="Move / Reassign bullet to another Product or Company"
+                >
+                  <Icon.ArrowLeftRight className="h-3 w-3" />
+                </button>
+
+                {showMoveMenu && (
+                  <div className="absolute right-0 top-full mt-1 z-30 w-52 rounded-xl border border-edge bg-card shadow-2xl p-1.5 text-xs font-mono animate-in fade-in zoom-in-95">
+                    <div className="px-2 py-1 text-[10px] font-bold text-muted uppercase tracking-wider border-b border-edge/60">
+                      Move bullet to:
                     </div>
-                  )}
-                  {bullet.defense_notes && (
-                    <div>
-                      <strong className="text-content uppercase text-[9px] block">Defense & Trade-offs:</strong>
-                      <span className="font-sans text-xs text-content/90">{bullet.defense_notes}</span>
+                    <div className="max-h-48 overflow-y-auto space-y-0.5 py-1">
+                      {allTargets
+                        .filter((t) => t.id !== parentId)
+                        .map((target) => (
+                          <button
+                            key={target.id}
+                            type="button"
+                            onClick={async () => {
+                              setShowMoveMenu(false);
+                              await onMoveBullet(bullet, target.type, target.id);
+                            }}
+                            className="w-full text-left px-2 py-1 rounded hover:bg-surface text-content hover:text-signal truncate block text-[11px] cursor-pointer"
+                          >
+                            <span className="text-muted/70 text-[9px] block uppercase">{target.companyName}</span>
+                            <span>{target.name}</span>
+                          </button>
+                        ))}
                     </div>
-                  )}
-                </div>
-              )}
+                  </div>
+                )}
+              </div>
+
+              <button
+                type="button"
+                onClick={onDelete}
+                className="p-1 rounded text-muted hover:text-red-400 hover:bg-surface transition-colors cursor-pointer"
+                title="Delete Bullet"
+              >
+                <Icon.Trash className="h-3 w-3" />
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Expandable Architectural Defense Context */}
+      {showDefense && (bullet.context_challenge || bullet.defense_notes) && (
+        <div className="mt-1.5 ml-6 rounded-md border border-edge/70 bg-surface/70 p-2 text-xs font-mono space-y-1 animate-in fade-in duration-150">
+          {bullet.context_challenge && (
+            <div>
+              <span className="text-signal text-[10px] font-bold uppercase tracking-wider block">Engineering Challenge:</span>
+              <p className="font-sans text-xs text-content/90">{bullet.context_challenge}</p>
+            </div>
+          )}
+          {bullet.defense_notes && (
+            <div>
+              <span className="text-signal text-[10px] font-bold uppercase tracking-wider block">Trade-off Defense:</span>
+              <p className="font-sans text-xs text-content/90">{bullet.defense_notes}</p>
             </div>
           )}
         </div>
-
-        {/* Action icons */}
-        <div className="flex items-center gap-1 shrink-0 opacity-80 group-hover:opacity-100 transition-opacity">
-          <button
-            onClick={onEdit}
-            className="rounded p-1 text-muted hover:text-content hover:bg-surface transition-all cursor-pointer"
-            title="Edit Bullet"
-          >
-            <Icon.Pencil className="h-3.5 w-3.5" />
-          </button>
-          <button
-            onClick={onDelete}
-            className="rounded p-1 text-muted hover:text-red-400 hover:bg-surface transition-all cursor-pointer"
-            title="Delete Bullet"
-          >
-            <Icon.Trash className="h-3.5 w-3.5" />
-          </button>
-        </div>
-      </div>
+      )}
     </div>
   );
 }

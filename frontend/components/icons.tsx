@@ -142,6 +142,24 @@ export const Icon = {
       <path d="M5 12h14M12 5l7 7-7 7" />
     </svg>
   ),
+  GripVertical: (p: IconProps) => (
+    <svg {...base(p)}>
+      <circle cx="9" cy="12" r="1.5" />
+      <circle cx="9" cy="5" r="1.5" />
+      <circle cx="9" cy="19" r="1.5" />
+      <circle cx="15" cy="12" r="1.5" />
+      <circle cx="15" cy="5" r="1.5" />
+      <circle cx="15" cy="19" r="1.5" />
+    </svg>
+  ),
+  ArrowLeftRight: (p: IconProps) => (
+    <svg {...base(p)}>
+      <path d="M8 3 4 7l4 4" />
+      <path d="M4 7h16" />
+      <path d="m16 21 4-4-4-4" />
+      <path d="M20 17H4" />
+    </svg>
+  ),
   Refresh: (p: IconProps) => (
     <svg {...base(p)}>
       <path d="M3 12a9 9 0 0 1 15.3-6.4L21 8M21 8V3M21 8h-5" />

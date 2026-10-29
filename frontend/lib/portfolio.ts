@@ -60,6 +60,7 @@ export interface PortfolioCompany {
   location?: string | null;
   display_order?: number;
   products?: PortfolioProduct[];
+  bullets?: MasterBullet[];
   created_at?: string;
   updated_at?: string;
 }

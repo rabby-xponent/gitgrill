@@ -635,26 +635,39 @@ pie title Roadmap Milestone Status
   - **The Bug:** Deployed Vercel domains (`https://gitgrill-gr.vercel.app`) failed preflight `OPTIONS` requests against Render backend with `net::ERR_FAILED`, triggering generic `TypeError: "Failed to fetch"` in the client.
   - **Root Cause:** In [`backend/src/index.ts`](file:///e:/rabby-xponent/Projects/devscope/backend/src/index.ts), `isVercelPreview` regex was `/^[a-z0-9-]+\.vercel\.app$/`, which failed because normalized incoming origins contain the `https://` protocol prefix.
   - **The Fix:** Replaced with URL-based hostname matching (`isVercelDeployment`), defaulted preview deployment allowance to active, and added standard production domains (`https://gitgrill-gr.vercel.app`, `https://gitgrill.vercel.app`, `https://devscope.vercel.app`) to `defaultAllowedOrigins`.
-* **2. Universal Multi-Pattern Resume Parser ([`frontend/lib/resumes.ts`](file:///e:/rabby-xponent/Projects/devscope/frontend/lib/resumes.ts)):**
-  - **Section Boundary Detection:** Strips decorative underlines (`____`), box-drawing characters, dashes, and Roman numerals so sections like `EDUCATION` or `SKILLS` are not swallowed into `EXPERIENCE`. Handles 2-column PDF headers on the same horizontal line.
-  - **Education & Non-Work Guardrail:** Automatically diverts academic degrees (`B.S.`, `M.S.`, `B.Tech`, `Bachelor`, `Master`, `Ph.D.`, `GPA`) and universities to `education[]` instead of creating fake work experience companies.
-  - **Header Decomposer (`parseExperienceHeader`):** Accurately extracts `Company`, `Role`, `Product/Team`, `Location`, and `Period` across date-first comma+dash formats, pipe-separated, dash-separated, two-line LaTeX templates, and `"Role at/@ Company"` patterns.
-  - **Smart Bullet Stitching (`stitchAndCleanBullets`):**
-    * Stitches multi-line wrapped PDF lines back into complete sentences.
-    * Strips all bullet markers (`•`, `●`, `▪`, `◦`, `○`, `o `).
-    * Filters category subheaders ending in colons (`• Major deliveries:`, `• Operations and Infrastructure:`).
-    * Captures non-bulleted team intro lines as the product `description`.
-* **3. SSOT Ingestion & Auto-Healing Vault ([`portfolio.routes.ts`](file:///e:/rabby-xponent/Projects/devscope/backend/src/portfolio/portfolio.routes.ts), [`portfolio.ts`](file:///e:/rabby-xponent/Projects/devscope/frontend/lib/portfolio.ts), [`PortfolioHub.tsx`](file:///e:/rabby-xponent/Projects/devscope/frontend/components/PortfolioHub.tsx)):**
+* **2. Universal Multi-Pattern Resume Parser & Trailing Period Bug ([`frontend/lib/resumes.ts`](file:///e:/rabby-xponent/Projects/devscope/frontend/lib/resumes.ts), [`portfolio.routes.ts`](file:///e:/rabby-xponent/Projects/devscope/backend/src/portfolio/portfolio.routes.ts)):**
+  - **The Missing Trailing Period Trap:** Discovered that because professional resume bullets intentionally omit trailing periods (`.`), `!/[.!?]$/.test(prev)` marked every non-punctuated bullet as an "incomplete sentence" and greedily glued subsequent items together into 2 massive text blocks.
+  - **The Array Re-Stitching Bug:** Passing an already-split array of stripped bullets through `stitchAndCleanBullets` / `stitchServerBullets` caused `sawExplicit` to collapse all subsequent items into preceding bullets.
+  - **The Fix:** Removed trailing period check, replaced greedy array re-stitching with `cleanArrayBullets`, only merging genuine continuation fragments (`^[a-z,;:)&]`, dangling prepositions, or short non-action lines).
+  - **Parser Version Bump:** Bumped to `CURRENT_PARSER_VERSION = 4` to auto-heal existing resumes in `localStorage`.
+* **3. SSOT Ingestion & Auto-Healing Vault:**
   - **Real Dates:** Parses `period` into actual Postgres `start_date` and `end_date` rather than defaulting to today's date (`Oct 2026`).
   - **Server-Side Guardrail:** Defensive normalizer cleans incoming payloads even if sent from older cached clients.
   - **Self-Healing Vault:** Existing resumes in `localStorage` auto-upgrade to the new clean parse on load.
   - **Clean Slate Bootstrap:** Added a `"Clean slate: replace existing SSOT records with this import"` toggle (checked by default) to wipe previous broken attempts and import a clean SSOT in 1 click.
-* **4. Verification & Next Steps:**
-  - Verified with `npm run build` across both `backend` (0 errors) and `frontend` (all 16 routes compiled, 0 errors).
-  - Parser test script verified with 100% accuracy on multi-line wrapped bullets, nested sub-bullets, and diverse resume layouts.
-  - **Pending Next Steps:**
-    1. User manual testing & verification of SSOT import on deployed / local environment.
-    2. Phase 2: Dynamic Multi-Resume studio views linked directly to Living Portfolio SSOT.
+
+---
+
+### Milestone 34 — Developer Tree-Ledger Architecture, Direct Inline Editing & Drag-and-Drop Reorganization 🟢
+
+* **Current Status:** Fully implemented and verified across TypeScript compiler and Next.js production build (`next build` 16/16 routes 0 errors).
+* **1. Elimination of Nested Card Bloat ([`PortfolioHub.tsx`](file:///e:/rabby-xponent/Projects/devscope/frontend/components/PortfolioHub.tsx)):**
+  - Replaced the heavy card-within-card layout (outer company box, inner product box, inner bullet box) with a single, ultra-dense master frame featuring Linear / VS Code style hairline guide rails.
+  - **Level 0 (Company):** Single baseline row containing Company Name, Role (`/ Software Development Engineer`), Tenure range, Location, and item counters (`N products · M bullets`).
+  - **Level 1 (Direct Bullets):** Directly under Company row with `border-l border-zinc-800 ml-4 pl-3.5`, allowing startups and generalist roles to have direct company bullets without forced artificial product containers.
+  - **Level 1 (Products / Initiatives):** Left hairline rail showing Product Title, contribution count chip, and Level 1 monochrome Tech Stack tags (`#AWS EC2`, `#C++`, `#Python`).
+  - **Level 2 (Product Bullets):** Secondary hairline rail (`border-l border-zinc-800/60 ml-4 pl-3.5`) with compact ~36px row height.
+* **2. Bullet Typography & Direct Inline Editing:**
+  - **Lead Action Highlight:** Automatically boldens and highlights the first 3–4 action words in `font-semibold text-zinc-100`, rendering the remainder in `text-zinc-400`.
+  - **Left 6px Status Dot:** Clickable indicator dot (`bg-emerald-400` with subtle glow for approved, amber for review, zinc for draft) that cycles status on click.
+  - **Right Impact Metric Badge:** Compact green badge displaying detected metrics (e.g. `70%`, `45k req/s`, `$2M`).
+  - **Direct Inline Editing:** Double-clicking any bullet text (or clicking the hover `Pencil` icon) transforms the row into an auto-expanding inline textarea with quick `Enter` save and `Esc` cancel.
+* **3. Drag-and-Drop Positioning & Dynamic Tech Stack Filter:**
+  - **HTML5 Drag & Drop:** Added 6-dot grip handle (`⠿` via `Icon.GripVertical`). Users can drag bullets to reposition within products or drop onto different Products / Companies to reassign parentage.
+  - **Hover Move Dropdown:** Accompanied by a 1-click "Move bullet to..." popover menu for touchpad accessibility.
+  - **Dynamic Tech Stack Filter Bar:** Computes top tech stacks across the portfolio (`#AWS EC2`, `#C++`, `#Python`, etc.) for 1-click filtering.
+* **4. Build & Typecheck Verification:**
+  - Verified with `npm --prefix backend run build` (0 errors) and `npm --prefix frontend run build` (16/16 routes statically optimized, 0 errors).
 
 
 
