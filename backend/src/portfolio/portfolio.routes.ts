@@ -77,9 +77,13 @@ router.get('/', requireAuth, async (req: Request, res: Response) => {
       productsByCompany.get(p.company_id)!.push(enrichedProduct);
     }
 
-    // Fetch user preferences for fallback metadata (role_title & company_domains)
+    // Fetch user preferences for metadata (role_title, company_domains, identity, summary, skills, education)
     let userCompanyRoles: Record<string, string> = {};
     let userCompanyDomains: Record<string, string> = {};
+    let userIdentity: any = null;
+    let userSummary = '';
+    let userSkills: any[] = [];
+    let userEducation: any[] = [];
     try {
       const { data: userRow } = await admin
         .from('users')
@@ -90,9 +94,13 @@ router.get('/', requireAuth, async (req: Request, res: Response) => {
         const p = userRow.preferences as Record<string, any>;
         userCompanyRoles = p.company_roles || {};
         userCompanyDomains = p.company_domains || {};
+        userIdentity = p.portfolio_identity || null;
+        userSummary = typeof p.portfolio_summary === 'string' ? p.portfolio_summary : '';
+        userSkills = Array.isArray(p.portfolio_skills) ? p.portfolio_skills : [];
+        userEducation = Array.isArray(p.portfolio_education) ? p.portfolio_education : [];
       }
     } catch (errPrefs) {
-      console.warn('[portfolio] Error reading user preferences for company metadata:', errPrefs);
+      console.warn('[portfolio] Error reading user preferences for portfolio metadata:', errPrefs);
     }
 
     const structuredCompanies = companies.map((c: any) => {
@@ -115,6 +123,11 @@ router.get('/', requireAuth, async (req: Request, res: Response) => {
 
     res.json({
       ok: true,
+      identity: userIdentity,
+      summary_text: userSummary,
+      profile_summary: userSummary,
+      skills: userSkills,
+      education: userEducation,
       companies: structuredCompanies,
       projects: structuredProjects,
       standalone_projects: structuredProjects,
@@ -780,10 +793,10 @@ const handleImportResume = async (req: Request, res: Response) => {
   if (!isDbConfigured()) return serviceUnavailable(res);
   const admin = getAdmin()!;
   const userId = req.auth!.userId;
-  const { experience, projects, replaceExisting } = req.body || {};
+  const { experience, projects, education, skills, summary, identity, replaceExisting } = req.body || {};
 
-  if (!Array.isArray(experience) && !Array.isArray(projects)) {
-    res.status(400).json({ error: 'experience or projects array is required.' });
+  if (!Array.isArray(experience) && !Array.isArray(projects) && !Array.isArray(education) && !Array.isArray(skills) && !summary && !identity) {
+    res.status(400).json({ error: 'At least one resume section is required for portfolio bootstrap.' });
     return;
   }
 
@@ -966,6 +979,46 @@ const handleImportResume = async (req: Request, res: Response) => {
       }
     }
 
+    // 3. Persist 6-Pillar SSOT metadata (Identity, Summary, Skills, Education, Company Roles) to user preferences
+    try {
+      const { data: userRow } = await admin
+        .from('users')
+        .select('preferences')
+        .eq('id', userId)
+        .single();
+      const currentPrefs = (userRow?.preferences as Record<string, any>) || {};
+      const updatedPrefs: Record<string, any> = {
+        ...currentPrefs,
+        company_roles: {
+          ...(replaceExisting ? {} : (currentPrefs.company_roles || {})),
+          ...newCompanyRolesMap,
+        },
+      };
+
+      if (identity && typeof identity === 'object') {
+        updatedPrefs.portfolio_identity = {
+          ...(replaceExisting ? {} : (currentPrefs.portfolio_identity || {})),
+          ...identity,
+        };
+      }
+      if (typeof summary === 'string' && summary.trim()) {
+        updatedPrefs.portfolio_summary = summary.trim();
+      }
+      if (Array.isArray(skills) && skills.length > 0) {
+        updatedPrefs.portfolio_skills = skills;
+      }
+      if (Array.isArray(education) && education.length > 0) {
+        updatedPrefs.portfolio_education = education;
+      }
+
+      await admin
+        .from('users')
+        .update({ preferences: updatedPrefs })
+        .eq('id', userId);
+    } catch (prefErr) {
+      console.warn('[portfolio] Error updating user preferences in bootstrap:', prefErr);
+    }
+
     res.json({
       ok: true,
       imported: {
@@ -980,6 +1033,147 @@ const handleImportResume = async (req: Request, res: Response) => {
     res.status(500).json({ error: formatPortfolioError(err, 'Failed to import resume into portfolio.') });
   }
 };
+
+// ---------------------------------------------------------------------------
+// 7. Identity & Summary CRUD Routes
+// ---------------------------------------------------------------------------
+router.post('/identity', requireAuth, async (req: Request, res: Response) => {
+  if (!isDbConfigured()) return serviceUnavailable(res);
+  const admin = getAdmin()!;
+  const userId = req.auth!.userId;
+  const { identity } = req.body || {};
+
+  try {
+    await ensureUserRow(admin, req.auth!);
+    const { data: userRow } = await admin.from('users').select('preferences').eq('id', userId).single();
+    const currentPrefs = (userRow?.preferences as Record<string, any>) || {};
+    const updatedPrefs = {
+      ...currentPrefs,
+      portfolio_identity: {
+        ...(currentPrefs.portfolio_identity || {}),
+        ...(identity || {}),
+      },
+    };
+    await admin.from('users').update({ preferences: updatedPrefs }).eq('id', userId);
+    res.json({ ok: true, identity: updatedPrefs.portfolio_identity });
+  } catch (err: any) {
+    res.status(500).json({ error: err?.message || 'Failed to update identity.' });
+  }
+});
+
+router.post('/summary', requireAuth, async (req: Request, res: Response) => {
+  if (!isDbConfigured()) return serviceUnavailable(res);
+  const admin = getAdmin()!;
+  const userId = req.auth!.userId;
+  const { summary } = req.body || {};
+
+  try {
+    await ensureUserRow(admin, req.auth!);
+    const { data: userRow } = await admin.from('users').select('preferences').eq('id', userId).single();
+    const currentPrefs = (userRow?.preferences as Record<string, any>) || {};
+    const updatedPrefs = {
+      ...currentPrefs,
+      portfolio_summary: typeof summary === 'string' ? summary.trim() : '',
+    };
+    await admin.from('users').update({ preferences: updatedPrefs }).eq('id', userId);
+    res.json({ ok: true, summary: updatedPrefs.portfolio_summary });
+  } catch (err: any) {
+    res.status(500).json({ error: err?.message || 'Failed to update summary.' });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// 8. Categorized Skills Matrix CRUD Routes
+// ---------------------------------------------------------------------------
+router.post('/skills', requireAuth, async (req: Request, res: Response) => {
+  if (!isDbConfigured()) return serviceUnavailable(res);
+  const admin = getAdmin()!;
+  const userId = req.auth!.userId;
+  const { skills } = req.body || {};
+
+  try {
+    await ensureUserRow(admin, req.auth!);
+    const { data: userRow } = await admin.from('users').select('preferences').eq('id', userId).single();
+    const currentPrefs = (userRow?.preferences as Record<string, any>) || {};
+    const updatedPrefs = {
+      ...currentPrefs,
+      portfolio_skills: Array.isArray(skills) ? skills : [],
+    };
+    await admin.from('users').update({ preferences: updatedPrefs }).eq('id', userId);
+    res.json({ ok: true, skills: updatedPrefs.portfolio_skills });
+  } catch (err: any) {
+    res.status(500).json({ error: err?.message || 'Failed to update skills.' });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// 9. Education & Credentials CRUD Routes
+// ---------------------------------------------------------------------------
+router.post('/education', requireAuth, async (req: Request, res: Response) => {
+  if (!isDbConfigured()) return serviceUnavailable(res);
+  const admin = getAdmin()!;
+  const userId = req.auth!.userId;
+  const edu = req.body || {};
+
+  try {
+    await ensureUserRow(admin, req.auth!);
+    const { data: userRow } = await admin.from('users').select('preferences').eq('id', userId).single();
+    const currentPrefs = (userRow?.preferences as Record<string, any>) || {};
+    const existingList: any[] = Array.isArray(currentPrefs.portfolio_education) ? [...currentPrefs.portfolio_education] : [];
+
+    const id = edu.id || `edu_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+    const record = {
+      id,
+      institution: edu.institution?.trim() || '',
+      degree: edu.degree?.trim() || '',
+      field_of_study: edu.field_of_study?.trim() || undefined,
+      start_date: edu.start_date || null,
+      end_date: edu.end_date || null,
+      grade_or_gpa: edu.grade_or_gpa?.trim() || undefined,
+      location: edu.location?.trim() || undefined,
+      bullets: Array.isArray(edu.bullets) ? edu.bullets : [],
+    };
+
+    const idx = existingList.findIndex((item) => item.id === id);
+    if (idx >= 0) {
+      existingList[idx] = record;
+    } else {
+      existingList.push(record);
+    }
+
+    const updatedPrefs = {
+      ...currentPrefs,
+      portfolio_education: existingList,
+    };
+    await admin.from('users').update({ preferences: updatedPrefs }).eq('id', userId);
+    res.json({ ok: true, education: record, allEducation: existingList });
+  } catch (err: any) {
+    res.status(500).json({ error: err?.message || 'Failed to update education.' });
+  }
+});
+
+router.delete('/education/:id', requireAuth, async (req: Request, res: Response) => {
+  if (!isDbConfigured()) return serviceUnavailable(res);
+  const admin = getAdmin()!;
+  const userId = req.auth!.userId;
+  const eduId = req.params.id;
+
+  try {
+    const { data: userRow } = await admin.from('users').select('preferences').eq('id', userId).single();
+    const currentPrefs = (userRow?.preferences as Record<string, any>) || {};
+    const existingList: any[] = Array.isArray(currentPrefs.portfolio_education) ? currentPrefs.portfolio_education : [];
+    const filtered = existingList.filter((e) => e.id !== eduId);
+
+    const updatedPrefs = {
+      ...currentPrefs,
+      portfolio_education: filtered,
+    };
+    await admin.from('users').update({ preferences: updatedPrefs }).eq('id', userId);
+    res.json({ ok: true, deletedId: eduId });
+  } catch (err: any) {
+    res.status(500).json({ error: err?.message || 'Failed to delete education.' });
+  }
+});
 
 router.post('/import-resume', requireAuth, handleImportResume);
 router.post('/bootstrap-from-resume', requireAuth, handleImportResume);

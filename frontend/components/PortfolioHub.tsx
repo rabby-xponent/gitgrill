@@ -19,6 +19,7 @@ import {
   deleteProject,
   saveBullet,
   deleteBullet,
+  deleteEducation,
   bootstrapPortfolioFromResume,
   normalizeDateToISO,
   formatISODateToDisplay,
@@ -89,7 +90,7 @@ export function PortfolioHub() {
 
   // Deletion confirm modals
   const [itemToDelete, setItemToDelete] = useState<{
-    type: 'company' | 'product' | 'project' | 'bullet';
+    type: 'company' | 'product' | 'project' | 'bullet' | 'education';
     id: string;
     title: string;
   } | null>(null);
@@ -493,6 +494,8 @@ export function PortfolioHub() {
         await deleteProject(itemToDelete.id);
       } else if (itemToDelete.type === 'bullet') {
         await deleteBullet(itemToDelete.id);
+      } else if (itemToDelete.type === 'education') {
+        await deleteEducation(itemToDelete.id);
       }
       await loadData();
     } catch (err: any) {
@@ -794,7 +797,7 @@ export function PortfolioHub() {
           <Icon.Spinner className="mx-auto h-6 w-6 animate-spin text-signal" />
           <p className="mt-3 font-mono text-xs text-muted">Loading Living Portfolio SSOT...</p>
         </div>
-      ) : portfolio.companies.length === 0 && portfolio.standalone_projects.length === 0 ? (
+      ) : portfolio.companies.length === 0 && portfolio.standalone_projects.length === 0 && !portfolio.summary && (!portfolio.skills || portfolio.skills.length === 0) && (!portfolio.education || portfolio.education.length === 0) ? (
         /* Empty State */
         <div className="rounded-2xl border border-dashed border-edge bg-card/50 p-12 text-center">
           <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-signal/10 text-signal border border-signal/20">
@@ -826,6 +829,245 @@ export function PortfolioHub() {
       ) : (
         /* Active Portfolio List */
         <div className="space-y-6">
+          {/* Pillar 1: Candidate Identity & Global Header Strip */}
+          <div className="rounded-xl border border-edge/80 bg-card/70 backdrop-blur-md p-4 sm:p-5 shadow-sm transition-all">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="min-w-0 space-y-1.5">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="rounded bg-signal/15 text-signal px-2 py-0.5 text-[9px] font-mono font-bold uppercase tracking-wider border border-signal/25">
+                    Pillar 1 · Identity & Positioning
+                  </span>
+                  {portfolio.identity?.location && (
+                    <span className="text-[11px] font-mono text-muted flex items-center gap-1">
+                      <span>📍</span>
+                      <span>{portfolio.identity.location}</span>
+                    </span>
+                  )}
+                  {portfolio.identity?.email && (
+                    <span className="text-[11px] font-mono text-muted flex items-center gap-1">
+                      <span>✉️</span>
+                      <span>{portfolio.identity.email}</span>
+                    </span>
+                  )}
+                  {portfolio.identity?.phone && (
+                    <span className="text-[11px] font-mono text-muted flex items-center gap-1">
+                      <span>📞</span>
+                      <span>{portfolio.identity.phone}</span>
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex items-baseline gap-2.5 flex-wrap">
+                  <h2 className="text-lg sm:text-xl font-mono font-black text-content tracking-tight">
+                    {portfolio.identity?.full_name || 'Your Full Name'}
+                  </h2>
+                  <span className="text-muted/60 text-xs hidden sm:inline">•</span>
+                  <span className="text-xs sm:text-sm font-sans font-medium text-signal">
+                    {portfolio.identity?.headline || 'Add your target professional headline (e.g. Senior Software Engineer)'}
+                  </span>
+                </div>
+
+                {/* Social & Portfolio Links */}
+                <div className="flex items-center gap-2 pt-1 flex-wrap">
+                  {portfolio.identity?.github_url && (
+                    <a
+                      href={portfolio.identity.github_url.startsWith('http') ? portfolio.identity.github_url : `https://${portfolio.identity.github_url}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-mono bg-well/80 border border-edge text-content hover:text-signal hover:border-signal/40 transition-colors"
+                    >
+                      <Icon.Github className="h-3 w-3" />
+                      <span>{portfolio.identity.github_url.replace(/^https?:\/\/(www\.)?github\.com\//, '')}</span>
+                    </a>
+                  )}
+                  {portfolio.identity?.linkedin_url && (
+                    <a
+                      href={portfolio.identity.linkedin_url.startsWith('http') ? portfolio.identity.linkedin_url : `https://${portfolio.identity.linkedin_url}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-mono bg-well/80 border border-edge text-content hover:text-signal hover:border-signal/40 transition-colors"
+                    >
+                      <Icon.Link className="h-3 w-3" />
+                      <span>{portfolio.identity.linkedin_url.replace(/^https?:\/\/(www\.)?linkedin\.com\/in\//, '')}</span>
+                    </a>
+                  )}
+                  {portfolio.identity?.portfolio_url && (
+                    <a
+                      href={portfolio.identity.portfolio_url.startsWith('http') ? portfolio.identity.portfolio_url : `https://${portfolio.identity.portfolio_url}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-mono bg-well/80 border border-edge text-content hover:text-signal hover:border-signal/40 transition-colors"
+                    >
+                      <Icon.Globe className="h-3 w-3" />
+                      <span>{portfolio.identity.portfolio_url.replace(/^https?:\/\//, '')}</span>
+                    </a>
+                  )}
+                  {!portfolio.identity?.github_url && !portfolio.identity?.linkedin_url && !portfolio.identity?.portfolio_url && (
+                    <span className="text-[11px] font-sans text-muted/70 italic">
+                      No public profile links configured yet.
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              <div className="shrink-0 flex items-center md:self-start">
+                <button
+                  type="button"
+                  onClick={() => setActiveDrawer({ type: 'identity', identity: portfolio.identity })}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-edge/80 bg-well hover:bg-muted/15 text-xs font-mono font-bold text-content hover:text-signal transition-all shadow-xs cursor-pointer"
+                >
+                  <Icon.Pencil className="h-3.5 w-3.5 text-muted" />
+                  <span>Edit Profile</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Responsive 2-Column Container: Pillar 2 (Summary) & Pillar 3 (Skills Matrix) */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+            {/* Pillar 2: Professional Summary Card (5 cols on large screens) */}
+            <div className="lg:col-span-5 rounded-xl border border-edge/80 bg-card/70 backdrop-blur-md p-4 sm:p-5 flex flex-col justify-between shadow-sm">
+              <div className="space-y-3">
+                <div className="flex items-center justify-between pb-2.5 border-b border-edge/40">
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-content uppercase tracking-wider text-[11px] font-mono flex items-center gap-1.5">
+                      <span className="text-signal font-black">λ</span>
+                      <span>Professional Summary</span>
+                    </span>
+                    <span className="rounded bg-signal/15 text-signal px-1.5 py-0.2 text-[9px] font-mono font-bold uppercase tracking-wider border border-signal/25">
+                      Pillar 2
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {portfolio.summary && (
+                      <span className="text-[10px] font-mono text-muted">
+                        {portfolio.summary.trim().split(/\s+/).length} words
+                      </span>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setActiveDrawer({ type: 'summary', summary: portfolio.summary })}
+                      className="p-1 text-muted hover:text-signal rounded transition-colors cursor-pointer"
+                      title="Edit Professional Summary"
+                    >
+                      <Icon.Pencil className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                </div>
+
+                {portfolio.summary ? (
+                  <p className="font-sans text-xs sm:text-[13px] text-content/90 leading-relaxed font-normal">
+                    {portfolio.summary}
+                  </p>
+                ) : (
+                  <div className="rounded-lg border border-dashed border-edge/80 p-4 text-center space-y-2">
+                    <p className="text-xs font-sans text-muted">
+                      No career positioning statement added yet. Craft a 50-word narrative summarizing your engineering focus.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setActiveDrawer({ type: 'summary', summary: '' })}
+                      className="inline-flex items-center gap-1.5 text-xs font-mono font-bold text-signal hover:underline cursor-pointer"
+                    >
+                      <Icon.Plus className="h-3 w-3" />
+                      <span>Write Summary</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {portfolio.summary && (
+                <div className="pt-3 mt-3 border-t border-edge/30 flex items-center justify-between text-[11px] font-mono text-muted">
+                  <span className="text-[10px] uppercase tracking-wider text-muted/80">Living Career Narrative</span>
+                  <button
+                    type="button"
+                    onClick={() => setActiveDrawer({ type: 'summary', summary: portfolio.summary })}
+                    className="text-signal hover:underline font-bold text-[11px] cursor-pointer"
+                  >
+                    Edit Narrative →
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Pillar 3: Categorized Technical Skills Matrix (7 cols on large screens) */}
+            <div className="lg:col-span-7 rounded-xl border border-edge/80 bg-card/70 backdrop-blur-md p-4 sm:p-5 flex flex-col justify-between shadow-sm">
+              <div className="space-y-3">
+                <div className="flex items-center justify-between pb-2.5 border-b border-edge/40">
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-content uppercase tracking-wider text-[11px] font-mono flex items-center gap-1.5">
+                      <span className="text-signal font-black">λ</span>
+                      <span>Technical Skills Matrix</span>
+                    </span>
+                    <span className="rounded bg-signal/15 text-signal px-1.5 py-0.2 text-[9px] font-mono font-bold uppercase tracking-wider border border-signal/25">
+                      Pillar 3
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-mono text-muted">
+                      {portfolio.skills?.length || 0} categories · {portfolio.skills?.reduce((acc, c) => acc + (c.items?.length || 0), 0) || 0} skills
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setActiveDrawer({ type: 'skills', skills: portfolio.skills })}
+                      className="p-1 text-muted hover:text-signal rounded transition-colors cursor-pointer"
+                      title="Manage Skills Matrix"
+                    >
+                      <Icon.Pencil className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                </div>
+
+                {Array.isArray(portfolio.skills) && portfolio.skills.length > 0 ? (
+                  <div className="space-y-2.5">
+                    {portfolio.skills.map((cat, idx) => (
+                      <div key={idx} className="flex flex-col sm:flex-row sm:items-start gap-1 sm:gap-2.5 text-xs">
+                        <span className="font-mono font-bold text-content text-[11px] sm:min-w-[130px] shrink-0 pt-0.5">
+                          {cat.category}:
+                        </span>
+                        <div className="flex flex-wrap items-center gap-1">
+                          {cat.items.map((skill, sIdx) => (
+                            <span
+                              key={sIdx}
+                              className="px-2 py-0.5 rounded text-[11px] font-mono font-medium bg-well/80 border border-edge/70 text-content"
+                            >
+                              {skill}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="rounded-lg border border-dashed border-edge/80 p-4 text-center space-y-2">
+                    <p className="text-xs font-sans text-muted">
+                      No categorized technical skills configured yet. Partition your stack by Languages, Frontend, Backend & APIs, Databases, etc.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setActiveDrawer({ type: 'skills', skills: [] })}
+                      className="inline-flex items-center gap-1.5 text-xs font-mono font-bold text-signal hover:underline cursor-pointer"
+                    >
+                      <Icon.Plus className="h-3 w-3" />
+                      <span>Setup Skills Matrix</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              <div className="pt-3 mt-3 border-t border-edge/30 flex items-center justify-between text-[11px] font-mono text-muted">
+                <span className="text-[10px] uppercase tracking-wider text-muted/80">Domain-Partitioned Matrix</span>
+                <button
+                  type="button"
+                  onClick={() => setActiveDrawer({ type: 'skills', skills: portfolio.skills })}
+                  className="text-signal hover:underline font-bold text-[11px] cursor-pointer"
+                >
+                  Manage Categories & Skills →
+                </button>
+              </div>
+            </div>
+          </div>
+
           {/* Master Ledger Frame */}
           <div className="rounded-xl border border-edge/80 bg-card/70 backdrop-blur-md divide-y divide-edge/40 shadow-xl">
             {/* Ledger Top Header / Actions Bar */}
@@ -1329,6 +1571,116 @@ export function PortfolioHub() {
                     </div>
                   );
                 })}
+              </div>
+            )}
+          </div>
+
+          {/* Pillar 6: Academic Credentials & Education */}
+          <div className="rounded-xl border border-edge/80 bg-card/70 backdrop-blur-md shadow-sm overflow-hidden">
+            <div className="px-4 py-3 bg-surface/60 border-b border-edge/60 flex items-center justify-between gap-3 text-xs font-mono">
+              <div className="flex items-center gap-2.5">
+                <span className="font-bold text-content uppercase tracking-wider text-[11px] flex items-center gap-1.5">
+                  <span className="text-signal font-black">λ</span>
+                  <span>Education & Academic Credentials</span>
+                </span>
+                <span className="rounded bg-signal/15 text-signal px-1.5 py-0.2 text-[9px] font-bold uppercase tracking-wider border border-signal/25">
+                  Pillar 6
+                </span>
+                <span className="text-muted/50 hidden sm:inline">•</span>
+                <span className="text-muted text-[11px] hidden sm:inline">
+                  {portfolio.education?.length || 0} degrees & credentials
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setActiveDrawer({ type: 'education' })}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-edge/80 bg-well hover:bg-muted/15 px-2.5 py-1 text-xs font-mono font-bold text-content hover:text-signal transition-all cursor-pointer"
+              >
+                <Icon.Plus className="h-3.5 w-3.5 text-muted" />
+                <span>Add Credential</span>
+              </button>
+            </div>
+
+            {Array.isArray(portfolio.education) && portfolio.education.length > 0 ? (
+              <div className="divide-y divide-edge/40">
+                {portfolio.education.map((edu) => (
+                  <div
+                    key={edu.id}
+                    className="p-4 sm:p-5 hover:bg-muted/5 transition-colors flex flex-col md:flex-row md:items-start justify-between gap-3 group"
+                  >
+                    <div className="space-y-1.5 min-w-0">
+                      <div className="flex items-baseline gap-2 flex-wrap">
+                        <span className="font-mono font-bold text-sm text-content">
+                          {edu.degree}
+                        </span>
+                        <span className="text-muted/60 text-xs hidden sm:inline">•</span>
+                        <span className="font-mono text-xs text-signal font-semibold">
+                          {edu.institution}
+                        </span>
+                        {edu.grade_or_gpa && (
+                          <span className="text-[11px] font-mono px-2 py-0.2 rounded bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 font-bold">
+                            {edu.grade_or_gpa}
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-3 text-xs font-mono text-muted flex-wrap">
+                        {(edu.start_date || edu.end_date) && (
+                          <span>
+                            {edu.start_date || ''} {edu.start_date && edu.end_date ? '–' : ''} {edu.end_date || 'Present'}
+                          </span>
+                        )}
+                        {edu.location && (
+                          <>
+                            <span>•</span>
+                            <span>{edu.location}</span>
+                          </>
+                        )}
+                        {edu.field_of_study && (
+                          <>
+                            <span>•</span>
+                            <span>Major: {edu.field_of_study}</span>
+                          </>
+                        )}
+                      </div>
+
+                      {Array.isArray(edu.bullets) && edu.bullets.length > 0 && (
+                        <div className="pt-1.5 space-y-1">
+                          {edu.bullets.map((b, bIdx) => (
+                            <div key={bIdx} className="flex items-start gap-2 text-xs font-sans text-muted">
+                              <span className="text-signal font-mono font-bold mt-0.5">•</span>
+                              <span className="leading-relaxed">{b}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="shrink-0 flex items-center gap-1.5 md:opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button
+                        type="button"
+                        onClick={() => setActiveDrawer({ type: 'education', education: edu })}
+                        className="px-2.5 py-1 rounded-md text-xs font-mono font-bold text-muted hover:text-content hover:bg-muted/15 border border-edge/60 cursor-pointer"
+                      >
+                        Edit Credential
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="p-8 text-center space-y-2">
+                <p className="text-xs font-sans text-muted">
+                  No academic credentials configured in your SSOT yet.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setActiveDrawer({ type: 'education' })}
+                  className="inline-flex items-center gap-1.5 text-xs font-mono font-bold text-signal hover:underline cursor-pointer"
+                >
+                  <Icon.Plus className="h-3.5 w-3.5" />
+                  <span>+ Add First Degree or Certificate</span>
+                </button>
               </div>
             )}
           </div>
@@ -2962,8 +3314,36 @@ function ResumeImportModal({
     try {
       let expToImport = target.experience || [];
       let projToImport = target.projects || [];
+      let identityToImport = {
+        full_name: target.fullName || '',
+        headline: target.targetRoleType || 'Software Engineer',
+        email: target.email || '',
+        phone: target.phone || '',
+        location: target.location || '',
+        github_url: target.githubUrl || '',
+        linkedin_url: target.linkedinUrl || '',
+        portfolio_url: target.portfolioUrl || '',
+      };
+      let summaryToImport = target.summary || '';
+      let skillsToImport = target.skills || [];
+      let educationToImport = target.education || [];
+
       if (target.rawCleanText && target.rawCleanText.trim().length > 40) {
         const reparsed = parseUploadedResumeText(target.rawCleanText, target.sourceFileName);
+        if (reparsed.fullName) {
+          identityToImport.full_name = reparsed.fullName;
+        }
+        if (reparsed.email) identityToImport.email = reparsed.email;
+        if (reparsed.phone) identityToImport.phone = reparsed.phone;
+        if (reparsed.location) identityToImport.location = reparsed.location;
+        if (reparsed.githubUrl) identityToImport.github_url = reparsed.githubUrl;
+        if (reparsed.linkedinUrl) identityToImport.linkedin_url = reparsed.linkedinUrl;
+        if (reparsed.portfolioUrl) identityToImport.portfolio_url = reparsed.portfolioUrl;
+        if (reparsed.targetRoleType) identityToImport.headline = reparsed.targetRoleType;
+
+        if (reparsed.summary) summaryToImport = reparsed.summary;
+        if (reparsed.skills && reparsed.skills.length > 0) skillsToImport = reparsed.skills;
+        if (reparsed.education && reparsed.education.length > 0) educationToImport = reparsed.education;
         if (reparsed.experience && reparsed.experience.length > 0) {
           expToImport = reparsed.experience;
         }
@@ -2971,7 +3351,15 @@ function ResumeImportModal({
           projToImport = reparsed.projects;
         }
       }
-      const res = await bootstrapPortfolioFromResume(expToImport, projToImport, { replaceExisting });
+      const res = await bootstrapPortfolioFromResume({
+        experience: expToImport,
+        projects: projToImport,
+        education: educationToImport,
+        skills: skillsToImport,
+        summary: summaryToImport,
+        identity: identityToImport,
+        replaceExisting,
+      });
       setSuccessResult(res.imported);
     } catch (err: any) {
       setError(err.message || 'Failed to import resume.');

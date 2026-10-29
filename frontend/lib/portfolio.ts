@@ -79,7 +79,40 @@ export interface PortfolioProject {
   updated_at?: string;
 }
 
+export interface PortfolioIdentity {
+  full_name?: string;
+  headline?: string;
+  email?: string;
+  phone?: string;
+  location?: string;
+  github_url?: string;
+  linkedin_url?: string;
+  portfolio_url?: string;
+}
+
+export interface PortfolioSkillCategory {
+  id?: string;
+  category: string;
+  items: string[];
+}
+
+export interface PortfolioEducation {
+  id: string;
+  institution: string;
+  degree: string;
+  field_of_study?: string;
+  start_date?: string | null;
+  end_date?: string | null;
+  grade_or_gpa?: string;
+  location?: string;
+  bullets?: string[];
+}
+
 export interface PortfolioSSOT {
+  identity?: PortfolioIdentity;
+  summary?: string;
+  skills?: PortfolioSkillCategory[];
+  education?: PortfolioEducation[];
   companies: PortfolioCompany[];
   standalone_projects: PortfolioProject[];
   unattached_bullets: MasterBullet[];
@@ -121,16 +154,38 @@ export function deleteStoredCompanyRole(companyId: string): void {
 }
 
 export function getLocalPortfolio(): PortfolioSSOT {
+  const defaultEmpty: PortfolioSSOT = {
+    identity: { full_name: '', headline: '', email: '', phone: '', location: '', github_url: '', linkedin_url: '', portfolio_url: '' },
+    summary: '',
+    skills: [],
+    education: [],
+    companies: [],
+    standalone_projects: [],
+    unattached_bullets: [],
+  };
   if (typeof window === 'undefined') {
-    return { companies: [], standalone_projects: [], unattached_bullets: [] };
+    return defaultEmpty;
   }
   try {
     const raw = localStorage.getItem(LOCAL_STORAGE_KEY);
-    if (raw) return JSON.parse(raw);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      return {
+        ...defaultEmpty,
+        ...parsed,
+        identity: parsed.identity || defaultEmpty.identity,
+        summary: parsed.summary || '',
+        skills: Array.isArray(parsed.skills) ? parsed.skills : [],
+        education: Array.isArray(parsed.education) ? parsed.education : [],
+        companies: Array.isArray(parsed.companies) ? parsed.companies : [],
+        standalone_projects: Array.isArray(parsed.standalone_projects) ? parsed.standalone_projects : [],
+        unattached_bullets: Array.isArray(parsed.unattached_bullets) ? parsed.unattached_bullets : [],
+      };
+    }
   } catch (err) {
     console.error('Failed to read local portfolio SSOT', err);
   }
-  return { companies: [], standalone_projects: [], unattached_bullets: [] };
+  return defaultEmpty;
 }
 
 export const getPortfolioSSOTLocal = getLocalPortfolio;
@@ -206,6 +261,10 @@ export async function fetchPortfolio(): Promise<PortfolioSSOT> {
         });
 
         const ssot: PortfolioSSOT = {
+          identity: data.identity || data.profile_identity || undefined,
+          summary: typeof data.summary === 'string' ? data.summary : (data.profile_summary || data.summary_text || ''),
+          skills: Array.isArray(data.skills) ? data.skills : (Array.isArray(data.profile_skills) ? data.profile_skills : []),
+          education: Array.isArray(data.education) ? data.education : (Array.isArray(data.profile_education) ? data.profile_education : []),
           companies: normalizedCompanies,
           standalone_projects: (data.standalone_projects || data.projects || []).map((pr: any) => ({
             ...pr,
@@ -749,18 +808,40 @@ export async function deleteBullet(id: string): Promise<void> {
  * 1-Click Bootstrap from existing parsed resume profile
  */
 export async function bootstrapPortfolioFromResume(
-  experience: any[],
-  projects: any[],
+  experienceOrPayload: any,
+  legacyProjects?: any[],
   options?: { replaceExisting?: boolean }
 ): Promise<{ ok: boolean; imported: { companies: number; products: number; projects: number; bullets: number } }> {
-  const cleanExperience = sanitizeResumeExperienceList(Array.isArray(experience) ? experience : []);
-  const cleanProjects = Array.isArray(projects)
-    ? projects.map((p: any) => ({
-        ...p,
-        bullets: Array.isArray(p.bullets) ? stitchAndCleanBullets(p.bullets).bullets : [],
-      }))
-    : [];
-  const replaceExisting = !!options?.replaceExisting;
+  let experienceList: any[] = [];
+  let projectList: any[] = [];
+  let educationList: any[] = [];
+  let skillsList: any[] = [];
+  let summaryText = '';
+  let identityData: PortfolioIdentity | undefined = undefined;
+
+  let replaceExisting = false;
+
+  if (experienceOrPayload && typeof experienceOrPayload === 'object' && !Array.isArray(experienceOrPayload)) {
+    // Rich 6-pillar payload
+    experienceList = experienceOrPayload.experience || [];
+    projectList = experienceOrPayload.projects || [];
+    educationList = experienceOrPayload.education || [];
+    skillsList = experienceOrPayload.skills || [];
+    summaryText = experienceOrPayload.summary || '';
+    identityData = experienceOrPayload.identity;
+    replaceExisting = !!experienceOrPayload.replaceExisting || !!options?.replaceExisting;
+  } else {
+    // Legacy positional arguments
+    experienceList = Array.isArray(experienceOrPayload) ? experienceOrPayload : [];
+    projectList = Array.isArray(legacyProjects) ? legacyProjects : [];
+    replaceExisting = !!options?.replaceExisting;
+  }
+
+  const cleanExperience = sanitizeResumeExperienceList(experienceList);
+  const cleanProjects = projectList.map((p: any) => ({
+    ...p,
+    bullets: Array.isArray(p.bullets) ? stitchAndCleanBullets(p.bullets).bullets : [],
+  }));
 
   const headers = await authHeaders();
   if (headers.Authorization) {
@@ -773,6 +854,10 @@ export async function bootstrapPortfolioFromResume(
       body: JSON.stringify({
         experience: cleanExperience,
         projects: cleanProjects,
+        education: educationList,
+        skills: skillsList,
+        summary: summaryText,
+        identity: identityData,
         replaceExisting,
       }),
     });
@@ -801,9 +886,40 @@ export async function bootstrapPortfolioFromResume(
   }
 
   // Local bootstrap simulation
-  const local = replaceExisting
-    ? { companies: [], standalone_projects: [], unattached_bullets: [] }
+  const local: PortfolioSSOT = replaceExisting
+    ? {
+        identity: identityData || { full_name: '', headline: '', email: '', phone: '', location: '', github_url: '', linkedin_url: '', portfolio_url: '' },
+        summary: summaryText || '',
+        skills: skillsList || [],
+        education: [],
+        companies: [],
+        standalone_projects: [],
+        unattached_bullets: [],
+      }
     : getLocalPortfolio();
+
+  if (identityData) {
+    local.identity = { ...(local.identity || {}), ...identityData };
+  }
+  if (summaryText) {
+    local.summary = summaryText;
+  }
+  if (skillsList && skillsList.length > 0) {
+    local.skills = skillsList;
+  }
+  if (educationList && educationList.length > 0) {
+    local.education = educationList.map((e: any, idx: number) => ({
+      id: e.id || `edu_${Date.now()}_${idx}`,
+      institution: e.institution || 'Institution',
+      degree: e.degree || 'Degree',
+      field_of_study: e.field_of_study || undefined,
+      start_date: e.start_date || null,
+      end_date: e.end_date || e.year || null,
+      grade_or_gpa: e.grade_or_gpa || undefined,
+      location: e.location || undefined,
+      bullets: Array.isArray(e.bullets) ? e.bullets : (e.coursework ? [e.coursework] : []),
+    }));
+  }
   let compCount = 0;
   let prodCount = 0;
   let projCount = 0;
@@ -896,4 +1012,149 @@ export async function bootstrapPortfolioFromResume(
       bullets: bulletCount,
     },
   };
+}
+
+/**
+ * Save / Update Profile Identity in SSOT
+ */
+export async function saveIdentity(identity: PortfolioIdentity): Promise<PortfolioIdentity> {
+  const headers = await authHeaders();
+  if (headers.Authorization) {
+    try {
+      const res = await fetch(`${API_URL}/api/portfolio/identity`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', ...headers },
+        body: JSON.stringify({ identity }),
+      });
+      if (res.ok) {
+        const d = await res.json();
+        if (d.identity) identity = d.identity;
+      }
+    } catch (err) {
+      console.warn('[portfolio] Remote saveIdentity failed, persisting locally', err);
+    }
+  }
+
+  const local = getLocalPortfolio();
+  local.identity = { ...(local.identity || {}), ...identity };
+  saveLocalPortfolio(local);
+  return local.identity;
+}
+
+/**
+ * Save / Update Professional Summary in SSOT
+ */
+export async function saveSummary(summary: string): Promise<string> {
+  const headers = await authHeaders();
+  if (headers.Authorization) {
+    try {
+      await fetch(`${API_URL}/api/portfolio/summary`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', ...headers },
+        body: JSON.stringify({ summary }),
+      });
+    } catch (err) {
+      console.warn('[portfolio] Remote saveSummary failed, persisting locally', err);
+    }
+  }
+
+  const local = getLocalPortfolio();
+  local.summary = summary;
+  saveLocalPortfolio(local);
+  return summary;
+}
+
+/**
+ * Save / Update Categorized Skills Matrix in SSOT
+ */
+export async function saveSkills(skills: PortfolioSkillCategory[]): Promise<PortfolioSkillCategory[]> {
+  const headers = await authHeaders();
+  if (headers.Authorization) {
+    try {
+      await fetch(`${API_URL}/api/portfolio/skills`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', ...headers },
+        body: JSON.stringify({ skills }),
+      });
+    } catch (err) {
+      console.warn('[portfolio] Remote saveSkills failed, persisting locally', err);
+    }
+  }
+
+  const local = getLocalPortfolio();
+  local.skills = skills;
+  saveLocalPortfolio(local);
+  return skills;
+}
+
+/**
+ * Save / Update Education Credential in SSOT
+ */
+export async function saveEducation(
+  edu: Partial<PortfolioEducation> & { institution: string; degree: string }
+): Promise<PortfolioEducation> {
+  const headers = await authHeaders();
+  if (headers.Authorization) {
+    try {
+      const res = await fetch(`${API_URL}/api/portfolio/education`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', ...headers },
+        body: JSON.stringify(edu),
+      });
+      if (res.ok) {
+        const d = await res.json();
+        if (d.education) return d.education;
+      }
+    } catch (err) {
+      console.warn('[portfolio] Remote saveEducation failed, persisting locally', err);
+    }
+  }
+
+  const local = getLocalPortfolio();
+  if (!local.education) local.education = [];
+  const id = edu.id || `edu_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+  const existingIdx = local.education.findIndex((e) => e.id === id);
+
+  const record: PortfolioEducation = {
+    id,
+    institution: edu.institution.trim(),
+    degree: edu.degree.trim(),
+    field_of_study: edu.field_of_study?.trim() || undefined,
+    start_date: edu.start_date || null,
+    end_date: edu.end_date || null,
+    grade_or_gpa: edu.grade_or_gpa?.trim() || undefined,
+    location: edu.location?.trim() || undefined,
+    bullets: Array.isArray(edu.bullets) ? edu.bullets : [],
+  };
+
+  if (existingIdx >= 0) {
+    local.education[existingIdx] = record;
+  } else {
+    local.education.push(record);
+  }
+  saveLocalPortfolio(local);
+  return record;
+}
+
+/**
+ * Delete Education Credential in SSOT
+ */
+export async function deleteEducation(id: string): Promise<void> {
+  const headers = await authHeaders();
+  if (headers.Authorization) {
+    try {
+      await fetch(`${API_URL}/api/portfolio/education/${encodeURIComponent(id)}`, {
+        method: 'DELETE',
+        headers,
+      });
+    } catch (err) {
+      console.warn('[portfolio] Remote deleteEducation failed, persisting locally', err);
+    }
+  }
+
+  const local = getLocalPortfolio();
+  if (local.education) {
+    local.education = local.education.filter((e) => e.id !== id);
+    saveLocalPortfolio(local);
+  }
 }

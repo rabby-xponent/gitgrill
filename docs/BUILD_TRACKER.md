@@ -679,25 +679,43 @@ pie title Roadmap Milestone Status
 
 ---
 
-### Milestone 35 — Universal Right-Side Slide-Over Drawer Architecture & Inspector Panel 🟢
+### Milestone 36 — Complete 6-Pillar Developer CareerOS SSOT Integration 🟢
 
-* **Current Status:** Fully implemented and verified across TypeScript compiler and Next.js production build (`next build` 16/16 routes 0 errors).
-* **1. Elimination of Obstructive Modals ([`PortfolioDrawer.tsx`](file:///e:/rabby-xponent/Projects/devscope/frontend/components/PortfolioDrawer.tsx)):**
-  - Built a unified, high-density Right-Side Slide-Over Drawer (`PortfolioDrawer.tsx`) replacing all 4 legacy modal popups (`CompanyEditModal`, `ProductEditModal`, `ProjectEditModal`, `BulletEditModal`).
-  - Rendered via React `createPortal` with backdrop blur scrim (`bg-black/45 backdrop-blur-xs z-[140]`) and smooth CSS slide transition (`animate-in slide-in-from-right duration-300`).
-  - Supports keyboard shortcuts: `Esc` to dismiss, `⌘S` / `Ctrl+S` to instantly save.
-* **2. Context-Aware Dossier & Inspector Views ([`PortfolioDrawer.tsx`](file:///e:/rabby-xponent/Projects/devscope/frontend/components/PortfolioDrawer.tsx)):**
-  - **Company Dossier Drawer:** Unclipped full company name and role title; Overview card with verified location, full tenure duration, and website link; Enterprise tech stack cloud aggregating all child subsystems; Interactive Subsystems Ledger with 1-click navigation into each product and `+ Add Subsystem` action; and separate `Edit Details` tab.
-  - **Product / Subsystem Dossier Drawer:** Full subsystem title without truncation; Breadcrumb link back to parent Company; Architecture Archetype card with detailed pattern explanation; Interactive Tech Stack Tag Manager (Enter to add, `×` to remove); Master Contributions list displaying all child bullets with status dots and metrics, with 1-click navigation into bullet inspection; and separate `Edit Subsystem` tab.
-  - **Master Bullet Inspector:** Full bullet text editor with live word count, segmented Review Status switcher (`Approved`, `Needs Review`, `Draft`), Action Verb & Primary Metric detectors, and GitGrill's signature *Architectural Defense & Trade-Offs* editor (Engineering Challenge, Complexity, and Alternatives Considered).
-  - **Standalone Project Inspector:** Project title, One-line pitch/headline, GitHub Repo & Live Demo URLs, and tech stack chips.
-* **3. Dual Interaction Model & Unclipped Ledger Typography ([`PortfolioHub.tsx`](file:///e:/rabby-xponent/Projects/devscope/frontend/components/PortfolioHub.tsx)):**
-  - **Resolved Aggressive Text Clipping:** Prevented premature `truncate` on company and product names (`shrink-0` with priority allocation); added full-title floating `<Tooltip />` on hover.
-  - **Direct Node Inspection:** Clicking on a Company name opens the Company Dossier Drawer; clicking a Product name opens the Product Subsystem Drawer. Clicking the chevron toggles collapse/expand cleanly without unexpected sheet transitions.
-  - **Dedicated Inspector Action:** Added `Icon.Sidebar` to hover action bars across Companies, Products, Bullets, and Projects.
-  - Preserved ultra-fast inline double-click editing on bullet ledger rows for rapid copy adjustments.
-* **4. Build & Typecheck Verification:**
-  - Verified with `npm --prefix frontend run build` (16/16 routes statically optimized, 0 errors).
+* **Current Status:** Fully implemented and verified across backend (`tsc` 0 errors) and frontend (`next build` 16/16 routes 0 errors).
+* **1. Living Portfolio SSOT 6-Pillar Schema Evolution ([`portfolio.ts`](file:///e:/rabby-xponent/Projects/devscope/frontend/lib/portfolio.ts)):**
+  - Expanded `PortfolioSSOT` beyond companies and projects to incorporate the full 6 pillars of a developer's career:
+    1. **Pillar 1 (Identity & Positioning):** `PortfolioIdentity` holding `full_name`, `headline`, `email`, `phone`, `location`, `github_url`, `linkedin_url`, and `portfolio_url`.
+    2. **Pillar 2 (Professional Career Narrative):** `summary` executive positioning elevator pitch with word count guidance.
+    3. **Pillar 3 (Technical Skills Matrix):** `PortfolioSkillCategory[]` supporting domain groupings (e.g. Languages, Frontend, Backend & APIs, Databases & Async, Cloud/Infra, Testing & Delivery, Agile).
+    4. **Pillar 4 (Work Experience & Subsystems):** `PortfolioCompany[]` and child `PortfolioProduct[]`.
+    5. **Pillar 5 (Standalone Projects):** `PortfolioProject[]`.
+    6. **Pillar 6 (Academic Credentials & Education):** `PortfolioEducation[]` holding `degree`, `institution`, `field_of_study`, `start_date`, `end_date`, `grade_or_gpa`, `location`, and `bullets` for coursework/honors.
+  - Added full local-first CRUD persistence helpers: `saveIdentity`, `saveSummary`, `saveSkills`, `saveEducation`, and `deleteEducation`.
+* **2. Backend API Storage & Zero-Downtime Persistence ([`portfolio.routes.ts`](file:///e:/rabby-xponent/Projects/devscope/backend/src/portfolio/portfolio.routes.ts)):**
+  - Updated `GET /api/portfolio` to fetch and return `identity`, `profile_summary`, `summary_text`, `skills`, and `education` from `users.preferences`.
+  - Added dedicated CRUD mutation routes:
+    - `POST /api/portfolio/identity` (persists candidate contact details & URLs)
+    - `POST /api/portfolio/summary` (persists career positioning narrative)
+    - `POST /api/portfolio/skills` (persists domain-partitioned skill categories)
+    - `POST /api/portfolio/education` & `DELETE /api/portfolio/education/:id` (manages academic degrees & coursework)
+  - Updated `POST /api/portfolio/import-resume` (and `/bootstrap-from-resume`) to accept all 6 pillars from parsed CVs/resumes and persist them seamlessly into `users.preferences` with zero breaking DDL schema migrations.
+* **3. Universal Drawer Extension for All 6 Pillars ([`PortfolioDrawer.tsx`](file:///e:/rabby-xponent/Projects/devscope/frontend/components/PortfolioDrawer.tsx)):**
+  - **Identity Drawer (`IdentityDrawerContent`):** Form editor for candidate legal name, target headline, email, phone, location, and social links (GitHub, LinkedIn, Portfolio).
+  - **Professional Summary Drawer (`SummaryDrawerContent`):** Large narrative text area with live word and character counters, plus the 3-beat "High-Impact Summary Formula" guidance box.
+  - **Categorized Skills Drawer (`SkillsDrawerContent`):** Category manager with inline tag addition/removal, Enter-to-add, comma-separated batch adding, and quick domain preset suggestions.
+  - **Education Drawer (`EducationDrawerContent`):** Degree, institution, major, dates, GPA badge, location, and highlights/coursework bullet manager with delete action.
+* **4. Complete 6-Pillar UI Ledger Architecture ([`PortfolioHub.tsx`](file:///e:/rabby-xponent/Projects/devscope/frontend/components/PortfolioHub.tsx)):**
+  - **Candidate Identity Strip (Pillar 1):** Top banner showing Full Name, Headline, Contact pills (Location, Email, Phone), Public Profile pills (GitHub, LinkedIn, Portfolio), and quick "Edit Profile" drawer button.
+  - **2-Column Responsive Layout (Pillars 2 & 3):**
+    - **Pillar 2 (Professional Summary Card):** Displays narrative copy with word count badge and "Edit Summary" drawer trigger.
+    - **Pillar 3 (Technical Skills Matrix Card):** Categorized domain rows displaying skills as clean monochrome pills with "Manage Skills" drawer trigger.
+  - **Pillars 4 & 5 (Experience & Projects):** Linear tree-ledger frame with single hairline, unclipped labels, and hover inspector actions.
+  - **Pillar 6 (Education & Credentials Ledger):** Linear-style education entries showing Degree, Institution, Tenure, GPA badge, and coursework bullets with "+ Add Credential" and "Edit" drawer triggers.
+  - **1-Click Bootstrap Ingestion:** Upgraded `ResumeImportModal` so ingesting any uploaded resume or CV populates all 6 pillars in one atomic bootstrap.
+* **5. Verification & Validation:**
+  - `npm --prefix backend run build`: Exited 0 (TypeScript compilation clean).
+  - `npm --prefix frontend run build`: Exited 0 (Next.js statically compiled all 16 routes with 0 errors).
+
 
 
 

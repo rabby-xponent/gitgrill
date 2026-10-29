@@ -8,10 +8,18 @@ import {
   PortfolioProduct,
   PortfolioProject,
   MasterBullet,
+  PortfolioIdentity,
+  PortfolioSkillCategory,
+  PortfolioEducation,
   saveCompany,
   saveProduct,
   saveProject,
   saveBullet,
+  saveIdentity,
+  saveSummary,
+  saveSkills,
+  saveEducation,
+  deleteEducation,
   setStoredCompanyRole,
   getStoredCompanyRoles,
   normalizeDateToISO,
@@ -59,13 +67,29 @@ export type DrawerEntity =
       parentProject?: PortfolioProject;
       companyName?: string;
       bullet?: MasterBullet;
+    }
+  | {
+      type: 'identity';
+      identity?: PortfolioIdentity;
+    }
+  | {
+      type: 'summary';
+      summary?: string;
+    }
+  | {
+      type: 'skills';
+      skills?: PortfolioSkillCategory[];
+    }
+  | {
+      type: 'education';
+      education?: PortfolioEducation;
     };
 
 interface PortfolioDrawerProps {
   entity: DrawerEntity | null;
   onClose: () => void;
   onSaved: () => Promise<void>;
-  onDeleteRequest?: (item: { type: 'company' | 'product' | 'project' | 'bullet'; id: string; title: string }) => void;
+  onDeleteRequest?: (item: { type: 'company' | 'product' | 'project' | 'bullet' | 'education'; id: string; title: string }) => void;
 }
 
 const ARCHITECTURE_OPTIONS: SelectOption[] = [
@@ -249,6 +273,39 @@ export function PortfolioDrawer({ entity, onClose, onSaved, onDeleteRequest }: P
                   }
                 : undefined
             }
+          />
+        )}
+
+        {currentEntity.type === 'identity' && (
+          <IdentityDrawerContent
+            identity={currentEntity.identity}
+            onClose={onClose}
+            onSaved={onSaved}
+          />
+        )}
+
+        {currentEntity.type === 'summary' && (
+          <SummaryDrawerContent
+            summary={currentEntity.summary}
+            onClose={onClose}
+            onSaved={onSaved}
+          />
+        )}
+
+        {currentEntity.type === 'skills' && (
+          <SkillsDrawerContent
+            skills={currentEntity.skills}
+            onClose={onClose}
+            onSaved={onSaved}
+          />
+        )}
+
+        {currentEntity.type === 'education' && (
+          <EducationDrawerContent
+            education={currentEntity.education}
+            onClose={onClose}
+            onSaved={onSaved}
+            onDeleteRequest={onDeleteRequest}
           />
         )}
       </div>
@@ -1765,6 +1822,973 @@ function ProjectDrawerContent({
           >
             {saving && <Icon.Spinner className="h-3.5 w-3.5 animate-spin" />}
             <span>{isEditing ? 'Save Changes' : 'Create Project'}</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ==========================================================================
+   5. Identity Drawer Content (Pillar 1: Candidate Header & Positioning)
+   ========================================================================== */
+function IdentityDrawerContent({
+  identity,
+  onClose,
+  onSaved,
+}: {
+  identity?: PortfolioIdentity;
+  onClose: () => void;
+  onSaved: () => Promise<void>;
+}) {
+  const [fullName, setFullName] = useState(identity?.full_name || '');
+  const [headline, setHeadline] = useState(identity?.headline || '');
+  const [email, setEmail] = useState(identity?.email || '');
+  const [phone, setPhone] = useState(identity?.phone || '');
+  const [location, setLocation] = useState(identity?.location || '');
+  const [githubUrl, setGithubUrl] = useState(identity?.github_url || '');
+  const [linkedinUrl, setLinkedinUrl] = useState(identity?.linkedin_url || '');
+  const [portfolioUrl, setPortfolioUrl] = useState(identity?.portfolio_url || '');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    const handleSaveShortcut = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 's') {
+        e.preventDefault();
+        handleSubmit();
+      }
+    };
+    window.addEventListener('keydown', handleSaveShortcut);
+    return () => window.removeEventListener('keydown', handleSaveShortcut);
+  });
+
+  const handleSubmit = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!fullName.trim()) {
+      setError('Full Name is required.');
+      return;
+    }
+    setError('');
+    setSaving(true);
+    try {
+      await saveIdentity({
+        full_name: fullName.trim(),
+        headline: headline.trim(),
+        email: email.trim(),
+        phone: phone.trim(),
+        location: location.trim(),
+        github_url: githubUrl.trim(),
+        linkedin_url: linkedinUrl.trim(),
+        portfolio_url: portfolioUrl.trim(),
+      });
+      await onSaved();
+      onClose();
+    } catch (err: any) {
+      setError(humanizePortfolioError(err, 'Failed to save identity profile.'));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="flex flex-col h-full overflow-hidden">
+      {/* Header */}
+      <div className="px-6 py-5 border-b border-edge/80 bg-surface/70 backdrop-blur-md shrink-0 flex items-center justify-between gap-4">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2 mb-1 flex-wrap">
+            <span className="rounded bg-signal/15 text-signal px-2 py-0.5 text-[10px] font-mono font-bold uppercase tracking-wider border border-signal/25">
+              Pillar 1 · Identity & Header
+            </span>
+          </div>
+          <h2 className="text-lg font-bold font-mono text-content truncate">
+            Edit Candidate Profile
+          </h2>
+          <p className="text-xs font-sans text-muted truncate mt-0.5">
+            Verified candidate contact details, headline, and authoritative public links.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          className="p-1.5 rounded-lg text-muted hover:text-content hover:bg-muted/15 transition-colors cursor-pointer shrink-0"
+          aria-label="Close drawer"
+        >
+          <Icon.X className="h-5 w-5" />
+        </button>
+      </div>
+
+      {/* Body Form */}
+      <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-5">
+        {error && (
+          <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-3.5 text-xs text-red-500 flex items-start gap-2.5">
+            <Icon.Alert className="h-4 w-4 shrink-0 mt-0.5" />
+            <span>{error}</span>
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <FormField label="Full Name" required description="Your canonical legal/professional name">
+            <TextInput
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+              placeholder="e.g. Golam Rabby or Noopur Gupta"
+              autoFocus
+            />
+          </FormField>
+          <FormField label="Target Headline" description="e.g. Software Engineer | Full-Stack Systems">
+            <TextInput
+              value={headline}
+              onChange={(e) => setHeadline(e.target.value)}
+              placeholder="e.g. Senior Backend / Distributed Systems Engineer"
+            />
+          </FormField>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <FormField label="Email Address">
+            <TextInput
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="name@example.com"
+            />
+          </FormField>
+          <FormField label="Phone Number">
+            <TextInput
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="+1 555-0199"
+            />
+          </FormField>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <FormField label="Location" description="City, State / Region, Country">
+            <TextInput
+              value={location}
+              onChange={(e) => setLocation(e.target.value)}
+              placeholder="San Francisco, CA or London, UK"
+            />
+          </FormField>
+          <FormField label="Portfolio / Website URL">
+            <TextInput
+              value={portfolioUrl}
+              onChange={(e) => setPortfolioUrl(e.target.value)}
+              placeholder="https://example.com"
+            />
+          </FormField>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <FormField label="GitHub Profile URL">
+            <TextInput
+              value={githubUrl}
+              onChange={(e) => setGithubUrl(e.target.value)}
+              placeholder="https://github.com/username"
+            />
+          </FormField>
+          <FormField label="LinkedIn Profile URL">
+            <TextInput
+              value={linkedinUrl}
+              onChange={(e) => setLinkedinUrl(e.target.value)}
+              placeholder="https://linkedin.com/in/username"
+            />
+          </FormField>
+        </div>
+
+        <div className="rounded-xl border border-edge/60 bg-well/40 p-4 text-xs font-mono text-muted space-y-1.5">
+          <div className="flex items-center gap-2 text-content font-bold">
+            <Icon.Sparkle className="h-4 w-4 text-signal" />
+            <span>Single Source of Truth Impact</span>
+          </div>
+          <p className="font-sans leading-relaxed text-muted">
+            Updating your candidate header here automatically updates all generated resume profiles, technical dossiers, and export headers.
+          </p>
+        </div>
+      </form>
+
+      {/* Footer */}
+      <div className="px-6 py-4 border-t border-edge/80 bg-surface/70 backdrop-blur-md shrink-0 flex items-center justify-between gap-3">
+        <span className="text-[11px] font-mono text-muted hidden sm:inline">
+          Esc to cancel · ⌘S to save
+        </span>
+        <div className="flex items-center gap-2 ml-auto">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-4 py-2 rounded-xl border border-edge/70 bg-card hover:bg-muted/10 text-muted hover:text-content text-xs font-mono font-medium transition-all cursor-pointer"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={() => handleSubmit()}
+            disabled={saving}
+            className="inline-flex items-center gap-2 px-5 py-2 rounded-xl bg-signal hover:bg-signal-hover text-surface text-xs font-mono font-bold transition-all shadow-xs cursor-pointer disabled:opacity-50"
+          >
+            {saving ? (
+              <>
+                <Icon.Spinner className="h-3.5 w-3.5 animate-spin" />
+                <span>Saving...</span>
+              </>
+            ) : (
+              <>
+                <Icon.Check className="h-3.5 w-3.5" />
+                <span>Save Profile</span>
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ==========================================================================
+   6. Professional Summary Drawer Content (Pillar 2: Career Narrative)
+   ========================================================================== */
+function SummaryDrawerContent({
+  summary,
+  onClose,
+  onSaved,
+}: {
+  summary?: string;
+  onClose: () => void;
+  onSaved: () => Promise<void>;
+}) {
+  const [text, setText] = useState(summary || '');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  const wordCount = text.trim() ? text.trim().split(/\s+/).length : 0;
+  const charCount = text.length;
+
+  useEffect(() => {
+    const handleSaveShortcut = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 's') {
+        e.preventDefault();
+        handleSubmit();
+      }
+    };
+    window.addEventListener('keydown', handleSaveShortcut);
+    return () => window.removeEventListener('keydown', handleSaveShortcut);
+  });
+
+  const handleSubmit = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    setError('');
+    setSaving(true);
+    try {
+      await saveSummary(text);
+      await onSaved();
+      onClose();
+    } catch (err: any) {
+      setError(humanizePortfolioError(err, 'Failed to save professional summary.'));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="flex flex-col h-full overflow-hidden">
+      {/* Header */}
+      <div className="px-6 py-5 border-b border-edge/80 bg-surface/70 backdrop-blur-md shrink-0 flex items-center justify-between gap-4">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2 mb-1 flex-wrap">
+            <span className="rounded bg-signal/15 text-signal px-2 py-0.5 text-[10px] font-mono font-bold uppercase tracking-wider border border-signal/25">
+              Pillar 2 · Professional Summary
+            </span>
+          </div>
+          <h2 className="text-lg font-bold font-mono text-content truncate">
+            Edit Career Positioning Narrative
+          </h2>
+          <p className="text-xs font-sans text-muted truncate mt-0.5">
+            High-signal executive positioning statement summarizing architectural domain and dependability.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          className="p-1.5 rounded-lg text-muted hover:text-content hover:bg-muted/15 transition-colors cursor-pointer shrink-0"
+          aria-label="Close drawer"
+        >
+          <Icon.X className="h-5 w-5" />
+        </button>
+      </div>
+
+      {/* Body Form */}
+      <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-5">
+        {error && (
+          <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-3.5 text-xs text-red-500 flex items-start gap-2.5">
+            <Icon.Alert className="h-4 w-4 shrink-0 mt-0.5" />
+            <span>{error}</span>
+          </div>
+        )}
+
+        <div className="flex items-center justify-between text-xs font-mono text-muted">
+          <span>Positioning Statement</span>
+          <span className="flex items-center gap-2">
+            <span className={wordCount >= 40 && wordCount <= 90 ? 'text-emerald-500 font-bold' : 'text-muted'}>
+              {wordCount} words
+            </span>
+            <span>·</span>
+            <span>{charCount} chars</span>
+          </span>
+        </div>
+
+        <TextArea
+          rows={10}
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          placeholder="I work across the frontend, backend, and data layers to develop features, solve system-level problems, and keep software products reliable. My experience includes WebSocket-based AI chat and streaming, backend service migrations, asynchronous job processing, and multi-tenant SaaS applications..."
+          autoFocus
+        />
+
+        <div className="rounded-xl border border-edge/60 bg-well/40 p-4 text-xs font-sans text-muted space-y-2">
+          <div className="flex items-center gap-2 text-content font-mono font-bold">
+            <Icon.Lightbulb className="h-4 w-4 text-amber-500" />
+            <span>High-Impact Summary Formula</span>
+          </div>
+          <p className="leading-relaxed">
+            Target <strong>45–80 words</strong> structured in 3 beats:
+          </p>
+          <ol className="list-decimal pl-5 space-y-1 text-muted/90">
+            <li><strong>Core identity & domains:</strong> E.g. Frontend, backend, distributed microservices, or cloud infrastructure.</li>
+            <li><strong>Hard technical problems solved:</strong> E.g. WebSocket connection state, offline sync, low-latency replication, queue backpressure.</li>
+            <li><strong>Production dependability:</strong> Provenance in shipping resilient features under real-world constraints.</li>
+          </ol>
+        </div>
+      </form>
+
+      {/* Footer */}
+      <div className="px-6 py-4 border-t border-edge/80 bg-surface/70 backdrop-blur-md shrink-0 flex items-center justify-between gap-3">
+        <span className="text-[11px] font-mono text-muted hidden sm:inline">
+          Esc to cancel · ⌘S to save
+        </span>
+        <div className="flex items-center gap-2 ml-auto">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-4 py-2 rounded-xl border border-edge/70 bg-card hover:bg-muted/10 text-muted hover:text-content text-xs font-mono font-medium transition-all cursor-pointer"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={() => handleSubmit()}
+            disabled={saving}
+            className="inline-flex items-center gap-2 px-5 py-2 rounded-xl bg-signal hover:bg-signal-hover text-surface text-xs font-mono font-bold transition-all shadow-xs cursor-pointer disabled:opacity-50"
+          >
+            {saving ? (
+              <>
+                <Icon.Spinner className="h-3.5 w-3.5 animate-spin" />
+                <span>Saving...</span>
+              </>
+            ) : (
+              <>
+                <Icon.Check className="h-3.5 w-3.5" />
+                <span>Save Summary</span>
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ==========================================================================
+   7. Categorized Skills Matrix Drawer Content (Pillar 3: Competencies)
+   ========================================================================== */
+function SkillsDrawerContent({
+  skills,
+  onClose,
+  onSaved,
+}: {
+  skills?: PortfolioSkillCategory[];
+  onClose: () => void;
+  onSaved: () => Promise<void>;
+}) {
+  const [categories, setCategories] = useState<PortfolioSkillCategory[]>(
+    Array.isArray(skills) && skills.length > 0
+      ? JSON.parse(JSON.stringify(skills))
+      : [
+          { category: 'Languages', items: ['TypeScript', 'JavaScript', 'Python', 'Go'] },
+          { category: 'Frontend', items: ['React', 'Next.js', 'Tailwind CSS'] },
+          { category: 'Backend & APIs', items: ['Node.js', 'NestJS', 'REST', 'WebSockets'] },
+          { category: 'Databases & Async', items: ['PostgreSQL', 'Redis', 'BullMQ'] },
+        ]
+  );
+  const [newCatName, setNewCatName] = useState('');
+  const [skillInputs, setSkillInputs] = useState<Record<number, string>>({});
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    const handleSaveShortcut = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 's') {
+        e.preventDefault();
+        handleSubmit();
+      }
+    };
+    window.addEventListener('keydown', handleSaveShortcut);
+    return () => window.removeEventListener('keydown', handleSaveShortcut);
+  });
+
+  const handleAddCategory = () => {
+    const trimmed = newCatName.trim();
+    if (!trimmed) return;
+    setCategories((prev) => [...prev, { category: trimmed, items: [] }]);
+    setNewCatName('');
+  };
+
+  const handleDeleteCategory = (idx: number) => {
+    setCategories((prev) => prev.filter((_, i) => i !== idx));
+  };
+
+  const handleAddSkillToCategory = (catIdx: number) => {
+    const text = (skillInputs[catIdx] || '').trim();
+    if (!text) return;
+    // Support comma separated list
+    const items = text.split(',').map((s) => s.trim()).filter(Boolean);
+    setCategories((prev) => {
+      const copy = [...prev];
+      const existing = copy[catIdx].items || [];
+      const updated = Array.from(new Set([...existing, ...items]));
+      copy[catIdx] = { ...copy[catIdx], items: updated };
+      return copy;
+    });
+    setSkillInputs((prev) => ({ ...prev, [catIdx]: '' }));
+  };
+
+  const handleRemoveSkill = (catIdx: number, skillIdx: number) => {
+    setCategories((prev) => {
+      const copy = [...prev];
+      copy[catIdx] = {
+        ...copy[catIdx],
+        items: copy[catIdx].items.filter((_, i) => i !== skillIdx),
+      };
+      return copy;
+    });
+  };
+
+  const handleSubmit = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    setError('');
+    setSaving(true);
+    try {
+      const cleaned = categories
+        .filter((c) => c.category.trim().length > 0)
+        .map((c) => ({
+          category: c.category.trim(),
+          items: c.items.filter(Boolean),
+        }));
+      await saveSkills(cleaned);
+      await onSaved();
+      onClose();
+    } catch (err: any) {
+      setError(humanizePortfolioError(err, 'Failed to save technical skills matrix.'));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const PRESET_DOMAINS = [
+    'Languages',
+    'Frontend',
+    'Backend & APIs',
+    'Databases & Async Processing',
+    'Cloud & Infrastructure',
+    'Testing & Delivery',
+    'Machine Learning & Data',
+    'Agile & Methodologies',
+  ];
+
+  return (
+    <div className="flex flex-col h-full overflow-hidden">
+      {/* Header */}
+      <div className="px-6 py-5 border-b border-edge/80 bg-surface/70 backdrop-blur-md shrink-0 flex items-center justify-between gap-4">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2 mb-1 flex-wrap">
+            <span className="rounded bg-signal/15 text-signal px-2 py-0.5 text-[10px] font-mono font-bold uppercase tracking-wider border border-signal/25">
+              Pillar 3 · Technical Skills Matrix
+            </span>
+          </div>
+          <h2 className="text-lg font-bold font-mono text-content truncate">
+            Manage Categorized Technical Skills
+          </h2>
+          <p className="text-xs font-sans text-muted truncate mt-0.5">
+            Organize competencies into categorized domain clusters matching modern engineering standards.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          className="p-1.5 rounded-lg text-muted hover:text-content hover:bg-muted/15 transition-colors cursor-pointer shrink-0"
+          aria-label="Close drawer"
+        >
+          <Icon.X className="h-5 w-5" />
+        </button>
+      </div>
+
+      {/* Body List */}
+      <div className="flex-1 overflow-y-auto p-6 space-y-6">
+        {error && (
+          <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-3.5 text-xs text-red-500 flex items-start gap-2.5">
+            <Icon.Alert className="h-4 w-4 shrink-0 mt-0.5" />
+            <span>{error}</span>
+          </div>
+        )}
+
+        {/* Existing Categories */}
+        <div className="space-y-4">
+          {categories.map((cat, idx) => (
+            <div
+              key={idx}
+              className="rounded-xl border border-edge/80 bg-card p-4 space-y-3 shadow-xs"
+            >
+              <div className="flex items-center justify-between gap-2">
+                <input
+                  type="text"
+                  value={cat.category}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setCategories((prev) => {
+                      const copy = [...prev];
+                      copy[idx] = { ...copy[idx], category: val };
+                      return copy;
+                    });
+                  }}
+                  className="font-mono font-bold text-sm text-content bg-transparent border-b border-transparent hover:border-edge focus:border-signal outline-none px-1 py-0.5 transition-colors max-w-xs"
+                  placeholder="Category Name"
+                />
+                <button
+                  type="button"
+                  onClick={() => handleDeleteCategory(idx)}
+                  className="p-1 text-muted hover:text-red-500 hover:bg-red-500/10 rounded transition-colors cursor-pointer"
+                  title="Delete category"
+                >
+                  <Icon.Trash className="h-3.5 w-3.5" />
+                </button>
+              </div>
+
+              {/* Skills pills */}
+              <div className="flex flex-wrap items-center gap-1.5 min-h-[28px]">
+                {cat.items.length === 0 ? (
+                  <span className="text-[11px] font-sans text-muted italic">
+                    No skills added in this category yet.
+                  </span>
+                ) : (
+                  cat.items.map((skill, sIdx) => (
+                    <span
+                      key={sIdx}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-mono font-medium bg-well border border-edge text-content group"
+                    >
+                      <span>{skill}</span>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveSkill(idx, sIdx)}
+                        className="text-muted group-hover:text-red-500 cursor-pointer"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ))
+                )}
+              </div>
+
+              {/* Add skill input */}
+              <div className="flex items-center gap-2 pt-1">
+                <input
+                  type="text"
+                  value={skillInputs[idx] || ''}
+                  onChange={(e) => setSkillInputs((prev) => ({ ...prev, [idx]: e.target.value }))}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleAddSkillToCategory(idx);
+                    }
+                  }}
+                  placeholder="Add skill (press Enter or comma-separate)"
+                  className="flex-1 rounded-lg border border-edge bg-surface px-3 py-1.5 text-xs font-mono text-content placeholder:text-muted/60 focus:border-signal outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={() => handleAddSkillToCategory(idx)}
+                  className="px-3 py-1.5 rounded-lg border border-edge/80 bg-well hover:bg-muted/15 text-xs font-mono font-bold text-content cursor-pointer"
+                >
+                  + Add
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Add Category Section */}
+        <div className="rounded-xl border border-dashed border-edge/80 bg-surface/50 p-4 space-y-3">
+          <div className="text-xs font-mono font-bold text-content flex items-center gap-2">
+            <Icon.Plus className="h-3.5 w-3.5 text-signal" />
+            <span>Add Skill Domain Category</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <input
+              type="text"
+              value={newCatName}
+              onChange={(e) => setNewCatName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  handleAddCategory();
+                }
+              }}
+              placeholder="e.g. Cloud & Infrastructure or Testing & CI/CD"
+              className="flex-1 rounded-lg border border-edge bg-surface px-3 py-1.5 text-xs font-mono text-content placeholder:text-muted/60 focus:border-signal outline-none"
+            />
+            <button
+              type="button"
+              onClick={handleAddCategory}
+              className="px-3.5 py-1.5 rounded-lg bg-signal hover:bg-signal-hover text-surface text-xs font-mono font-bold transition-all cursor-pointer"
+            >
+              Add Category
+            </button>
+          </div>
+
+          {/* Quick preset suggestions */}
+          <div className="pt-2 border-t border-edge/40">
+            <span className="text-[10px] font-mono text-muted uppercase tracking-wider block mb-1.5">
+              Quick Suggestions:
+            </span>
+            <div className="flex flex-wrap gap-1.5">
+              {PRESET_DOMAINS.filter(
+                (p) => !categories.some((c) => c.category.toLowerCase() === p.toLowerCase())
+              ).map((preset) => (
+                <button
+                  key={preset}
+                  type="button"
+                  onClick={() => {
+                    setCategories((prev) => [...prev, { category: preset, items: [] }]);
+                  }}
+                  className="text-[10px] font-mono px-2 py-0.5 rounded border border-edge bg-card hover:bg-well text-muted hover:text-content transition-colors cursor-pointer"
+                >
+                  + {preset}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Footer */}
+      <div className="px-6 py-4 border-t border-edge/80 bg-surface/70 backdrop-blur-md shrink-0 flex items-center justify-between gap-3">
+        <span className="text-[11px] font-mono text-muted hidden sm:inline">
+          Esc to cancel · ⌘S to save
+        </span>
+        <div className="flex items-center gap-2 ml-auto">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-4 py-2 rounded-xl border border-edge/70 bg-card hover:bg-muted/10 text-muted hover:text-content text-xs font-mono font-medium transition-all cursor-pointer"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={() => handleSubmit()}
+            disabled={saving}
+            className="inline-flex items-center gap-2 px-5 py-2 rounded-xl bg-signal hover:bg-signal-hover text-surface text-xs font-mono font-bold transition-all shadow-xs cursor-pointer disabled:opacity-50"
+          >
+            {saving ? (
+              <>
+                <Icon.Spinner className="h-3.5 w-3.5 animate-spin" />
+                <span>Saving...</span>
+              </>
+            ) : (
+              <>
+                <Icon.Check className="h-3.5 w-3.5" />
+                <span>Save Matrix</span>
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ==========================================================================
+   8. Education Drawer Content (Pillar 6: Academic Credentials)
+   ========================================================================== */
+function EducationDrawerContent({
+  education,
+  onClose,
+  onSaved,
+  onDeleteRequest,
+}: {
+  education?: PortfolioEducation;
+  onClose: () => void;
+  onSaved: () => Promise<void>;
+  onDeleteRequest?: (item: { type: 'education'; id: string; title: string }) => void;
+}) {
+  const isEditing = Boolean(education?.id);
+  const [institution, setInstitution] = useState(education?.institution || '');
+  const [degree, setDegree] = useState(education?.degree || '');
+  const [fieldOfStudy, setFieldOfStudy] = useState(education?.field_of_study || '');
+  const [startDate, setStartDate] = useState(education?.start_date ? formatISODateToDisplay(education.start_date) : '');
+  const [endDate, setEndDate] = useState(education?.end_date ? formatISODateToDisplay(education.end_date) : '');
+  const [gradeOrGpa, setGradeOrGpa] = useState(education?.grade_or_gpa || '');
+  const [location, setLocation] = useState(education?.location || '');
+  const [bullets, setBullets] = useState<string[]>(Array.isArray(education?.bullets) ? education.bullets : []);
+  const [bulletInput, setBulletInput] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    const handleSaveShortcut = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 's') {
+        e.preventDefault();
+        handleSubmit();
+      }
+    };
+    window.addEventListener('keydown', handleSaveShortcut);
+    return () => window.removeEventListener('keydown', handleSaveShortcut);
+  });
+
+  const handleAddBullet = () => {
+    const trimmed = bulletInput.trim();
+    if (!trimmed) return;
+    setBullets((prev) => [...prev, trimmed]);
+    setBulletInput('');
+  };
+
+  const handleRemoveBullet = (idx: number) => {
+    setBullets((prev) => prev.filter((_, i) => i !== idx));
+  };
+
+  const handleSubmit = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!degree.trim() || !institution.trim()) {
+      setError('Degree and Institution are required.');
+      return;
+    }
+    setError('');
+    setSaving(true);
+    try {
+      await saveEducation({
+        id: education?.id,
+        degree: degree.trim(),
+        institution: institution.trim(),
+        field_of_study: fieldOfStudy.trim() || undefined,
+        start_date: startDate ? normalizeDateToISO(startDate) : null,
+        end_date: endDate ? normalizeDateToISO(endDate) : null,
+        grade_or_gpa: gradeOrGpa.trim() || undefined,
+        location: location.trim() || undefined,
+        bullets,
+      });
+      await onSaved();
+      onClose();
+    } catch (err: any) {
+      setError(humanizePortfolioError(err, 'Failed to save education credential.'));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="flex flex-col h-full overflow-hidden">
+      {/* Header */}
+      <div className="px-6 py-5 border-b border-edge/80 bg-surface/70 backdrop-blur-md shrink-0 flex items-center justify-between gap-4">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2 mb-1 flex-wrap">
+            <span className="rounded bg-signal/15 text-signal px-2 py-0.5 text-[10px] font-mono font-bold uppercase tracking-wider border border-signal/25">
+              Pillar 6 · Education & Credentials
+            </span>
+          </div>
+          <h2 className="text-lg font-bold font-mono text-content truncate">
+            {isEditing ? 'Edit Academic Credential' : 'Add Academic Credential'}
+          </h2>
+          <p className="text-xs font-sans text-muted truncate mt-0.5">
+            Degrees, universities, honors, GPA, and relevant computer science coursework.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          className="p-1.5 rounded-lg text-muted hover:text-content hover:bg-muted/15 transition-colors cursor-pointer shrink-0"
+          aria-label="Close drawer"
+        >
+          <Icon.X className="h-5 w-5" />
+        </button>
+      </div>
+
+      {/* Body Form */}
+      <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-5">
+        {error && (
+          <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-3.5 text-xs text-red-500 flex items-start gap-2.5">
+            <Icon.Alert className="h-4 w-4 shrink-0 mt-0.5" />
+            <span>{error}</span>
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <FormField label="Degree / Qualification" required description="e.g. B.S. in Computer Science">
+            <TextInput
+              value={degree}
+              onChange={(e) => setDegree(e.target.value)}
+              placeholder="e.g. Bachelor of Science in Computer Science"
+              autoFocus
+            />
+          </FormField>
+          <FormField label="Institution / University" required description="e.g. Stanford University">
+            <TextInput
+              value={institution}
+              onChange={(e) => setInstitution(e.target.value)}
+              placeholder="e.g. University of California, Berkeley"
+            />
+          </FormField>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <FormField label="Field of Study" description="Major / Specialization">
+            <TextInput
+              value={fieldOfStudy}
+              onChange={(e) => setFieldOfStudy(e.target.value)}
+              placeholder="e.g. Software Systems, Machine Learning"
+            />
+          </FormField>
+          <FormField label="Grade / GPA" description="e.g. 3.9 / 4.0 or First Class Honors">
+            <TextInput
+              value={gradeOrGpa}
+              onChange={(e) => setGradeOrGpa(e.target.value)}
+              placeholder="e.g. 3.85 / 4.00"
+            />
+          </FormField>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <FormField label="Start Date" description="e.g. Sep 2018 or 2018-09">
+            <TextInput
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              placeholder="e.g. Sep 2018"
+            />
+          </FormField>
+          <FormField label="Graduation / End Date" description="e.g. May 2022 or Present">
+            <TextInput
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              placeholder="e.g. May 2022"
+            />
+          </FormField>
+        </div>
+
+        <FormField label="Location" description="Campus location">
+          <TextInput
+            value={location}
+            onChange={(e) => setLocation(e.target.value)}
+            placeholder="e.g. Berkeley, California, USA"
+          />
+        </FormField>
+
+        {/* Highlights / Coursework Bullets */}
+        <div className="space-y-3 pt-2">
+          <div className="flex items-center justify-between">
+            <label className="text-xs font-mono font-bold text-content">
+              Academic Highlights, Honors & Coursework
+            </label>
+            <span className="text-[11px] font-mono text-muted">{bullets.length} items</span>
+          </div>
+
+          <div className="space-y-2">
+            {bullets.map((b, idx) => (
+              <div
+                key={idx}
+                className="flex items-start gap-2 p-2.5 rounded-lg border border-edge bg-well/40 text-xs font-sans text-content"
+              >
+                <span className="text-signal font-mono font-bold mt-0.5">•</span>
+                <span className="flex-1 leading-relaxed">{b}</span>
+                <button
+                  type="button"
+                  onClick={() => handleRemoveBullet(idx)}
+                  className="text-muted hover:text-red-500 cursor-pointer p-0.5"
+                  title="Remove highlight"
+                >
+                  <Icon.Trash className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            ))}
+          </div>
+
+          <div className="flex items-center gap-2">
+            <input
+              type="text"
+              value={bulletInput}
+              onChange={(e) => setBulletInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  handleAddBullet();
+                }
+              }}
+              placeholder="Add relevant course (e.g. Distributed Systems, Algorithms, Compilers)"
+              className="flex-1 rounded-lg border border-edge bg-surface px-3 py-1.5 text-xs font-mono text-content placeholder:text-muted/60 focus:border-signal outline-none"
+            />
+            <button
+              type="button"
+              onClick={handleAddBullet}
+              className="px-3.5 py-1.5 rounded-lg border border-edge/80 bg-well hover:bg-muted/15 text-xs font-mono font-bold text-content cursor-pointer"
+            >
+              + Add
+            </button>
+          </div>
+        </div>
+      </form>
+
+      {/* Footer */}
+      <div className="px-6 py-4 border-t border-edge/80 bg-surface/70 backdrop-blur-md shrink-0 flex items-center justify-between gap-3">
+        <div>
+          {isEditing && education?.id && onDeleteRequest && (
+            <button
+              type="button"
+              onClick={() => {
+                onDeleteRequest({
+                  type: 'education',
+                  id: education.id,
+                  title: `${degree} at ${institution}`,
+                });
+              }}
+              className="px-3 py-1.5 rounded-xl border border-red-500/30 text-red-500 hover:bg-red-500/10 text-xs font-mono font-bold transition-all cursor-pointer inline-flex items-center gap-1.5"
+            >
+              <Icon.Trash className="h-3.5 w-3.5" />
+              <span>Delete</span>
+            </button>
+          )}
+        </div>
+        <div className="flex items-center gap-2 ml-auto">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-4 py-2 rounded-xl border border-edge/70 bg-card hover:bg-muted/10 text-muted hover:text-content text-xs font-mono font-medium transition-all cursor-pointer"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={() => handleSubmit()}
+            disabled={saving}
+            className="inline-flex items-center gap-2 px-5 py-2 rounded-xl bg-signal hover:bg-signal-hover text-surface text-xs font-mono font-bold transition-all shadow-xs cursor-pointer disabled:opacity-50"
+          >
+            {saving ? (
+              <>
+                <Icon.Spinner className="h-3.5 w-3.5 animate-spin" />
+                <span>Saving...</span>
+              </>
+            ) : (
+              <>
+                <Icon.Check className="h-3.5 w-3.5" />
+                <span>Save Education</span>
+              </>
+            )}
           </button>
         </div>
       </div>
