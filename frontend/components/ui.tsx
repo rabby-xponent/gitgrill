@@ -303,6 +303,7 @@ export interface CheckboxProps {
   checked: boolean;
   onChange: (checked: boolean) => void;
   label?: React.ReactNode;
+  description?: React.ReactNode;
   disabled?: boolean;
   className?: string;
   ariaLabel?: string;
@@ -312,6 +313,7 @@ export function Checkbox({
   checked,
   onChange,
   label,
+  description,
   disabled = false,
   className = '',
   ariaLabel,
@@ -343,7 +345,7 @@ export function Checkbox({
     </button>
   );
 
-  if (!label) return button;
+  if (!label && !description) return button;
 
   return (
     <label
@@ -353,12 +355,15 @@ export function Checkbox({
           onChange(!checked);
         }
       }}
-      className={`inline-flex items-center gap-2.5 cursor-pointer select-none ${
+      className={`inline-flex items-start gap-2.5 cursor-pointer select-none ${
         disabled ? 'cursor-not-allowed opacity-50' : ''
       }`}
     >
-      {button}
-      <span className="font-mono text-xs text-content">{label}</span>
+      <div className="pt-0.5">{button}</div>
+      <div className="space-y-0.5">
+        {label && <span className="font-mono text-xs font-medium text-content block">{label}</span>}
+        {description && <p className="font-sans text-[11px] text-muted leading-tight">{description}</p>}
+      </div>
     </label>
   );
 }
@@ -866,6 +871,8 @@ export function FormField({
   label,
   badge,
   hint,
+  description,
+  required,
   error,
   children,
   className = '',
@@ -873,21 +880,25 @@ export function FormField({
   label: string;
   badge?: React.ReactNode;
   hint?: string;
+  description?: string;
+  required?: boolean;
   error?: string;
   children: React.ReactNode;
   className?: string;
 }) {
+  const displayHint = hint || description;
   return (
     <div className={`space-y-1.5 ${className}`}>
       <div className="flex items-center justify-between">
         <label className="block font-mono text-[10px] font-bold uppercase tracking-wider text-muted">
           {label}
+          {required && <span className="text-signal ml-1">*</span>}
         </label>
         {badge}
       </div>
       {children}
-      {hint && !error && (
-        <p className="font-sans text-[10px] text-muted leading-tight">{hint}</p>
+      {displayHint && !error && (
+        <p className="font-sans text-[10px] text-muted leading-tight">{displayHint}</p>
       )}
       {error && (
         <p className="font-mono text-[10px] font-bold text-rose-500 leading-tight flex items-center gap-1">
@@ -906,6 +917,8 @@ export function TextInput({
   type = 'text',
   disabled = false,
   required = false,
+  autoFocus = false,
+  onKeyDown,
   className = '',
   mono = false,
 }: {
@@ -915,6 +928,8 @@ export function TextInput({
   type?: string;
   disabled?: boolean;
   required?: boolean;
+  autoFocus?: boolean;
+  onKeyDown?: (e: React.KeyboardEvent<HTMLInputElement>) => void;
   className?: string;
   mono?: boolean;
 }) {
@@ -926,6 +941,8 @@ export function TextInput({
       placeholder={placeholder}
       disabled={disabled}
       required={required}
+      autoFocus={autoFocus}
+      onKeyDown={onKeyDown}
       className={`w-full rounded-xl border border-edge bg-well px-3.5 py-2 text-xs text-content outline-none transition-all duration-150 focus:border-signal focus:ring-2 focus:ring-signal/15 disabled:cursor-not-allowed disabled:opacity-40 placeholder:text-muted/60 ${
         mono ? 'font-mono' : 'font-sans'
       } ${className}`}
@@ -940,6 +957,8 @@ export function TextArea({
   rows = 4,
   disabled = false,
   required = false,
+  autoFocus = false,
+  onKeyDown,
   className = '',
   mono = false,
 }: {
@@ -949,6 +968,8 @@ export function TextArea({
   rows?: number;
   disabled?: boolean;
   required?: boolean;
+  autoFocus?: boolean;
+  onKeyDown?: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
   className?: string;
   mono?: boolean;
 }) {
@@ -960,6 +981,8 @@ export function TextArea({
       placeholder={placeholder}
       disabled={disabled}
       required={required}
+      autoFocus={autoFocus}
+      onKeyDown={onKeyDown}
       className={`w-full rounded-xl border border-edge bg-well px-3.5 py-2 text-xs text-content outline-none transition-all duration-150 focus:border-signal focus:ring-2 focus:ring-signal/15 disabled:cursor-not-allowed disabled:opacity-40 placeholder:text-muted/60 resize-y ${
         mono ? 'font-mono' : 'font-sans leading-relaxed'
       } ${className}`}

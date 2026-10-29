@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { Icon } from '@/components/icons';
+import { PortfolioDrawer, type DrawerEntity } from './PortfolioDrawer';
 import {
   PortfolioSSOT,
   PortfolioCompany,
@@ -82,16 +83,8 @@ export function PortfolioHub() {
   } | null>(null);
   const [dragOverTargetId, setDragOverTargetId] = useState<string | null>(null);
 
-  // Modals state
-  const [companyModal, setCompanyModal] = useState<{ isOpen: boolean; company?: PortfolioCompany } | null>(null);
-  const [productModal, setProductModal] = useState<{ isOpen: boolean; companyId: string; product?: PortfolioProduct } | null>(null);
-  const [projectModal, setProjectModal] = useState<{ isOpen: boolean; project?: PortfolioProject } | null>(null);
-  const [bulletModal, setBulletModal] = useState<{
-    isOpen: boolean;
-    productId?: string;
-    projectId?: string;
-    bullet?: MasterBullet;
-  } | null>(null);
+  // Universal Slide-Over Drawer State
+  const [activeDrawer, setActiveDrawer] = useState<DrawerEntity | null>(null);
   const [importModal, setImportModal] = useState<{ isOpen: boolean } | null>(null);
 
   // Deletion confirm modals
@@ -560,14 +553,14 @@ export function PortfolioHub() {
               <span>Import from Resume</span>
             </button>
             <button
-              onClick={() => setCompanyModal({ isOpen: true })}
+              onClick={() => setActiveDrawer({ type: 'company' })}
               className="inline-flex items-center gap-2 rounded-xl bg-signal hover:bg-signal-hover text-surface px-4 py-2 font-mono text-xs font-bold transition-all shadow-xs cursor-pointer"
             >
               <Icon.Plus className="h-4 w-4" />
               <span>Add Company</span>
             </button>
             <button
-              onClick={() => setProjectModal({ isOpen: true })}
+              onClick={() => setActiveDrawer({ type: 'project' })}
               className="inline-flex items-center gap-2 rounded-xl border border-edge bg-card hover:bg-muted/10 text-content px-3.5 py-2 font-mono text-xs font-semibold transition-all shadow-xs cursor-pointer"
             >
               <Icon.Code className="h-4 w-4 text-muted" />
@@ -615,7 +608,7 @@ export function PortfolioHub() {
                 <div className="pt-1 flex items-center gap-2">
                   <button
                     type="button"
-                    onClick={() => setCompanyModal({ isOpen: true })}
+                    onClick={() => setActiveDrawer({ type: 'company' })}
                     className="text-[11px] font-mono text-signal hover:underline font-semibold flex items-center gap-1 cursor-pointer"
                   >
                     <span>+ Add Company</span>
@@ -822,7 +815,7 @@ export function PortfolioHub() {
               <span>1-Click Bootstrap from Resume</span>
             </button>
             <button
-              onClick={() => setCompanyModal({ isOpen: true })}
+              onClick={() => setActiveDrawer({ type: 'company' })}
               className="inline-flex items-center gap-2 rounded-xl border border-edge bg-card hover:bg-muted/10 text-content px-4 py-2 font-mono text-xs font-bold transition-all shadow-xs cursor-pointer"
             >
               <Icon.Plus className="h-4 w-4 text-muted" />
@@ -865,7 +858,7 @@ export function PortfolioHub() {
                   </Tooltip>
                 )}
                 <button
-                  onClick={() => setCompanyModal({ isOpen: true })}
+                  onClick={() => setActiveDrawer({ type: 'company' })}
                   className="rounded-lg bg-signal/15 hover:bg-signal/25 text-signal border border-signal/30 px-2.5 py-1 hover:underline flex items-center gap-1 cursor-pointer font-bold text-[11px] transition-all"
                 >
                   <Icon.Plus className="h-3 w-3" />
@@ -939,7 +932,7 @@ export function PortfolioHub() {
                           <Tooltip content="Add Product / Sub-system to this Company" align="end">
                             <button
                               type="button"
-                              onClick={() => setProductModal({ isOpen: true, companyId: company.id })}
+                              onClick={() => setActiveDrawer({ type: 'product', companyId: company.id })}
                               className="px-2 py-0.5 rounded bg-signal/10 hover:bg-signal/20 text-signal text-[10px] font-mono font-bold transition-all cursor-pointer"
                             >
                               + Product
@@ -948,7 +941,7 @@ export function PortfolioHub() {
                           <Tooltip content="Edit Company Details" align="end">
                             <button
                               type="button"
-                              onClick={() => setCompanyModal({ isOpen: true, company })}
+                              onClick={() => setActiveDrawer({ type: 'company', company })}
                               className="p-1 rounded text-muted hover:text-content hover:bg-surface transition-colors cursor-pointer"
                             >
                               <Icon.Pencil className="h-3 w-3" />
@@ -985,6 +978,7 @@ export function PortfolioHub() {
                                 onDelete={() => setItemToDelete({ type: 'bullet', id: b.id, title: 'bullet' })}
                                 onToggleStatus={handleToggleBulletStatus}
                                 onDragStart={handleBulletDragStart}
+                                onOpenInspector={(b) => setActiveDrawer({ type: 'bullet', bullet: b, productId: b.product_id || undefined, projectId: b.project_id || undefined })}
                               />
                             ))}
                           </div>
@@ -1045,7 +1039,7 @@ export function PortfolioHub() {
                                         <Tooltip content="Add Bullet to Product" align="end">
                                           <button
                                             type="button"
-                                            onClick={() => setBulletModal({ isOpen: true, productId: product.id })}
+                                            onClick={() => setActiveDrawer({ type: 'bullet', productId: product.id, parentProduct: product })}
                                             className="px-2 py-0.5 rounded bg-signal/10 hover:bg-signal/20 text-signal font-mono text-[10px] font-bold transition-all cursor-pointer"
                                           >
                                             + Bullet
@@ -1054,7 +1048,7 @@ export function PortfolioHub() {
                                         <Tooltip content="Edit Product & Stack" align="end">
                                           <button
                                             type="button"
-                                            onClick={() => setProductModal({ isOpen: true, companyId: company.id, product })}
+                                            onClick={() => setActiveDrawer({ type: 'product', companyId: company.id, product })}
                                             className="p-1 rounded text-muted hover:text-content hover:bg-surface transition-colors cursor-pointer"
                                           >
                                             <Icon.Pencil className="h-3 w-3" />
@@ -1089,6 +1083,7 @@ export function PortfolioHub() {
                                             onDelete={() => setItemToDelete({ type: 'bullet', id: b.id, title: 'bullet' })}
                                             onToggleStatus={handleToggleBulletStatus}
                                             onDragStart={handleBulletDragStart}
+                                onOpenInspector={(b) => setActiveDrawer({ type: 'bullet', bullet: b, productId: b.product_id || undefined, projectId: b.project_id || undefined })}
                                           />
                                         ))
                                       ) : (
@@ -1096,7 +1091,7 @@ export function PortfolioHub() {
                                           <span>No contributions added yet.</span>
                                           <button
                                             type="button"
-                                            onClick={() => setBulletModal({ isOpen: true, productId: product.id })}
+                                            onClick={() => setActiveDrawer({ type: 'bullet', productId: product.id, parentProduct: product })}
                                             className="text-signal hover:underline font-bold text-[11px] cursor-pointer"
                                           >
                                             + Add First Bullet
@@ -1115,7 +1110,7 @@ export function PortfolioHub() {
                             <div className="flex items-center gap-2">
                               <button
                                 type="button"
-                                onClick={() => setProductModal({ isOpen: true, companyId: company.id })}
+                                onClick={() => setActiveDrawer({ type: 'product', companyId: company.id })}
                                 className="text-signal hover:underline font-bold text-[11px] cursor-pointer"
                               >
                                 + Define Product
@@ -1150,7 +1145,7 @@ export function PortfolioHub() {
                 <span>Standalone & Open-Source Projects ({filteredProjects.length})</span>
               </h2>
               <button
-                onClick={() => setProjectModal({ isOpen: true })}
+                onClick={() => setActiveDrawer({ type: 'project' })}
                 className="font-mono text-xs text-signal hover:underline flex items-center gap-1 cursor-pointer font-semibold"
               >
                 <Icon.Plus className="h-3.5 w-3.5" />
@@ -1234,7 +1229,7 @@ export function PortfolioHub() {
                             <Tooltip content="Add Bullet to Project" align="end">
                               <button
                                 type="button"
-                                onClick={() => setBulletModal({ isOpen: true, projectId: proj.id })}
+                                onClick={() => setActiveDrawer({ type: 'bullet', projectId: proj.id, parentProject: proj })}
                                 className="px-2 py-0.5 rounded bg-signal/10 hover:bg-signal/20 text-signal font-mono text-[10px] font-bold transition-all cursor-pointer"
                               >
                                 + Bullet
@@ -1243,7 +1238,7 @@ export function PortfolioHub() {
                             <Tooltip content="Edit Project" align="end">
                               <button
                                 type="button"
-                                onClick={() => setProjectModal({ isOpen: true, project: proj })}
+                                onClick={() => setActiveDrawer({ type: 'project', project: proj })}
                                 className="p-1 rounded text-muted hover:text-content hover:bg-surface transition-colors cursor-pointer"
                               >
                                 <Icon.Pencil className="h-3 w-3" />
@@ -1279,6 +1274,7 @@ export function PortfolioHub() {
                                   onDelete={() => setItemToDelete({ type: 'bullet', id: b.id, title: 'bullet' })}
                                   onToggleStatus={handleToggleBulletStatus}
                                   onDragStart={handleBulletDragStart}
+                                onOpenInspector={(b) => setActiveDrawer({ type: 'bullet', bullet: b, productId: b.product_id || undefined, projectId: b.project_id || undefined })}
                                 />
                               ))
                             ) : (
@@ -1286,7 +1282,7 @@ export function PortfolioHub() {
                                 <span>No project bullets added yet.</span>
                                 <button
                                   type="button"
-                                  onClick={() => setBulletModal({ isOpen: true, projectId: proj.id })}
+                                  onClick={() => setActiveDrawer({ type: 'bullet', projectId: proj.id, parentProject: proj })}
                                   className="text-signal hover:underline font-bold text-[11px] cursor-pointer"
                                 >
                                   + Add First Bullet
@@ -1305,69 +1301,17 @@ export function PortfolioHub() {
         </div>
       )}
 
-      {/* --- MODALS --- */}
-
-      {/* 1. Company Modal */}
-      {companyModal?.isOpen && (
-        <CompanyEditModal
-          company={companyModal.company}
-          onClose={() => setCompanyModal(null)}
-          onSaved={async () => {
-            setCompanyModal(null);
-            await loadData();
-          }}
-        />
-      )}
-
-      {/* 2. Product Modal */}
-      {productModal?.isOpen && (
-        <ProductEditModal
-          companyId={productModal.companyId}
-          companyRole={portfolio.companies.find((c) => c.id === productModal.companyId)?.role_title}
-          product={productModal.product}
-          onClose={() => setProductModal(null)}
-          onSaved={async () => {
-            setProductModal(null);
-            await loadData();
-          }}
-        />
-      )}
-
-      {/* 3. Standalone Project Modal */}
-      {projectModal?.isOpen && (
-        <ProjectEditModal
-          project={projectModal.project}
-          onClose={() => setProjectModal(null)}
-          onSaved={async () => {
-            setProjectModal(null);
-            await loadData();
-          }}
-        />
-      )}
-
-      {/* 4. Master Bullet Modal */}
-      {bulletModal?.isOpen && (
-        <BulletEditModal
-          productId={bulletModal.productId}
-          projectId={bulletModal.projectId}
-          parentProduct={
-            bulletModal.productId
-              ? portfolio.companies.flatMap((c) => c.products || []).find((p) => p.id === bulletModal.productId)
-              : undefined
-          }
-          parentProject={
-            bulletModal.projectId
-              ? portfolio.standalone_projects.find((p) => p.id === bulletModal.projectId)
-              : undefined
-          }
-          bullet={bulletModal.bullet}
-          onClose={() => setBulletModal(null)}
-          onSaved={async () => {
-            setBulletModal(null);
-            await loadData();
-          }}
-        />
-      )}
+      {/* --- UNIVERSAL SLIDE-OVER DRAWER --- */}
+      <PortfolioDrawer
+        entity={activeDrawer}
+        onClose={() => setActiveDrawer(null)}
+        onSaved={async () => {
+          await loadData();
+        }}
+        onDeleteRequest={(item) => {
+          setItemToDelete(item);
+        }}
+      />
 
       {/* 5. Resume Import Modal */}
       {importModal?.isOpen && (
@@ -1435,6 +1379,7 @@ function TreeBulletRow({
   onDelete,
   onToggleStatus,
   onDragStart,
+  onOpenInspector,
 }: {
   bullet: MasterBullet;
   parentType: 'company' | 'product' | 'project';
@@ -1445,6 +1390,7 @@ function TreeBulletRow({
   onDelete: () => void;
   onToggleStatus: (bullet: MasterBullet) => Promise<void>;
   onDragStart: (e: React.DragEvent, bullet: MasterBullet, parentId: string) => void;
+  onOpenInspector: (bullet: MasterBullet) => void;
 }) {
   const [isEditing, setIsEditing] = useState(false);
   const [editText, setEditText] = useState(bullet.bullet_text || '');
@@ -1591,7 +1537,17 @@ function TreeBulletRow({
                 </Tooltip>
               )}
 
-              <Tooltip content="Edit Bullet inline" align="end">
+              <Tooltip content="Inspect Details & Defense in Drawer" align="end">
+                <button
+                  type="button"
+                  onClick={() => onOpenInspector(bullet)}
+                  className="p-1 rounded text-muted hover:text-signal hover:bg-surface transition-colors cursor-pointer"
+                >
+                  <Icon.Sidebar className="h-3 w-3" />
+                </button>
+              </Tooltip>
+
+              <Tooltip content="Edit Bullet inline (or double-click)" align="end">
                 <button
                   type="button"
                   onClick={() => setIsEditing(true)}

@@ -677,6 +677,26 @@ pie title Roadmap Milestone Status
 * **6. Build & Typecheck Verification:**
   - Verified with `npm --prefix backend run build` (0 errors) and `npm --prefix frontend run build` (16/16 routes statically optimized, 0 errors).
 
+---
+
+### Milestone 35 — Universal Right-Side Slide-Over Drawer Architecture & Inspector Panel 🟢
+
+* **Current Status:** Fully implemented and verified across TypeScript compiler and Next.js production build (`next build` 16/16 routes 0 errors).
+* **1. Elimination of Obstructive Modals ([`PortfolioDrawer.tsx`](file:///e:/rabby-xponent/Projects/devscope/frontend/components/PortfolioDrawer.tsx)):**
+  - Built a unified, high-density Right-Side Slide-Over Drawer (`PortfolioDrawer.tsx`) replacing all 4 legacy modal popups (`CompanyEditModal`, `ProductEditModal`, `ProjectEditModal`, `BulletEditModal`).
+  - Rendered via React `createPortal` with backdrop blur scrim (`bg-black/45 backdrop-blur-xs z-[140]`) and smooth CSS slide transition (`animate-in slide-in-from-right duration-300`).
+  - Supports keyboard shortcuts: `Esc` to dismiss, `⌘S` / `Ctrl+S` to instantly save.
+* **2. Context-Aware Inspector Views:**
+  - **Master Bullet Inspector:** Full bullet text editor with live word count, segmented Review Status switcher (`Approved`, `Needs Review`, `Draft`), Action Verb & Primary Metric detectors, and GitGrill's signature *Architectural Defense & Trade-Offs* editor (Engineering Challenge, Complexity, and Alternatives Considered).
+  - **Product / Subsystem Inspector:** Subsystem name, Architecture Archetype selector (with custom archetype support), and an interactive Monochrome Tech Stack Tag Manager (type `#Kafka` and hit Enter, click `×` to delete).
+  - **Company / Organization Inspector:** Name, Role Title, Start/End tenure dates with *Currently Employed (Present)* toggle, Location, and enterprise domain URL.
+  - **Standalone Project Inspector:** Project title, One-line pitch/headline, GitHub Repo & Live Demo URLs, and tech stack chips.
+* **3. Dual Interaction Model:**
+  - Preserved ultra-fast inline double-click editing on the ledger row for rapid copy adjustments.
+  - Added dedicated drawer inspection trigger (`Icon.Sidebar`) and row edit actions that open the comprehensive Slide-Over Inspector without obscuring the main ledger.
+* **4. Build & Typecheck Verification:**
+  - Verified with `npm --prefix frontend run build` (16/16 routes statically optimized, 0 errors).
+
 
 
 
