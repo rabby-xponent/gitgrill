@@ -654,19 +654,29 @@ pie title Roadmap Milestone Status
 * **1. Elimination of Nested Card Bloat ([`PortfolioHub.tsx`](file:///e:/rabby-xponent/Projects/devscope/frontend/components/PortfolioHub.tsx)):**
   - Replaced the heavy card-within-card layout (outer company box, inner product box, inner bullet box) with a single, ultra-dense master frame featuring Linear / VS Code style hairline guide rails.
   - **Level 0 (Company):** Single baseline row containing Company Name, Role (`/ Software Development Engineer`), Tenure range, Location, and item counters (`N products · M bullets`).
-  - **Level 1 (Direct Bullets):** Directly under Company row with `border-l border-zinc-800 ml-4 pl-3.5`, allowing startups and generalist roles to have direct company bullets without forced artificial product containers.
-  - **Level 1 (Products / Initiatives):** Left hairline rail showing Product Title, contribution count chip, and Level 1 monochrome Tech Stack tags (`#AWS EC2`, `#C++`, `#Python`).
-  - **Level 2 (Product Bullets):** Secondary hairline rail (`border-l border-zinc-800/60 ml-4 pl-3.5`) with compact ~36px row height.
-* **2. Bullet Typography & Direct Inline Editing:**
-  - **Lead Action Highlight:** Automatically boldens and highlights the first 3–4 action words in `font-semibold text-zinc-100`, rendering the remainder in `text-zinc-400`.
-  - **Left 6px Status Dot:** Clickable indicator dot (`bg-emerald-400` with subtle glow for approved, amber for review, zinc for draft) that cycles status on click.
+  - **Level 1 (Direct Bullets):** Directly under Company row with `border-l border-edge/60 ml-4 pl-3.5`, allowing startups and generalist roles to have direct company bullets without forced artificial product containers.
+  - **Level 1 (Products / Initiatives):** Clean indented product nodes showing Product Title, contribution count chip, and Level 1 monochrome Tech Stack tags (`#AWS EC2`, `#C++`, `#Python`).
+  - **Level 2 (Product Bullets):** Single hairline rail (`border-l border-edge/60 ml-4 pl-3.5`) with compact ~36px row height.
+* **2. Single Clean Hairline & Light/Dark Theme Adaptation:**
+  - **Eliminated Double Hairlines:** Removed the duplicate outer `border-l` from the products container so that only a single, crisp hairline connects bullets to their parent subsystem.
+  - **Semantic Theme Variables:** Replaced all hardcoded `zinc` classes (`text-zinc-100`, `text-zinc-400`, `border-zinc-800`, `bg-zinc-800`) with GitGrill CSS variable tokens (`text-content`, `text-muted`, `border-edge/70`, `bg-well/80`). Bullets, role titles, and chips now render with high-contrast, crystal-clear typography across both Light Mode and Dark Mode.
+* **3. Floating Popover Tooltips:**
+  - Integrated the animated, theme-aware `<Tooltip>` component from `@/components/ui` across all interactive elements, replacing primitive browser title attributes:
+    * 6-dot drag handle: *"Drag to reorder or reassign"*
+    * Status indicator dot: *"Status: approved · Click to cycle"*
+    * ATS Impact Metric badge: *"Quantified ATS Impact Metric"*
+    * Micro-actions: Inline Edit, Move/Reassign target dropdown, Architecture Defense & Trade-offs viewer, and Delete confirmations.
+    * Header actions: `+ Product`, `+ Bullet`, `Edit`, `Delete`, and Repository/Live links.
+* **4. Bullet Typography & Direct Inline Editing:**
+  - **Lead Action Highlight:** Automatically boldens and highlights the first 3–4 action words in `font-semibold text-content`, rendering the remainder in `text-content/75 dark:text-muted`.
+  - **Left 6px Status Dot:** Clickable indicator dot (`bg-emerald-400` with subtle glow for approved, amber for review, muted for draft) that cycles status on click.
   - **Right Impact Metric Badge:** Compact green badge displaying detected metrics (e.g. `70%`, `45k req/s`, `$2M`).
   - **Direct Inline Editing:** Double-clicking any bullet text (or clicking the hover `Pencil` icon) transforms the row into an auto-expanding inline textarea with quick `Enter` save and `Esc` cancel.
-* **3. Drag-and-Drop Positioning & Dynamic Tech Stack Filter:**
+* **5. Drag-and-Drop Positioning & Dynamic Tech Stack Filter:**
   - **HTML5 Drag & Drop:** Added 6-dot grip handle (`⠿` via `Icon.GripVertical`). Users can drag bullets to reposition within products or drop onto different Products / Companies to reassign parentage.
   - **Hover Move Dropdown:** Accompanied by a 1-click "Move bullet to..." popover menu for touchpad accessibility.
   - **Dynamic Tech Stack Filter Bar:** Computes top tech stacks across the portfolio (`#AWS EC2`, `#C++`, `#Python`, etc.) for 1-click filtering.
-* **4. Build & Typecheck Verification:**
+* **6. Build & Typecheck Verification:**
   - Verified with `npm --prefix backend run build` (0 errors) and `npm --prefix frontend run build` (16/16 routes statically optimized, 0 errors).
 
 
