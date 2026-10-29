@@ -834,9 +834,9 @@ export function PortfolioHub() {
         /* Active Portfolio List */
         <div className="space-y-6">
           {/* Master Ledger Frame */}
-          <div className="rounded-xl border border-edge/80 bg-card/70 backdrop-blur-md overflow-hidden divide-y divide-edge/40 shadow-xl">
+          <div className="rounded-xl border border-edge/80 bg-card/70 backdrop-blur-md divide-y divide-edge/40 shadow-xl">
             {/* Ledger Top Header / Actions Bar */}
-            <div className="px-4 py-3 bg-surface/60 border-b border-edge/60 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs font-mono">
+            <div className="px-4 py-3 bg-surface/60 border-b border-edge/60 rounded-t-xl flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs font-mono">
               <div className="flex items-center gap-2.5 flex-wrap">
                 <span className="font-bold text-content uppercase tracking-wider text-[11px] flex items-center gap-1.5">
                   <span className="text-signal font-black">λ</span>
@@ -853,7 +853,7 @@ export function PortfolioHub() {
 
               <div className="flex items-center gap-3">
                 {allProductIds.length > 0 && (
-                  <Tooltip content={areAllProductsCollapsed ? 'Expand all products' : 'Collapse all products'}>
+                  <Tooltip content={areAllProductsCollapsed ? 'Expand all products' : 'Collapse all products'} align="end">
                     <button
                       type="button"
                       onClick={toggleAllProducts}
@@ -894,7 +894,7 @@ export function PortfolioHub() {
                     className={`transition-colors divide-y divide-edge/30 ${isDragOverComp ? 'bg-signal/10' : ''}`}
                   >
                     {/* Level 0: Company Header Row */}
-                    <div className="py-2.5 px-3 sm:px-4 bg-surface/30 hover:bg-surface/50 transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-2 group">
+                    <div className="py-2.5 px-3 sm:px-4 bg-surface/30 hover:bg-surface/50 transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-2 group relative hover:z-20">
                       <div className="flex items-center gap-2 min-w-0 flex-1">
                         <button
                           type="button"
@@ -936,7 +936,7 @@ export function PortfolioHub() {
 
                         {/* Hover Action Icons */}
                         <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
-                          <Tooltip content="Add Product / Sub-system to this Company">
+                          <Tooltip content="Add Product / Sub-system to this Company" align="end">
                             <button
                               type="button"
                               onClick={() => setProductModal({ isOpen: true, companyId: company.id })}
@@ -945,7 +945,7 @@ export function PortfolioHub() {
                               + Product
                             </button>
                           </Tooltip>
-                          <Tooltip content="Edit Company Details">
+                          <Tooltip content="Edit Company Details" align="end">
                             <button
                               type="button"
                               onClick={() => setCompanyModal({ isOpen: true, company })}
@@ -954,7 +954,7 @@ export function PortfolioHub() {
                               <Icon.Pencil className="h-3 w-3" />
                             </button>
                           </Tooltip>
-                          <Tooltip content="Delete Company">
+                          <Tooltip content="Delete Company" align="end">
                             <button
                               type="button"
                               onClick={() => setItemToDelete({ type: 'company', id: company.id, title: company.name })}
@@ -1007,7 +1007,7 @@ export function PortfolioHub() {
                                   className={`rounded-md transition-colors ${isDragTarget ? 'bg-signal/15 ring-1 ring-signal' : ''}`}
                                 >
                                   {/* Product Header Row */}
-                                  <div className="flex items-center justify-between py-1.5 px-2 rounded hover:bg-surface/50 transition-colors group">
+                                  <div className="flex items-center justify-between py-1.5 px-2 rounded hover:bg-surface/50 transition-colors group relative hover:z-20">
                                     <div
                                       onClick={() => toggleProduct(product.id)}
                                       className="flex items-center gap-2 min-w-0 cursor-pointer select-none flex-1"
@@ -1042,7 +1042,7 @@ export function PortfolioHub() {
 
                                       {/* Hover Micro-Actions */}
                                       <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
-                                        <Tooltip content="Add Bullet to Product">
+                                        <Tooltip content="Add Bullet to Product" align="end">
                                           <button
                                             type="button"
                                             onClick={() => setBulletModal({ isOpen: true, productId: product.id })}
@@ -1051,7 +1051,7 @@ export function PortfolioHub() {
                                             + Bullet
                                           </button>
                                         </Tooltip>
-                                        <Tooltip content="Edit Product & Stack">
+                                        <Tooltip content="Edit Product & Stack" align="end">
                                           <button
                                             type="button"
                                             onClick={() => setProductModal({ isOpen: true, companyId: company.id, product })}
@@ -1060,7 +1060,7 @@ export function PortfolioHub() {
                                             <Icon.Pencil className="h-3 w-3" />
                                           </button>
                                         </Tooltip>
-                                        <Tooltip content="Delete Product">
+                                        <Tooltip content="Delete Product" align="end">
                                           <button
                                             type="button"
                                             onClick={() => setItemToDelete({ type: 'product', id: product.id, title: product.name })}
@@ -1131,7 +1131,7 @@ export function PortfolioHub() {
             )}
 
             {/* Ledger Bottom Status Bar */}
-            <div className="px-4 py-2 bg-surface/40 border-t border-edge/40 flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-[11px] font-mono text-muted">
+            <div className="px-4 py-2 bg-surface/40 border-t border-edge/40 rounded-b-xl flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-[11px] font-mono text-muted">
               <span className="flex items-center gap-1.5 text-emerald-400">
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
                 <span>Ready for ATS Ingestion & Resume Tailoring</span>
@@ -1163,7 +1163,7 @@ export function PortfolioHub() {
                 No standalone or open-source projects recorded.
               </div>
             ) : (
-              <div className="rounded-xl border border-edge/80 bg-card/70 backdrop-blur-md overflow-hidden divide-y divide-edge/40 shadow-md">
+              <div className="rounded-xl border border-edge/80 bg-card/70 backdrop-blur-md divide-y divide-edge/40 shadow-md">
                 {filteredProjects.map((proj) => {
                   const isProjCollapsed = Boolean(collapsedProjects[proj.id]);
                   const projBulletCount = proj.bullets?.length || 0;
@@ -1191,7 +1191,7 @@ export function PortfolioHub() {
                             {projBulletCount} {projBulletCount === 1 ? 'bullet' : 'bullets'}
                           </span>
                           {proj.repo_url && (
-                            <Tooltip content="Open GitHub Repository">
+                            <Tooltip content="Open GitHub Repository" align="end">
                               <a
                                 href={proj.repo_url}
                                 target="_blank"
@@ -1203,7 +1203,7 @@ export function PortfolioHub() {
                             </Tooltip>
                           )}
                           {proj.live_url && (
-                            <Tooltip content="Open Live Project">
+                            <Tooltip content="Open Live Project" align="end">
                               <a
                                 href={proj.live_url}
                                 target="_blank"
@@ -1231,7 +1231,7 @@ export function PortfolioHub() {
 
                           {/* Hover Actions */}
                           <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
-                            <Tooltip content="Add Bullet to Project">
+                            <Tooltip content="Add Bullet to Project" align="end">
                               <button
                                 type="button"
                                 onClick={() => setBulletModal({ isOpen: true, projectId: proj.id })}
@@ -1240,7 +1240,7 @@ export function PortfolioHub() {
                                 + Bullet
                               </button>
                             </Tooltip>
-                            <Tooltip content="Edit Project">
+                            <Tooltip content="Edit Project" align="end">
                               <button
                                 type="button"
                                 onClick={() => setProjectModal({ isOpen: true, project: proj })}
@@ -1249,7 +1249,7 @@ export function PortfolioHub() {
                                 <Icon.Pencil className="h-3 w-3" />
                               </button>
                             </Tooltip>
-                            <Tooltip content="Delete Project">
+                            <Tooltip content="Delete Project" align="end">
                               <button
                                 type="button"
                                 onClick={() => setItemToDelete({ type: 'project', id: proj.id, title: proj.name })}
@@ -1478,7 +1478,7 @@ function TreeBulletRow({
     <div
       draggable={!isEditing}
       onDragStart={(e) => onDragStart(e, bullet, parentId)}
-      className="group flex flex-col py-1 px-2 rounded-md hover:bg-surface/50 transition-colors relative"
+      className={`group flex flex-col py-1 px-2 rounded-md hover:bg-surface/50 transition-colors relative ${showMoveMenu ? 'z-30' : 'hover:z-10'}`}
     >
       <div className="flex items-start justify-between gap-2.5">
         {/* Left: Drag Handle + Status Indicator Dot + Content */}
@@ -1568,7 +1568,7 @@ function TreeBulletRow({
         {!isEditing && (
           <div className="flex items-center gap-2 shrink-0 pt-0.5">
             {primaryMetric && (
-              <Tooltip content="Quantified ATS Impact Metric">
+              <Tooltip content="Quantified ATS Impact Metric" align="end">
                 <span
                   className="rounded bg-emerald-500/10 border border-emerald-500/25 px-1.5 py-0.5 font-mono text-[10px] font-bold text-emerald-600 dark:text-emerald-400 shrink-0"
                 >
@@ -1580,7 +1580,7 @@ function TreeBulletRow({
             {/* Hover Actions: Edit inline, Move to target, Toggle Trade-offs, Delete */}
             <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-0.5">
               {(bullet.context_challenge || bullet.defense_notes) && (
-                <Tooltip content={showDefense ? "Hide Architecture Defense" : "View Architecture Defense & Trade-offs"}>
+                <Tooltip content={showDefense ? "Hide Architecture Defense" : "View Architecture Defense & Trade-offs"} align="end">
                   <button
                     type="button"
                     onClick={() => setShowDefense(!showDefense)}
@@ -1591,7 +1591,7 @@ function TreeBulletRow({
                 </Tooltip>
               )}
 
-              <Tooltip content="Edit Bullet inline">
+              <Tooltip content="Edit Bullet inline" align="end">
                 <button
                   type="button"
                   onClick={() => setIsEditing(true)}
@@ -1603,7 +1603,7 @@ function TreeBulletRow({
 
               {/* Move to target dropdown menu */}
               <div className="relative">
-                <Tooltip content="Move to another Product or Company">
+                <Tooltip content="Move to another Product or Company" align="end">
                   <button
                     type="button"
                     onClick={() => setShowMoveMenu(!showMoveMenu)}
@@ -1640,7 +1640,7 @@ function TreeBulletRow({
                 )}
               </div>
 
-              <Tooltip content="Delete Bullet">
+              <Tooltip content="Delete Bullet" align="end">
                 <button
                   type="button"
                   onClick={onDelete}

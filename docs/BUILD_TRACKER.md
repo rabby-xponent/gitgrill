@@ -660,13 +660,11 @@ pie title Roadmap Milestone Status
 * **2. Single Clean Hairline & Light/Dark Theme Adaptation:**
   - **Eliminated Double Hairlines:** Removed the duplicate outer `border-l` from the products container so that only a single, crisp hairline connects bullets to their parent subsystem.
   - **Semantic Theme Variables:** Replaced all hardcoded `zinc` classes (`text-zinc-100`, `text-zinc-400`, `border-zinc-800`, `bg-zinc-800`) with GitGrill CSS variable tokens (`text-content`, `text-muted`, `border-edge/70`, `bg-well/80`). Bullets, role titles, and chips now render with high-contrast, crystal-clear typography across both Light Mode and Dark Mode.
-* **3. Floating Popover Tooltips:**
-  - Integrated the animated, theme-aware `<Tooltip>` component from `@/components/ui` across all interactive elements, replacing primitive browser title attributes:
-    * 6-dot drag handle: *"Drag to reorder or reassign"*
-    * Status indicator dot: *"Status: approved · Click to cycle"*
-    * ATS Impact Metric badge: *"Quantified ATS Impact Metric"*
-    * Micro-actions: Inline Edit, Move/Reassign target dropdown, Architecture Defense & Trade-offs viewer, and Delete confirmations.
-    * Header actions: `+ Product`, `+ Bullet`, `Edit`, `Delete`, and Repository/Live links.
+* **3. Floating Popover Tooltips, Smart Edge Anchoring & Z-Index Layering:**
+  - Integrated the animated, theme-aware `<Tooltip>` component from `@/components/ui` across all interactive elements, replacing primitive browser title attributes.
+  - **Eliminated Container Clipping:** Removed `overflow-hidden` from the master frame and standalone projects cards; replaced with `rounded-t-xl` on header and `rounded-b-xl` on status bar so floating elements never get sliced by card boundaries.
+  - **Smart Edge Alignment (`align="end"` & Auto Viewport Detection):** Updated `<Tooltip>` in [`frontend/components/ui.tsx`](file:///e:/rabby-xponent/Projects/devscope/frontend/components/ui.tsx) with `align?: 'center' | 'start' | 'end'` and runtime viewport bounding detection (`rect.right > window.innerWidth - 16`). Action buttons along the right rail anchor to the right edge (`right-0`), expanding inward to eliminate right-edge horizontal overflow.
+  - **Stacking Context Elevation:** Added dynamic `z-50` to active tooltips and `hover:z-20` / `z-30` to active rows and move menus, ensuring popovers paint cleanly on top of adjacent DOM siblings.
 * **4. Bullet Typography & Direct Inline Editing:**
   - **Lead Action Highlight:** Automatically boldens and highlights the first 3–4 action words in `font-semibold text-content`, rendering the remainder in `text-content/75 dark:text-muted`.
   - **Left 6px Status Dot:** Clickable indicator dot (`bg-emerald-400` with subtle glow for approved, amber for review, muted for draft) that cycles status on click.

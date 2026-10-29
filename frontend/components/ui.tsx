@@ -371,6 +371,7 @@ export interface TooltipProps {
   content: React.ReactNode;
   children: React.ReactNode;
   position?: 'top' | 'bottom' | 'left' | 'right';
+  align?: 'center' | 'start' | 'end';
   className?: string;
   delay?: number;
 }
@@ -379,11 +380,14 @@ export function Tooltip({
   content,
   children,
   position = 'top',
+  align = 'center',
   className = '',
   delay = 150,
 }: TooltipProps) {
   const [visible, setVisible] = useState(false);
+  const [computedAlign, setComputedAlign] = useState<'center' | 'start' | 'end'>(align);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const tooltipRef = useRef<HTMLDivElement | null>(null);
 
   const show = () => {
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
@@ -401,16 +405,48 @@ export function Tooltip({
     };
   }, []);
 
-  const positionClasses = {
-    top: 'bottom-full left-1/2 -translate-x-1/2 mb-2',
-    bottom: 'top-full left-1/2 -translate-x-1/2 mt-2',
-    left: 'right-full top-1/2 -translate-y-1/2 mr-2',
-    right: 'left-full top-1/2 -translate-y-1/2 ml-2',
-  }[position];
+  useEffect(() => {
+    setComputedAlign(align);
+  }, [align]);
+
+  useEffect(() => {
+    if (visible && tooltipRef.current) {
+      const rect = tooltipRef.current.getBoundingClientRect();
+      const margin = 16;
+      if (rect.right > window.innerWidth - margin) {
+        setComputedAlign('end');
+      } else if (rect.left < margin) {
+        setComputedAlign('start');
+      }
+    }
+  }, [visible]);
+
+  let positionClass = '';
+  if (position === 'top') {
+    if (computedAlign === 'end') {
+      positionClass = 'bottom-full right-0 mb-2';
+    } else if (computedAlign === 'start') {
+      positionClass = 'bottom-full left-0 mb-2';
+    } else {
+      positionClass = 'bottom-full left-1/2 -translate-x-1/2 mb-2';
+    }
+  } else if (position === 'bottom') {
+    if (computedAlign === 'end') {
+      positionClass = 'top-full right-0 mt-2';
+    } else if (computedAlign === 'start') {
+      positionClass = 'top-full left-0 mt-2';
+    } else {
+      positionClass = 'top-full left-1/2 -translate-x-1/2 mt-2';
+    }
+  } else if (position === 'left') {
+    positionClass = 'right-full top-1/2 -translate-y-1/2 mr-2';
+  } else if (position === 'right') {
+    positionClass = 'left-full top-1/2 -translate-y-1/2 ml-2';
+  }
 
   return (
     <div
-      className="relative inline-flex items-center"
+      className={`relative inline-flex items-center ${visible ? 'z-50' : ''}`}
       onMouseEnter={show}
       onMouseLeave={hide}
       onFocus={show}
@@ -419,8 +455,9 @@ export function Tooltip({
       {children}
       {visible && content && (
         <div
+          ref={tooltipRef}
           role="tooltip"
-          className={`pointer-events-none absolute z-[120] whitespace-nowrap rounded-lg border border-edge bg-card px-2.5 py-1 font-mono text-[11px] font-medium text-content shadow-pop animate-in fade-in-0 zoom-in-95 duration-150 ${positionClasses} ${className}`}
+          className={`pointer-events-none absolute z-[120] whitespace-nowrap rounded-lg border border-edge bg-card px-2.5 py-1 font-mono text-[11px] font-medium text-content shadow-pop animate-in fade-in-0 zoom-in-95 duration-150 ${positionClass} ${className}`}
         >
           {content}
         </div>
