@@ -686,14 +686,16 @@ pie title Roadmap Milestone Status
   - Built a unified, high-density Right-Side Slide-Over Drawer (`PortfolioDrawer.tsx`) replacing all 4 legacy modal popups (`CompanyEditModal`, `ProductEditModal`, `ProjectEditModal`, `BulletEditModal`).
   - Rendered via React `createPortal` with backdrop blur scrim (`bg-black/45 backdrop-blur-xs z-[140]`) and smooth CSS slide transition (`animate-in slide-in-from-right duration-300`).
   - Supports keyboard shortcuts: `Esc` to dismiss, `⌘S` / `Ctrl+S` to instantly save.
-* **2. Context-Aware Inspector Views:**
+* **2. Context-Aware Dossier & Inspector Views ([`PortfolioDrawer.tsx`](file:///e:/rabby-xponent/Projects/devscope/frontend/components/PortfolioDrawer.tsx)):**
+  - **Company Dossier Drawer:** Unclipped full company name and role title; Overview card with verified location, full tenure duration, and website link; Enterprise tech stack cloud aggregating all child subsystems; Interactive Subsystems Ledger with 1-click navigation into each product and `+ Add Subsystem` action; and separate `Edit Details` tab.
+  - **Product / Subsystem Dossier Drawer:** Full subsystem title without truncation; Breadcrumb link back to parent Company; Architecture Archetype card with detailed pattern explanation; Interactive Tech Stack Tag Manager (Enter to add, `×` to remove); Master Contributions list displaying all child bullets with status dots and metrics, with 1-click navigation into bullet inspection; and separate `Edit Subsystem` tab.
   - **Master Bullet Inspector:** Full bullet text editor with live word count, segmented Review Status switcher (`Approved`, `Needs Review`, `Draft`), Action Verb & Primary Metric detectors, and GitGrill's signature *Architectural Defense & Trade-Offs* editor (Engineering Challenge, Complexity, and Alternatives Considered).
-  - **Product / Subsystem Inspector:** Subsystem name, Architecture Archetype selector (with custom archetype support), and an interactive Monochrome Tech Stack Tag Manager (type `#Kafka` and hit Enter, click `×` to delete).
-  - **Company / Organization Inspector:** Name, Role Title, Start/End tenure dates with *Currently Employed (Present)* toggle, Location, and enterprise domain URL.
   - **Standalone Project Inspector:** Project title, One-line pitch/headline, GitHub Repo & Live Demo URLs, and tech stack chips.
-* **3. Dual Interaction Model:**
-  - Preserved ultra-fast inline double-click editing on the ledger row for rapid copy adjustments.
-  - Added dedicated drawer inspection trigger (`Icon.Sidebar`) and row edit actions that open the comprehensive Slide-Over Inspector without obscuring the main ledger.
+* **3. Dual Interaction Model & Unclipped Ledger Typography ([`PortfolioHub.tsx`](file:///e:/rabby-xponent/Projects/devscope/frontend/components/PortfolioHub.tsx)):**
+  - **Resolved Aggressive Text Clipping:** Prevented premature `truncate` on company and product names (`shrink-0` with priority allocation); added full-title floating `<Tooltip />` on hover.
+  - **Direct Node Inspection:** Clicking on a Company name opens the Company Dossier Drawer; clicking a Product name opens the Product Subsystem Drawer. Clicking the chevron toggles collapse/expand cleanly without unexpected sheet transitions.
+  - **Dedicated Inspector Action:** Added `Icon.Sidebar` to hover action bars across Companies, Products, Bullets, and Projects.
+  - Preserved ultra-fast inline double-click editing on bullet ledger rows for rapid copy adjustments.
 * **4. Build & Typecheck Verification:**
   - Verified with `npm --prefix frontend run build` (16/16 routes statically optimized, 0 errors).
 

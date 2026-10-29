@@ -897,18 +897,25 @@ export function PortfolioHub() {
                         >
                           <Icon.ChevronDown className={`h-3.5 w-3.5 transition-transform ${isCompanyCollapsed ? '-rotate-90' : ''}`} />
                         </button>
-                        <span
-                          onClick={() => toggleCompany(company.id)}
-                          className="font-mono text-sm sm:text-base font-bold text-content hover:text-signal transition-colors cursor-pointer truncate"
+                        <div
+                          onClick={() => setActiveDrawer({
+                            type: 'company',
+                            company,
+                          })}
+                          className="flex items-baseline gap-1.5 min-w-0 cursor-pointer group/comp select-none"
                         >
-                          {company.name}
-                        </span>
-                        {company.role_title && (
-                          <span className="font-mono text-xs sm:text-[13px] text-muted font-medium truncate">
-                            <span className="text-muted/50 mx-1">/</span>
-                            {company.role_title}
-                          </span>
-                        )}
+                          <Tooltip content={`${company.name}${company.role_title ? ' · ' + company.role_title : ''} — Click to inspect in Drawer`} align="start">
+                            <span className="font-mono text-sm sm:text-base font-bold text-content group-hover/comp:text-signal transition-colors shrink-0">
+                              {company.name}
+                            </span>
+                          </Tooltip>
+                          {company.role_title && (
+                            <span className="font-mono text-xs sm:text-[13px] text-muted font-medium truncate">
+                              <span className="text-muted/40 mx-1">/</span>
+                              {company.role_title}
+                            </span>
+                          )}
+                        </div>
                         {company.is_current && (
                           <span className="rounded-full bg-signal/20 px-1.5 py-0.2 font-mono text-[9px] font-bold text-signal uppercase tracking-wider shrink-0">
                             Present
@@ -929,10 +936,19 @@ export function PortfolioHub() {
 
                         {/* Hover Action Icons */}
                         <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
-                          <Tooltip content="Add Product / Sub-system to this Company" align="end">
+                          <Tooltip content="Inspect Company Dossier in Drawer" align="end">
                             <button
                               type="button"
-                              onClick={() => setActiveDrawer({ type: 'product', companyId: company.id })}
+                              onClick={() => setActiveDrawer({ type: 'company', company })}
+                              className="p-1 rounded text-muted hover:text-signal hover:bg-surface transition-colors cursor-pointer"
+                            >
+                              <Icon.Sidebar className="h-3.5 w-3.5" />
+                            </button>
+                          </Tooltip>
+                          <Tooltip content="Add Subsystem to this Company" align="end">
+                            <button
+                              type="button"
+                              onClick={() => setActiveDrawer({ type: 'product', companyId: company.id, companyName: company.name, companyRole: company.role_title })}
                               className="px-2 py-0.5 rounded bg-signal/10 hover:bg-signal/20 text-signal text-[10px] font-mono font-bold transition-all cursor-pointer"
                             >
                               + Product
@@ -978,7 +994,7 @@ export function PortfolioHub() {
                                 onDelete={() => setItemToDelete({ type: 'bullet', id: b.id, title: 'bullet' })}
                                 onToggleStatus={handleToggleBulletStatus}
                                 onDragStart={handleBulletDragStart}
-                                onOpenInspector={(b) => setActiveDrawer({ type: 'bullet', bullet: b, productId: b.product_id || undefined, projectId: b.project_id || undefined })}
+                                onOpenInspector={(b) => setActiveDrawer({ type: 'bullet', bullet: b, productId: b.product_id || undefined, companyName: company.name, projectId: b.project_id || undefined })}
                               />
                             ))}
                           </div>
@@ -1002,21 +1018,30 @@ export function PortfolioHub() {
                                 >
                                   {/* Product Header Row */}
                                   <div className="flex items-center justify-between py-1.5 px-2 rounded hover:bg-surface/50 transition-colors group relative hover:z-20">
-                                    <div
-                                      onClick={() => toggleProduct(product.id)}
-                                      className="flex items-center gap-2 min-w-0 cursor-pointer select-none flex-1"
-                                    >
+                                    <div className="flex items-center gap-2 min-w-0 flex-1">
                                       <button
                                         type="button"
-                                        className="text-muted group-hover:text-signal transition-colors p-0.5"
+                                        onClick={() => toggleProduct(product.id)}
+                                        className="text-muted group-hover:text-signal transition-colors p-0.5 cursor-pointer shrink-0"
                                         title={isProdCollapsed ? 'Expand product' : 'Collapse product'}
                                       >
                                         <Icon.ChevronDown className={`h-3.5 w-3.5 transition-transform ${isProdCollapsed ? '-rotate-90' : ''}`} />
                                       </button>
-                                      <span className="font-mono text-xs sm:text-[13px] font-bold text-content hover:text-signal transition-colors">
-                                        {product.name}
-                                      </span>
-                                      <span className="rounded bg-amber-500/10 border border-amber-500/25 px-1.5 py-0.2 font-mono text-[10px] text-amber-400 font-semibold shrink-0">
+                                      <Tooltip content={`${product.name} — Click to inspect subsystem in Drawer`} align="start">
+                                        <span
+                                          onClick={() => setActiveDrawer({
+                                            type: 'product',
+                                            companyId: company.id,
+                                            companyName: company.name,
+                                            companyRole: company.role_title,
+                                            product,
+                                          })}
+                                          className="font-mono text-xs sm:text-[13px] font-bold text-content hover:text-signal transition-colors cursor-pointer"
+                                        >
+                                          {product.name}
+                                        </span>
+                                      </Tooltip>
+                                      <span className="rounded bg-amber-500/10 border border-amber-500/25 px-1.5 py-0.2 font-mono text-[10px] text-amber-500 font-semibold shrink-0">
                                         {bulletCount} {bulletCount === 1 ? 'contribution' : 'contributions'}
                                       </span>
                                     </div>
@@ -1036,10 +1061,19 @@ export function PortfolioHub() {
 
                                       {/* Hover Micro-Actions */}
                                       <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
+                                        <Tooltip content="Inspect Subsystem in Drawer" align="end">
+                                          <button
+                                            type="button"
+                                            onClick={() => setActiveDrawer({ type: 'product', companyId: company.id, companyName: company.name, companyRole: company.role_title, product })}
+                                            className="p-1 rounded text-muted hover:text-signal hover:bg-surface transition-colors cursor-pointer"
+                                          >
+                                            <Icon.Sidebar className="h-3 w-3" />
+                                          </button>
+                                        </Tooltip>
                                         <Tooltip content="Add Bullet to Product" align="end">
                                           <button
                                             type="button"
-                                            onClick={() => setActiveDrawer({ type: 'bullet', productId: product.id, parentProduct: product })}
+                                            onClick={() => setActiveDrawer({ type: 'bullet', productId: product.id, parentProduct: product, companyName: company.name })}
                                             className="px-2 py-0.5 rounded bg-signal/10 hover:bg-signal/20 text-signal font-mono text-[10px] font-bold transition-all cursor-pointer"
                                           >
                                             + Bullet
@@ -1048,7 +1082,7 @@ export function PortfolioHub() {
                                         <Tooltip content="Edit Product & Stack" align="end">
                                           <button
                                             type="button"
-                                            onClick={() => setActiveDrawer({ type: 'product', companyId: company.id, product })}
+                                            onClick={() => setActiveDrawer({ type: 'product', companyId: company.id, companyName: company.name, companyRole: company.role_title, product })}
                                             className="p-1 rounded text-muted hover:text-content hover:bg-surface transition-colors cursor-pointer"
                                           >
                                             <Icon.Pencil className="h-3 w-3" />
@@ -1083,7 +1117,7 @@ export function PortfolioHub() {
                                             onDelete={() => setItemToDelete({ type: 'bullet', id: b.id, title: 'bullet' })}
                                             onToggleStatus={handleToggleBulletStatus}
                                             onDragStart={handleBulletDragStart}
-                                onOpenInspector={(b) => setActiveDrawer({ type: 'bullet', bullet: b, productId: b.product_id || undefined, projectId: b.project_id || undefined })}
+                                            onOpenInspector={(b) => setActiveDrawer({ type: 'bullet', bullet: b, productId: product.id, parentProduct: product, companyName: company.name })}
                                           />
                                         ))
                                       ) : (
@@ -1177,8 +1211,8 @@ export function PortfolioHub() {
                             <Icon.ChevronDown className={`h-3.5 w-3.5 transition-transform ${isProjCollapsed ? '-rotate-90' : ''}`} />
                           </button>
                           <span
-                            onClick={() => toggleProject(proj.id)}
-                            className="font-mono text-sm font-bold text-content hover:text-signal transition-colors cursor-pointer truncate"
+                            onClick={() => setActiveDrawer({ type: 'project', project: proj })}
+                            className="font-mono text-sm font-bold text-content hover:text-signal transition-colors cursor-pointer"
                           >
                             {proj.name}
                           </span>
@@ -1274,7 +1308,7 @@ export function PortfolioHub() {
                                   onDelete={() => setItemToDelete({ type: 'bullet', id: b.id, title: 'bullet' })}
                                   onToggleStatus={handleToggleBulletStatus}
                                   onDragStart={handleBulletDragStart}
-                                onOpenInspector={(b) => setActiveDrawer({ type: 'bullet', bullet: b, productId: b.product_id || undefined, projectId: b.project_id || undefined })}
+                                  onOpenInspector={(b) => setActiveDrawer({ type: 'bullet', bullet: b, projectId: proj.id, parentProject: proj })}
                                 />
                               ))
                             ) : (
