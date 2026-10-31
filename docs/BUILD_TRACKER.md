@@ -746,9 +746,9 @@ pie title Roadmap Milestone Status
 
 ---
 
-### Milestone 38 — Phase 2 Task 1: Multi-Resume Selective Assembler from Master SSOT 🟢
+### Milestone 38 — Phase 2 Task 1: Multi-Resume Selective Assembler from Master SSOT 🟡
 
-* **Current Status:** Fully implemented and verified across backend (`tsc` 0 errors) and frontend (`next build` 16/16 routes 0 errors).
+* **Current Status:** 🟡 Pending Manual Review (Code implemented & verified; awaiting user manual UI/UX testing & sign-off).
 * **1. SSOT-to-Variant Assembly Engine ([`resumes.ts`](file:///e:/rabby-xponent/Projects/devscope/frontend/lib/resumes.ts)):**
   - Built `assembleResumeFromPortfolioSSOT(portfolio, config)` to compile a standalone, target-role-specific `DeveloperResume` from the master 6-pillar portfolio.
   - Automatically resolves:
@@ -776,9 +776,9 @@ pie title Roadmap Milestone Status
 
 ---
 
-### Milestone 39 — Phase 2 Task 2: Multi-Resume A/B Benchmarking Studio Against Target JDs 🟢
+### Milestone 39 — Phase 2 Task 2: Multi-Resume A/B Benchmarking Studio Against Target JDs 🟡
 
-* **Current Status:** Fully implemented and verified across frontend (`next build` 16/16 static routes 0 errors) and backend (`tsc` 0 errors).
+* **Current Status:** 🟡 Pending Manual Review (Code implemented & verified; awaiting user manual UI/UX testing & sign-off).
 * **1. Matchmaker Studio Mode Switcher & Deep Linking ([`page.tsx`](file:///e:/rabby-xponent/Projects/devscope/frontend/app/developer/matchmaker/page.tsx) & [`JDResumeMatchmaker.tsx`](file:///e:/rabby-xponent/Projects/devscope/frontend/components/JDResumeMatchmaker.tsx)):**
   - Added segmented view toggle between `Single Audit` and `A/B Benchmark` with real-time variant count badge.
   - Added query param support for `compareId` (`?roleId=...&resumeId=...&compareId=...`), enabling direct sharing or deep-linking to side-by-side benchmark states.
@@ -810,9 +810,9 @@ pie title Roadmap Milestone Status
 
 ---
 
-### Milestone 40 — Reusable Icon-Based Checkbox Component & Universal Design System Migration 🟢
+### Milestone 40 — Reusable Icon-Based Checkbox Component & Universal Design System Migration 🟡
 
-* **Current Status:** Fully implemented and verified across frontend (`next build` 16/16 static routes 0 errors) and backend (`tsc` 0 errors).
+* **Current Status:** 🟡 Pending Manual Review (Code implemented & verified; awaiting user manual UI/UX testing & sign-off).
 * **1. Common Checkbox Component ([`checkbox.tsx`](file:///e:/rabby-xponent/Projects/devscope/frontend/components/common/checkbox.tsx)):**
   - Built reusable, icon-based checkbox powered by `lucide-react` (`Square`, `CheckSquare`, `MinusSquare`).
   - Supports `checked`, `indeterminate` (for partial/mixed selection), `disabled`, `size` (`sm`, `md`, `lg`), `title`, and optional `label` / `description` slots.
