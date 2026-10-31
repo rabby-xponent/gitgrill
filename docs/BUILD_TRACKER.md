@@ -744,6 +744,37 @@ pie title Roadmap Milestone Status
   - Replaced all colorful emoji markers in Candidate Identity header (`📍`, `✉️`, `📞`) and capabilities banner (`⚡`) with monochrome SVG glyphs.
   - Populated state provides quick edit & AI trigger opening the drawer with full portfolio context ready for immediate custom steering and re-synthesis.
 
+---
+
+### Milestone 38 — Phase 2 Task 1: Multi-Resume Selective Assembler from Master SSOT 🟢
+
+* **Current Status:** Fully implemented and verified across backend (`tsc` 0 errors) and frontend (`next build` 16/16 routes 0 errors).
+* **1. SSOT-to-Variant Assembly Engine ([`resumes.ts`](file:///e:/rabby-xponent/Projects/devscope/frontend/lib/resumes.ts)):**
+  - Built `assembleResumeFromPortfolioSSOT(portfolio, config)` to compile a standalone, target-role-specific `DeveloperResume` from the master 6-pillar portfolio.
+  - Automatically resolves:
+    * Candidate contact details from Pillar 1 (Identity & Positioning).
+    * Target headline and professional summary from Pillar 2 (Career Narrative).
+    * Categorized skill selections from Pillar 3 (Technical Skills Matrix).
+    * Hierarchical company/product work history with selected master bullets from Pillar 4 (Experience Ledger).
+    * Standalone side projects from Pillar 5 (Projects Ledger).
+    * Academic degrees, coursework, and credentials from Pillar 6 (Education & Credentials).
+* **2. Multi-Resume Selective Assembler Modal ([`ResumeSSOTAssemblerModal.tsx`](file:///e:/rabby-xponent/Projects/devscope/frontend/components/ResumeSSOTAssemblerModal.tsx)):**
+  - Created high-density Linear-style compilation canvas:
+    * **Variant Setup:** Custom title input and target role selector (`Backend / Distributed Systems`, `Full-Stack / Product Engineering`, `Frontend / Web Engineering`, `DevOps / Cloud Architecture`, `AI / Machine Learning Systems`).
+    * **Pillar 2 Summary:** Option to use current SSOT summary or craft an initial custom variant angle.
+    * **Pillar 4 Selective Bullets:** Company inclusion toggles, product group display, individual bullet checkboxes with metric tags and confidence badges, plus batch helpers (`Approved Only`, `Select All`, `Clear`).
+    * **Pillar 3 Categorized Skills:** Category toggles with individual skill pill selection.
+    * **Pillars 5 & 6 (Projects & Education):** Selective checkboxes for side projects and academic credentials.
+    * **Live Ledger Stats:** Real-time counters showing selected companies, bullets, skills, and projects.
+* **3. Resume Studio Integration ([`ResumeVault.tsx`](file:///e:/rabby-xponent/Projects/devscope/frontend/components/ResumeVault.tsx)):**
+  - Added "Assemble from SSOT" button in top toolbar with direct modal trigger.
+  - Added "Assemble from SSOT" tab inside the "New Resume" creation modal.
+  - Added "Tune Bullets from SSOT" action in the variant card menu for existing variants, enabling rapid bullet re-composition.
+* **4. Verification & Clean Compilation:**
+  - `npm --prefix backend run build`: Exited 0 (TypeScript compilation clean).
+  - `npm --prefix frontend run build`: Exited 0 (Next.js statically compiled all 16 routes with 0 errors).
+
+
 
 
 

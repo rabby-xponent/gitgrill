@@ -231,7 +231,7 @@ export function JDResumeMatchmaker({
               className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 rounded-xl bg-signal px-4 py-2 font-mono text-xs font-bold text-white shadow-xs hover:bg-signal/90 transition-all cursor-pointer text-center"
             >
               <Icon.Sparkle className="h-3.5 w-3.5 shrink-0" />
-              <span>⚡ 1-Click Tailor for {activeRole.company}</span>
+              <span>1-Click Tailor for {activeRole.company}</span>
             </button>
           </div>
         </div>

@@ -42,6 +42,7 @@ import { TargetRole, getTargetRoles } from '@/lib/target-roles';
 import { useEntitlements } from '@/hooks/useEntitlements';
 import { useSession } from '@/components/SessionProvider';
 import { isAdmin } from '@/lib/admin';
+import { ResumeSSOTAssemblerModal } from '@/components/ResumeSSOTAssemblerModal';
 
 type ViewMode = 'preview' | 'matchmaker' | 'diagnostics' | 'defense' | 'inmail';
 
@@ -60,6 +61,8 @@ export function ResumeVault() {
   useEffect(() => setMounted(true), []);
   const [resumes, setResumes] = useState<ResumeProfile[]>([]);
   const [activeResumeId, setActiveId] = useState<string>('');
+  const [isSSOTAssemblerOpen, setIsSSOTAssemblerOpen] = useState(false);
+  const [assemblerExistingResume, setAssemblerExistingResume] = useState<ResumeProfile | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [isBranching, setIsBranching] = useState(false);
   const [editingResume, setEditingResume] = useState<ResumeProfile | null>(null);
@@ -721,6 +724,18 @@ export function ResumeVault() {
           </button>
           <button
             type="button"
+            onClick={() => {
+              setAssemblerExistingResume(null);
+              setIsSSOTAssemblerOpen(true);
+            }}
+            className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 rounded-xl border border-signal/40 bg-signal/10 px-3.5 py-2 font-mono text-xs font-bold text-signal shadow-xs hover:bg-signal/20 transition-all shrink-0 cursor-pointer text-center"
+            title="Assemble a tailored variant directly from your Living Portfolio SSOT ledger"
+          >
+            <Icon.Layers className="h-3.5 w-3.5" />
+            <span>Assemble from SSOT</span>
+          </button>
+          <button
+            type="button"
             onClick={handleCreateNew}
             className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 rounded-xl bg-signal px-3.5 py-2 font-mono text-xs font-bold text-white shadow-xs hover:bg-signal/90 transition-all shrink-0 cursor-pointer text-center"
           >
@@ -753,7 +768,19 @@ export function ResumeVault() {
             </div>
 
             {!editingResume && (
-              <div className="flex items-center gap-1.5 mb-5 rounded-xl border border-edge bg-well/60 p-1 font-mono text-xs">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-1.5 mb-5 rounded-xl border border-edge bg-well/60 p-1 font-mono text-xs">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsCreating(false);
+                    setAssemblerExistingResume(null);
+                    setIsSSOTAssemblerOpen(true);
+                  }}
+                  className="flex-1 rounded-lg py-1.5 px-3 font-semibold transition-all border border-signal/40 bg-signal/10 text-signal hover:bg-signal/20 flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+                >
+                  <Icon.Layers className="h-3.5 w-3.5" />
+                  <span>Assemble from Master SSOT</span>
+                </button>
                 <button
                   type="button"
                   onClick={() => setCreationMethod('upload')}
@@ -763,7 +790,7 @@ export function ResumeVault() {
                       : 'text-muted hover:text-content'
                   }`}
                 >
-                  Upload File (.docx, .pdf, .md, .txt)
+                  Upload File
                 </button>
                 <button
                   type="button"
@@ -774,7 +801,7 @@ export function ResumeVault() {
                       : 'text-muted hover:text-content'
                   }`}
                 >
-                  Paste Full Resume / Markdown
+                  Paste Text
                 </button>
               </div>
             )}
@@ -1135,7 +1162,11 @@ export function ResumeVault() {
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5 mb-1">
-                        {isMaster ? (
+                        {res.sourceFileType === 'ssot_assembled' ? (
+                          <span className="rounded bg-signal/15 border border-signal/30 px-1.5 py-0.2 font-mono text-[9px] font-bold uppercase text-signal">
+                            SSOT Variant
+                          </span>
+                        ) : isMaster ? (
                           <span className="rounded bg-emerald-500/15 border border-emerald-500/30 px-1.5 py-0.2 font-mono text-[9px] font-bold uppercase text-emerald-600 dark:text-emerald-400">
                             Master Copy
                           </span>
@@ -1224,9 +1255,14 @@ export function ResumeVault() {
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-edge">
                   <div>
                     <div className="flex items-center gap-2">
-                      {activeResume.isMasterCopy ? (
+                      {activeResume.sourceFileType === 'ssot_assembled' ? (
+                        <span className="rounded bg-signal/15 border border-signal/30 px-2 py-0.5 font-mono text-[10px] font-bold uppercase text-signal inline-flex items-center gap-1">
+                          <Icon.Layers className="h-3 w-3" />
+                          <span>SSOT Assembled Variant</span>
+                        </span>
+                      ) : activeResume.isMasterCopy ? (
                         <span className="rounded bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 font-mono text-[10px] font-bold uppercase text-emerald-600 dark:text-emerald-400">
-                          🔒 Master Document (Original Upload)
+                          Master Document (Original Upload)
                         </span>
                       ) : (
                         <span className="rounded bg-signal/15 border border-signal/30 px-2 py-0.5 font-mono text-[10px] font-bold uppercase text-signal">
@@ -1267,12 +1303,27 @@ export function ResumeVault() {
                       <span className="hidden sm:inline">Export .MD</span>
                     </button>
 
+                    {activeResume.sourceFileType === 'ssot_assembled' && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAssemblerExistingResume(activeResume);
+                          setIsSSOTAssemblerOpen(true);
+                        }}
+                        className="inline-flex items-center gap-1.5 rounded-xl border border-signal/40 bg-signal/10 px-3 py-1.5 font-mono text-xs font-semibold text-signal hover:bg-signal/20 transition-colors shadow-xs cursor-pointer"
+                        title="Re-open Master SSOT bullet selector for this variant"
+                      >
+                        <Icon.Layers className="h-3.5 w-3.5" />
+                        <span>Tune Bullets from SSOT</span>
+                      </button>
+                    )}
+
                     {/* Master copy branches a new version; derived copy edits directly */}
                     {activeResume.isMasterCopy ? (
                       <button
                         type="button"
                         onClick={() => handleStartBranch(activeResume)}
-                        className="inline-flex items-center gap-1.5 rounded-xl bg-signal px-3.5 py-1.5 font-mono text-xs font-bold text-white shadow-xs hover:bg-signal/90 transition-all"
+                        className="inline-flex items-center gap-1.5 rounded-xl bg-signal px-3.5 py-1.5 font-mono text-xs font-bold text-white shadow-xs hover:bg-signal/90 transition-all cursor-pointer"
                         title="Create a new version to modify without touching master"
                       >
                         <Icon.Plus className="h-3.5 w-3.5" />
@@ -1282,7 +1333,7 @@ export function ResumeVault() {
                       <button
                         type="button"
                         onClick={() => handleEditDerived(activeResume)}
-                        className="inline-flex items-center gap-1.5 rounded-xl bg-signal px-3.5 py-1.5 font-mono text-xs font-bold text-white shadow-xs hover:bg-signal/90 transition-all"
+                        className="inline-flex items-center gap-1.5 rounded-xl bg-signal px-3.5 py-1.5 font-mono text-xs font-bold text-white shadow-xs hover:bg-signal/90 transition-all cursor-pointer"
                       >
                         <Icon.Pencil className="h-3.5 w-3.5" />
                         <span>Edit Variant</span>
@@ -2867,6 +2918,21 @@ export function ResumeVault() {
         </div>,
         document.body
       )}
+
+      {/* Master SSOT Assembler Modal */}
+      <ResumeSSOTAssemblerModal
+        isOpen={isSSOTAssemblerOpen}
+        existingResume={assemblerExistingResume}
+        onClose={() => {
+          setIsSSOTAssemblerOpen(false);
+          setAssemblerExistingResume(null);
+        }}
+        onAssembled={(saved) => {
+          loadData();
+          setActiveId(saved.id);
+          setActiveResumeId(saved.id);
+        }}
+      />
 
       {/* Global CSS for Flawless Native Print to PDF */}
       <style jsx global>{`

@@ -11,6 +11,17 @@
  * Fully user-scoped in local storage, mirroring target-roles.ts conventions.
  */
 
+import type {
+  PortfolioSSOT,
+  PortfolioCompany,
+  PortfolioProduct,
+  PortfolioProject,
+  MasterBullet,
+  PortfolioSkillCategory,
+  PortfolioEducation,
+} from './portfolio';
+import { formatISODateToDisplay } from './portfolio';
+
 export interface ResumeExperience {
   id: string;
   company: string;
@@ -806,6 +817,150 @@ export function exportResumeAsMarkdown(resume: ResumeProfile): string {
   }
 
   return md.trim();
+}
+
+// ============================================================================
+// SSOT Dynamic Multi-Resume Assembler Engine (Pillar 1 -> 6 Mapping)
+// ============================================================================
+
+export interface AssembleResumeConfig {
+  title?: string;
+  targetRoleType?: string;
+  versionLabel?: string;
+  selectedBulletIds?: string[];
+  selectedSkillCategories?: string[];
+  selectedProjectIds?: string[];
+  selectedEducationIds?: string[];
+  customSummary?: string;
+  customHeadline?: string;
+  includeEducation?: boolean;
+  includeProjects?: boolean;
+}
+
+export function assembleResumeFromPortfolioSSOT(
+  portfolio: PortfolioSSOT,
+  config?: AssembleResumeConfig
+): ResumeProfile {
+  const identity = portfolio.identity || {};
+  const fullName = identity.full_name || 'Software Engineer';
+  const targetRole = config?.targetRoleType || identity.headline || 'Senior Software Engineer';
+  const title = config?.title || `${fullName} — ${targetRole} (SSOT Assembled)`;
+  const versionLabel = config?.versionLabel || 'v1.0 (SSOT Assembled)';
+  const summary = config?.customSummary !== undefined ? config.customSummary : (portfolio.summary || '');
+
+  // 1. Filter / Map Skills
+  const categoryFilter = config?.selectedSkillCategories ? new Set(config.selectedSkillCategories) : null;
+  const skills: { category: string; items: string[] }[] = (portfolio.skills || [])
+    .filter((cat) => !categoryFilter || categoryFilter.has(cat.category))
+    .map((cat) => ({
+      category: cat.category,
+      items: Array.isArray(cat.items) ? [...cat.items] : [],
+    }));
+
+  // 2. Filter / Map Work Experience & Bullets
+  const bulletFilter = config?.selectedBulletIds ? new Set(config.selectedBulletIds) : null;
+  const experience: ResumeExperience[] = [];
+
+  for (const comp of portfolio.companies || []) {
+    const periodStart = comp.start_date ? formatISODateToDisplay(comp.start_date) : '';
+    const periodEnd = comp.is_current ? 'Present' : (comp.end_date ? formatISODateToDisplay(comp.end_date) : '');
+    const periodStr = periodStart && periodEnd ? `${periodStart} — ${periodEnd}` : (periodStart || periodEnd || 'Recent');
+
+    const products = comp.products && comp.products.length > 0 ? comp.products : [];
+    
+    if (products.length > 0) {
+      for (const prod of products) {
+        const prodBullets = (prod.bullets || [])
+          .filter((b) => !bulletFilter || bulletFilter.has(b.id))
+          .map((b) => b.bullet_text);
+
+        if (prodBullets.length > 0) {
+          experience.push({
+            id: `exp_${comp.id}_${prod.id}`,
+            company: comp.name,
+            role: prod.role_title || comp.role_title || targetRole,
+            period: periodStr,
+            location: comp.location || undefined,
+            productTitle: prod.name !== 'Core System & Product Line' ? prod.name : undefined,
+            bullets: prodBullets,
+          });
+        }
+      }
+    }
+
+    // Direct company bullets (if any)
+    const directBullets = (comp.bullets || [])
+      .filter((b) => !bulletFilter || bulletFilter.has(b.id))
+      .map((b) => b.bullet_text);
+
+    if (directBullets.length > 0 && (!products.length || !experience.some(e => e.company === comp.name))) {
+      experience.push({
+        id: `exp_${comp.id}_direct`,
+        company: comp.name,
+        role: comp.role_title || targetRole,
+        period: periodStr,
+        location: comp.location || undefined,
+        bullets: directBullets,
+      });
+    }
+  }
+
+  // 3. Filter / Map Projects
+  const projectFilter = config?.selectedProjectIds ? new Set(config.selectedProjectIds) : null;
+  const projects: ResumeProject[] = (config?.includeProjects !== false && portfolio.standalone_projects ? portfolio.standalone_projects : [])
+    .filter((pr) => !projectFilter || projectFilter.has(pr.id))
+    .map((pr) => ({
+      name: pr.name,
+      description: pr.headline || '',
+      link: pr.live_url || pr.repo_url || undefined,
+      bullets: (pr.bullets || [])
+        .filter((b) => !bulletFilter || bulletFilter.has(b.id))
+        .map((b) => b.bullet_text),
+    }));
+
+  // 4. Filter / Map Education
+  const eduFilter = config?.selectedEducationIds ? new Set(config.selectedEducationIds) : null;
+  const education: ResumeEducation[] = (config?.includeEducation !== false && portfolio.education ? portfolio.education : [])
+    .filter((edu) => !eduFilter || eduFilter.has(edu.id))
+    .map((edu) => {
+      const start = edu.start_date ? formatISODateToDisplay(edu.start_date) : '';
+      const end = edu.end_date ? formatISODateToDisplay(edu.end_date) : '';
+      const year = start && end ? `${start} — ${end}` : (end || start || undefined);
+      return {
+        institution: edu.institution,
+        degree: edu.degree + (edu.field_of_study ? ` (${edu.field_of_study})` : ''),
+        year,
+        coursework: Array.isArray(edu.bullets) && edu.bullets.length > 0 ? edu.bullets.join(', ') : undefined,
+      };
+    });
+
+  const diagnostic = runResumeDiagnostic(summary, experience, skills);
+
+  const now = new Date().toISOString();
+  return {
+    id: `res_ssot_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+    title,
+    targetRoleType: targetRole,
+    fullName,
+    email: identity.email || '',
+    phone: identity.phone || undefined,
+    location: identity.location || undefined,
+    githubUrl: identity.github_url || undefined,
+    linkedinUrl: identity.linkedin_url || undefined,
+    portfolioUrl: identity.portfolio_url || undefined,
+    summary,
+    skills,
+    experience,
+    education,
+    projects,
+    diagnostic,
+    isMasterCopy: false,
+    versionLabel,
+    sourceFileType: 'ssot_assembled',
+    sourceFileName: 'Master Portfolio SSOT',
+    createdAt: now,
+    updatedAt: now,
+  };
 }
 
 // ============================================================================

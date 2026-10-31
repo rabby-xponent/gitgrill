@@ -42,6 +42,7 @@ export interface PortfolioProduct {
   live_url?: string | null;
   tech_stack?: string[];
   display_order?: number;
+  role_title?: string | null;
   bullets?: MasterBullet[];
   created_at?: string;
   updated_at?: string;
@@ -74,6 +75,7 @@ export interface PortfolioProject {
   live_url?: string | null;
   tech_stack?: string[];
   display_order?: number;
+  role_title?: string | null;
   bullets?: MasterBullet[];
   created_at?: string;
   updated_at?: string;
@@ -524,7 +526,7 @@ export async function deleteCompany(id: string): Promise<void> {
  * Save / Update a Product
  */
 export async function saveProduct(
-  product: Partial<PortfolioProduct> & { company_id: string; name: string; role_title?: string; title?: string }
+  product: Partial<PortfolioProduct> & { company_id: string; name: string; role_title?: string | null; title?: string }
 ): Promise<PortfolioProduct> {
   const local = getLocalPortfolio();
   const parentCompany = local.companies.find((c) => c.id === product.company_id);
