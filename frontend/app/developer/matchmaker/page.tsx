@@ -10,6 +10,7 @@ function MatchmakerContent() {
   const searchParams = useSearchParams();
   const initialRoleId = searchParams.get('roleId') || undefined;
   const initialResumeId = searchParams.get('resumeId') || undefined;
+  const initialCompareId = searchParams.get('compareId') || undefined;
 
   return (
     <div className="mx-auto max-w-7xl space-y-8 px-4 pt-6 sm:pt-8 sm:px-6">
@@ -17,6 +18,7 @@ function MatchmakerContent() {
       <JDResumeMatchmaker
         initialRoleId={initialRoleId}
         initialResumeId={initialResumeId}
+        initialCompareId={initialCompareId}
         onNavigateToRole={(rId) => {
           router.push(`/developer?roleId=${encodeURIComponent(rId)}`);
         }}
