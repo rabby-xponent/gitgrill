@@ -11,12 +11,14 @@ import {
   PortfolioIdentity,
   PortfolioSkillCategory,
   PortfolioEducation,
+  PortfolioSSOT,
   saveCompany,
   saveProduct,
   saveProject,
   saveBullet,
   saveIdentity,
   saveSummary,
+  synthesizeSummary,
   saveSkills,
   saveEducation,
   deleteEducation,
@@ -75,6 +77,8 @@ export type DrawerEntity =
   | {
       type: 'summary';
       summary?: string;
+      autoSynthesize?: boolean;
+      portfolioContext?: PortfolioSSOT;
     }
   | {
       type: 'skills';
@@ -103,7 +107,7 @@ const ARCHITECTURE_OPTIONS: SelectOption[] = [
   { value: 'Serverless / Cloud-Native Functions', label: 'Serverless / Cloud-Native Functions', description: 'Lambda, Step Functions, DynamoDB event triggers' },
   { value: 'Full-Stack Web Application', label: 'Full-Stack Web Application', description: 'Next.js, React, Node.js SSR/Edge compute' },
   { value: 'Developer Tools & Automation Engine', label: 'Developer Tools & Automation Engine', description: 'CRON automation, test harnesses, code generators' },
-  { value: '__custom__', label: '✏️ Custom / Freeform Archetype…', description: 'Type any custom architecture style or engineering paradigm' },
+  { value: '__custom__', label: 'Custom / Freeform Archetype…', description: 'Type any custom architecture style or engineering paradigm' },
 ];
 
 const REVIEW_STATUS_OPTIONS: Array<{ value: MasterBullet['review_status']; label: string; dotColor: string; description: string }> = [
@@ -287,6 +291,8 @@ export function PortfolioDrawer({ entity, onClose, onSaved, onDeleteRequest }: P
         {currentEntity.type === 'summary' && (
           <SummaryDrawerContent
             summary={currentEntity.summary}
+            autoSynthesize={currentEntity.autoSynthesize}
+            portfolioContext={currentEntity.portfolioContext}
             onClose={onClose}
             onSaved={onSaved}
           />
@@ -2050,19 +2056,53 @@ function IdentityDrawerContent({
    ========================================================================== */
 function SummaryDrawerContent({
   summary,
+  autoSynthesize,
+  portfolioContext,
   onClose,
   onSaved,
 }: {
   summary?: string;
+  autoSynthesize?: boolean;
+  portfolioContext?: PortfolioSSOT;
   onClose: () => void;
   onSaved: () => Promise<void>;
 }) {
   const [text, setText] = useState(summary || '');
+  const [customPrompt, setCustomPrompt] = useState('');
+  const [synthesizing, setSynthesizing] = useState(false);
+  const [synthSuccess, setSynthSuccess] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
   const wordCount = text.trim() ? text.trim().split(/\s+/).length : 0;
   const charCount = text.length;
+
+  const handleSynthesize = async (promptOverride?: string) => {
+    setError('');
+    setSynthesizing(true);
+    setSynthSuccess(false);
+    try {
+      const promptToUse = promptOverride !== undefined ? promptOverride : customPrompt;
+      const result = await synthesizeSummary({
+        prompt: promptToUse,
+        portfolioContext,
+      });
+      if (result) {
+        setText(result);
+        setSynthSuccess(true);
+      }
+    } catch (err: any) {
+      setError(err?.message || 'Failed to synthesize summary with AI.');
+    } finally {
+      setSynthesizing(false);
+    }
+  };
+
+  useEffect(() => {
+    if (autoSynthesize && !summary) {
+      handleSynthesize();
+    }
+  }, []);
 
   useEffect(() => {
     const handleSaveShortcut = (e: KeyboardEvent) => {
@@ -2089,6 +2129,14 @@ function SummaryDrawerContent({
       setSaving(false);
     }
   };
+
+  const PRESET_VIBES = [
+    'Distributed Systems & Backend Scale',
+    'Full-Stack & Real-Time Streaming',
+    'Cloud Infrastructure & DevOps',
+    'Product Engineering & Systems',
+    'Engineering Leadership & Architecture',
+  ];
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
@@ -2126,8 +2174,120 @@ function SummaryDrawerContent({
           </div>
         )}
 
+        {/* AI Career Narrative Synthesizer Card */}
+        <div className="rounded-xl border border-edge/80 bg-well/40 p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="flex h-5 w-5 items-center justify-center rounded-md bg-signal/15 text-signal">
+                <Icon.Sparkle className="h-3.5 w-3.5" />
+              </span>
+              <span className="font-mono text-xs font-bold text-content">
+                AI Career Narrative Synthesizer
+              </span>
+              <span className="rounded bg-surface text-muted px-1.5 py-0.2 text-[9px] font-mono font-medium uppercase tracking-wider border border-edge/70">
+                Context-Aware
+              </span>
+            </div>
+            {synthesizing && (
+              <span className="inline-flex items-center gap-1.5 text-xs font-mono text-signal">
+                <Icon.Spinner className="h-3.5 w-3.5 animate-spin" />
+                <span>Generating...</span>
+              </span>
+            )}
+          </div>
+
+          <p className="text-xs font-sans text-muted leading-relaxed">
+            Synthesizes an authoritative 50–75 word narrative grounded in your verified companies, products, master bullets, and technical skills.
+          </p>
+
+          {/* Custom Prompt / Vibe Input */}
+          <div className="space-y-2.5">
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                value={customPrompt}
+                onChange={(e) => setCustomPrompt(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleSynthesize();
+                  }
+                }}
+                placeholder="Custom focus or technical angle (e.g. distributed backend scale, AWS, realtime streaming)..."
+                className="flex-1 rounded-lg border border-edge bg-surface px-3 py-1.5 text-xs font-mono text-content placeholder:text-muted/60 focus:border-signal outline-none"
+              />
+              <button
+                type="button"
+                onClick={() => handleSynthesize()}
+                disabled={synthesizing}
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-signal hover:bg-signal-hover text-surface text-xs font-mono font-bold transition-all shadow-xs cursor-pointer disabled:opacity-50 shrink-0"
+              >
+                {synthesizing ? (
+                  <>
+                    <Icon.Spinner className="h-3.5 w-3.5 animate-spin" />
+                    <span>Synthesizing...</span>
+                  </>
+                ) : (
+                  <>
+                    <Icon.Sparkle className="h-3.5 w-3.5" />
+                    <span>{text.trim() ? 'Re-Synthesize' : 'Synthesize'}</span>
+                  </>
+                )}
+              </button>
+            </div>
+
+            {/* Preset Vibe Chips */}
+            <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
+              <span className="text-[10px] font-mono text-muted uppercase tracking-wider mr-1">Suggested Angles:</span>
+              {PRESET_VIBES.map((vibe) => (
+                <button
+                  key={vibe}
+                  type="button"
+                  onClick={() => {
+                    setCustomPrompt(vibe);
+                    handleSynthesize(vibe);
+                  }}
+                  className={`text-[11px] font-mono px-2 py-0.5 rounded border transition-colors cursor-pointer ${
+                    customPrompt === vibe
+                      ? 'bg-signal/15 text-signal border-signal/40 font-semibold'
+                      : 'border-edge bg-card hover:bg-surface text-muted hover:text-content'
+                  }`}
+                >
+                  {vibe}
+                </button>
+              ))}
+              {customPrompt && (
+                <button
+                  type="button"
+                  onClick={() => setCustomPrompt('')}
+                  className="text-[10px] font-mono text-muted hover:text-red-500 cursor-pointer underline ml-1"
+                >
+                  Clear angle
+                </button>
+              )}
+            </div>
+          </div>
+
+          {synthSuccess && (
+            <div className="rounded-lg border border-emerald-500/25 bg-emerald-500/10 p-2.5 text-xs font-sans text-emerald-500 flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 min-w-0">
+                <Icon.Check className="h-3.5 w-3.5 shrink-0 text-emerald-500" />
+                <span className="truncate">Synthesized with AI using your verified engineering accomplishments. Review and edit copy below.</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSynthSuccess(false)}
+                className="text-emerald-500 hover:text-emerald-400 p-0.5 cursor-pointer shrink-0"
+                aria-label="Dismiss notification"
+              >
+                <Icon.X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          )}
+        </div>
+
         <div className="flex items-center justify-between text-xs font-mono text-muted">
-          <span>Positioning Statement</span>
+          <span>Positioning Statement Copy</span>
           <span className="flex items-center gap-2">
             <span className={wordCount >= 40 && wordCount <= 90 ? 'text-emerald-500 font-bold' : 'text-muted'}>
               {wordCount} words
@@ -2138,7 +2298,7 @@ function SummaryDrawerContent({
         </div>
 
         <TextArea
-          rows={10}
+          rows={9}
           value={text}
           onChange={(e) => setText(e.target.value)}
           placeholder="I work across the frontend, backend, and data layers to develop features, solve system-level problems, and keep software products reliable. My experience includes WebSocket-based AI chat and streaming, backend service migrations, asynchronous job processing, and multi-tenant SaaS applications..."
@@ -2163,9 +2323,17 @@ function SummaryDrawerContent({
 
       {/* Footer */}
       <div className="px-6 py-4 border-t border-edge/80 bg-surface/70 backdrop-blur-md shrink-0 flex items-center justify-between gap-3">
-        <span className="text-[11px] font-mono text-muted hidden sm:inline">
-          Esc to cancel · ⌘S to save
-        </span>
+        <div className="flex items-center gap-2">
+          {text.trim() && (
+            <button
+              type="button"
+              onClick={() => setText('')}
+              className="text-muted hover:text-red-500 text-xs font-mono cursor-pointer underline"
+            >
+              Clear Text
+            </button>
+          )}
+        </div>
         <div className="flex items-center gap-2 ml-auto">
           <button
             type="button"

@@ -57,7 +57,7 @@ const ARCHITECTURE_OPTIONS: SelectOption[] = [
   { value: 'Serverless / Cloud-Native Functions', label: 'Serverless / Cloud-Native Functions', description: 'Lambda, Step Functions, DynamoDB event triggers' },
   { value: 'Full-Stack Web Application', label: 'Full-Stack Web Application', description: 'Next.js, React, Node.js SSR/Edge compute' },
   { value: 'Developer Tools & CLI Engine', label: 'Developer Tools & CLI Engine', description: 'Developer productivity tools, code generators' },
-  { value: '__custom__', label: '✏️ Custom / Freeform Archetype…', description: 'Type any custom architecture style or engineering paradigm' },
+  { value: '__custom__', label: 'Custom / Freeform Archetype…', description: 'Type any custom architecture style or engineering paradigm' },
 ];
 
 const REVIEW_STATUS_OPTIONS: SelectOption[] = [
@@ -577,8 +577,8 @@ export function PortfolioHub() {
           <div className="mt-5 rounded-2xl border border-signal/30 bg-signal/5 p-4 sm:p-5 relative animate-in fade-in slide-in-from-top-2 duration-200">
             <div className="flex items-center justify-between pb-3 border-b border-signal/20">
               <div className="flex items-center gap-2">
-                <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-signal/15 text-signal font-mono text-xs font-bold">
-                  ⚡
+                <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-signal/15 text-signal">
+                  <Icon.Zap className="h-3.5 w-3.5" />
                 </span>
                 <span className="font-mono text-xs font-bold uppercase tracking-wider text-content">
                   Portfolio Superpowers — How Your Master SSOT Powers Your Career
@@ -838,20 +838,20 @@ export function PortfolioHub() {
                     Pillar 1 · Identity & Positioning
                   </span>
                   {portfolio.identity?.location && (
-                    <span className="text-[11px] font-mono text-muted flex items-center gap-1">
-                      <span>📍</span>
+                    <span className="text-[11px] font-mono text-muted flex items-center gap-1.5">
+                      <Icon.Globe className="h-3 w-3 text-muted/70" />
                       <span>{portfolio.identity.location}</span>
                     </span>
                   )}
                   {portfolio.identity?.email && (
-                    <span className="text-[11px] font-mono text-muted flex items-center gap-1">
-                      <span>✉️</span>
+                    <span className="text-[11px] font-mono text-muted flex items-center gap-1.5">
+                      <Icon.Mail className="h-3 w-3 text-muted/70" />
                       <span>{portfolio.identity.email}</span>
                     </span>
                   )}
                   {portfolio.identity?.phone && (
-                    <span className="text-[11px] font-mono text-muted flex items-center gap-1">
-                      <span>📞</span>
+                    <span className="text-[11px] font-mono text-muted flex items-center gap-1.5">
+                      <Icon.User className="h-3 w-3 text-muted/70" />
                       <span>{portfolio.identity.phone}</span>
                     </span>
                   )}
@@ -946,9 +946,9 @@ export function PortfolioHub() {
                     )}
                     <button
                       type="button"
-                      onClick={() => setActiveDrawer({ type: 'summary', summary: portfolio.summary })}
+                      onClick={() => setActiveDrawer({ type: 'summary', summary: portfolio.summary, portfolioContext: portfolio })}
                       className="p-1 text-muted hover:text-signal rounded transition-colors cursor-pointer"
-                      title="Edit Professional Summary"
+                      title="Edit / Synthesize Professional Summary"
                     >
                       <Icon.Pencil className="h-3.5 w-3.5" />
                     </button>
@@ -960,18 +960,29 @@ export function PortfolioHub() {
                     {portfolio.summary}
                   </p>
                 ) : (
-                  <div className="rounded-lg border border-dashed border-edge/80 p-4 text-center space-y-2">
+                  <div className="rounded-lg border border-dashed border-edge/80 p-4 text-center space-y-2.5">
                     <p className="text-xs font-sans text-muted">
-                      No career positioning statement added yet. Craft a 50-word narrative summarizing your engineering focus.
+                      No career positioning statement added yet. Craft an authoritative 50-word narrative summarizing your engineering focus.
                     </p>
-                    <button
-                      type="button"
-                      onClick={() => setActiveDrawer({ type: 'summary', summary: '' })}
-                      className="inline-flex items-center gap-1.5 text-xs font-mono font-bold text-signal hover:underline cursor-pointer"
-                    >
-                      <Icon.Plus className="h-3 w-3" />
-                      <span>Write Summary</span>
-                    </button>
+                    <div className="flex items-center justify-center gap-2.5 pt-1">
+                      <button
+                        type="button"
+                        onClick={() => setActiveDrawer({ type: 'summary', summary: '', portfolioContext: portfolio })}
+                        className="inline-flex items-center gap-1.5 text-xs font-mono font-bold text-signal hover:underline cursor-pointer"
+                      >
+                        <Icon.Plus className="h-3 w-3" />
+                        <span>Write Summary</span>
+                      </button>
+                      <span className="text-muted text-xs">•</span>
+                      <button
+                        type="button"
+                        onClick={() => setActiveDrawer({ type: 'summary', summary: '', autoSynthesize: true, portfolioContext: portfolio })}
+                        className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-mono font-bold bg-signal/15 text-signal hover:bg-signal/25 border border-signal/30 transition-all cursor-pointer shadow-xs"
+                      >
+                        <Icon.Sparkle className="h-3.5 w-3.5" />
+                        <span>Synthesize with AI</span>
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>
@@ -981,10 +992,11 @@ export function PortfolioHub() {
                   <span className="text-[10px] uppercase tracking-wider text-muted/80">Living Career Narrative</span>
                   <button
                     type="button"
-                    onClick={() => setActiveDrawer({ type: 'summary', summary: portfolio.summary })}
-                    className="text-signal hover:underline font-bold text-[11px] cursor-pointer"
+                    onClick={() => setActiveDrawer({ type: 'summary', summary: portfolio.summary, portfolioContext: portfolio })}
+                    className="text-signal hover:underline font-bold text-[11px] cursor-pointer inline-flex items-center gap-1"
                   >
-                    Edit Narrative →
+                    <span>Edit Narrative</span>
+                    <span>→</span>
                   </button>
                 </div>
               )}
@@ -3140,7 +3152,7 @@ function BulletEditModal({
                             : 'border-edge bg-surface/60 hover:border-signal/40 hover:text-signal text-muted'
                         }`}
                       >
-                        {isSelected ? `✓ ${tech}` : `+${tech}`}
+                        {isSelected ? tech : `+${tech}`}
                       </button>
                     );
                   })}
@@ -3277,7 +3289,7 @@ function ResumeImportModal({
         githubUrl: parsed.githubUrl || '',
         linkedinUrl: parsed.linkedinUrl || '',
         portfolioUrl: parsed.portfolioUrl || '',
-        summary: parsed.summary || `Master copy uploaded from ${file.name}`,
+        summary: parsed.summary || '',
         skills: parsed.skills && parsed.skills.length > 0 ? parsed.skills : [{ category: 'Core Stack', items: ['TypeScript', 'Go', 'PostgreSQL', 'Docker', 'AWS'] }],
         experience: parsed.experience && parsed.experience.length > 0 ? parsed.experience : [],
         education: parsed.education || [],

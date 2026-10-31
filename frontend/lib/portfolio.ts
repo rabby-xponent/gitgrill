@@ -1064,6 +1064,69 @@ export async function saveSummary(summary: string): Promise<string> {
   return summary;
 }
 
+function generateLocalDeterministicSummary(prompt?: string, context?: PortfolioSSOT): string {
+  const role = context?.identity?.headline || 'Software Engineer';
+  const skillsList: string[] = [];
+  if (context?.skills) {
+    for (const c of context.skills) {
+      if (Array.isArray(c.items)) skillsList.push(...c.items);
+    }
+  }
+  const topSkills = skillsList.slice(0, 5).join(', ') || 'distributed systems, modern APIs, and cloud infrastructure';
+  const firstCompany = context?.companies?.[0]?.name ? ` across teams including ${context.companies[0].name}` : '';
+  const pLower = (prompt || '').toLowerCase();
+
+  if (pLower.includes('lead') || pLower.includes('architect') || pLower.includes('staff')) {
+    return `Lead ${role} with extensive experience architecting dependable distributed systems and high-throughput services${firstCompany}. Proficient across ${topSkills}, with a strong focus on technical leadership, scalable architecture trade-offs, and shipping mission-critical infrastructure under real-world constraints.`;
+  }
+  if (pLower.includes('scale') || pLower.includes('distributed') || pLower.includes('backend')) {
+    return `${role} specializing in distributed backend architectures, high-concurrency microservices, and high-availability systems${firstCompany}. Proven expertise spanning ${topSkills}, with rigorous attention to low-latency performance, operational resilience, and automated zero-downtime delivery.`;
+  }
+  if (pLower.includes('frontend') || pLower.includes('full-stack') || pLower.includes('full stack') || pLower.includes('web')) {
+    return `Full-stack ${role} experienced in designing resilient end-to-end architectures, high-performance web applications, and real-time streaming services${firstCompany}. Hands-on across ${topSkills}, delivering dependable user experiences backed by robust API contracts and reliable asynchronous processing.`;
+  }
+  if (pLower.includes('cloud') || pLower.includes('aws') || pLower.includes('devops') || pLower.includes('infra')) {
+    return `Systems & Cloud ${role} experienced in provisioning resilient cloud infrastructure, CI/CD pipelines, and high-throughput containerized services${firstCompany}. Hands-on across ${topSkills}, with deep focus on reliability, automated disaster recovery, and operational dependability.`;
+  }
+
+  return `${role} experienced in building robust software systems, high-throughput microservices, and reliable cloud workflows${firstCompany}. Hands-on technical background spanning ${topSkills}, with deep commitment to operational dependability, clean architectural boundaries, and solving complex production problems.`;
+}
+
+/**
+ * Synthesize an authoritative 50-75 word executive summary using AI + Developer Context
+ */
+export async function synthesizeSummary(options?: {
+  prompt?: string;
+  portfolioContext?: PortfolioSSOT;
+}): Promise<string> {
+  const context = options?.portfolioContext || getLocalPortfolio();
+  const headers = await authHeaders();
+
+  try {
+    const res = await fetch(`${API_URL}/api/portfolio/synthesize-summary`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        ...(headers.Authorization ? headers : {}),
+      },
+      body: JSON.stringify({
+        prompt: options?.prompt,
+        portfolioContext: context,
+      }),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data.summary && typeof data.summary === 'string') {
+        return data.summary.trim();
+      }
+    }
+  } catch (err) {
+    console.warn('[portfolio] Remote synthesizeSummary failed, generating locally', err);
+  }
+
+  return generateLocalDeterministicSummary(options?.prompt, context);
+}
+
 /**
  * Save / Update Categorized Skills Matrix in SSOT
  */

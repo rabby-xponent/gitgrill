@@ -716,6 +716,35 @@ pie title Roadmap Milestone Status
   - `npm --prefix backend run build`: Exited 0 (TypeScript compilation clean).
   - `npm --prefix frontend run build`: Exited 0 (Next.js statically compiled all 16 routes with 0 errors).
 
+---
+
+### Milestone 37 — Professional Summary Zero-Default Fix & Context-Aware AI Career Narrative Synthesizer 🟢
+
+* **Current Status:** Fully implemented and verified across backend (`tsc` 0 errors) and frontend (`next build` 16/16 routes 0 errors).
+* **1. Zero-Default Summary Fix ([`resumes.ts`](file:///e:/rabby-xponent/Projects/devscope/frontend/lib/resumes.ts) & [`PortfolioHub.tsx`](file:///e:/rabby-xponent/Projects/devscope/frontend/components/PortfolioHub.tsx)):**
+  - Removed the hardcoded placeholder string (`"Full-stack software engineer experienced in building robust..."`) from `identifyResumeSections` in `frontend/lib/resumes.ts`.
+  - Resumes uploaded without an explicit summary section now cleanly evaluate to empty string `""`.
+  - Updated `PortfolioHub.tsx` so uploaded resumes with absent summaries show the clean `+ Write Summary` / `✨ Synthesize with AI` card state instead of phantom copy.
+* **2. AI Career Narrative Synthesizer Endpoint ([`portfolio.routes.ts`](file:///e:/rabby-xponent/Projects/devscope/backend/src/portfolio/portfolio.routes.ts)):**
+  - Added `POST /api/portfolio/synthesize-summary` mounted with `attachAuth`.
+  - Synthesizes high-density 45–80 word 3-beat narratives (Beat 1: Technical Archetype, Beat 2: Concrete Engineering Challenges with Stack, Beat 3: Production Dependability).
+  - Explicitly forbids generic fluff/clichés ("results-driven", "passionate team player", "proven track record").
+  - Dynamically incorporates optional user vibe/focus instructions (e.g. "Senior distributed backend, AWS, high throughput") seamlessly on top of verified company and tech stack signals.
+  - Includes calibrated deterministic fallback generator for offline or non-API-key testing environments.
+* **3. Client Synthesis Engine & Interactive Drawer Panel ([`portfolio.ts`](file:///e:/rabby-xponent/Projects/devscope/frontend/lib/portfolio.ts) & [`PortfolioDrawer.tsx`](file:///e:/rabby-xponent/Projects/devscope/frontend/components/PortfolioDrawer.tsx)):**
+  - Added `synthesizeSummary(options)` in `frontend/lib/portfolio.ts` communicating with the backend route and falling back locally if unreachable.
+  - Integrated AI Synthesis Card inside `SummaryDrawerContent`:
+    * Optional custom prompt/vibe input with Enter-to-synthesize.
+    * 1-click Preset Vibe chips (`Distributed Systems & Backend Scale`, `Full-Stack & Real-Time Streaming`, `Cloud Infrastructure & DevOps`, `Product Engineering & Systems`, `Engineering Leadership & Architecture`).
+    * Zero colorful emojis: strictly uses crisp SVG icons (`Icon.Sparkle`, `Icon.Check`, `Icon.X`, `Icon.Globe`, `Icon.Mail`, `Icon.User`) matching Linear/Vercel design standards.
+    * Clear Angle and Clear Text actions.
+    * Live word count, character count, and dismissable confirmation badge.
+* **4. Hub UI Card Integration ([`PortfolioHub.tsx`](file:///e:/rabby-xponent/Projects/devscope/frontend/components/PortfolioHub.tsx)):**
+  - Empty state presents clean, professional dual actions: `+ Write Summary` and `Synthesize with AI`.
+  - Replaced all colorful emoji markers in Candidate Identity header (`📍`, `✉️`, `📞`) and capabilities banner (`⚡`) with monochrome SVG glyphs.
+  - Populated state provides quick edit & AI trigger opening the drawer with full portfolio context ready for immediate custom steering and re-synthesis.
+
+
 
 
 

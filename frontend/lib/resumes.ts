@@ -1584,11 +1584,11 @@ export function parseUploadedResumeText(rawText: string, fileName?: string): Par
   // 3. Extract Identified Sections
   const identifiedSections = identifyResumeSections(rawText);
 
-  // 4. Extract Summary
+  // 4. Extract Summary (empty if absent in source resume)
   const summarySec = identifiedSections.find((s) => s.type === 'summary' && s.title !== 'Contact & Profile');
   const summary = summarySec
-    ? summarySec.rawContent
-    : 'Full-stack software engineer experienced in building robust web applications and distributed backend architectures.';
+    ? summarySec.rawContent.trim()
+    : '';
 
   // 5. Extract Multi-Role Work Experience & Divert any leaked Education entries
   const expSections = identifiedSections.filter((s) => s.type === 'experience');

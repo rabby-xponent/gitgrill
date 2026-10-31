@@ -11,7 +11,8 @@
 
 import { Router, Request, Response } from 'express';
 import { getAdmin, isDbConfigured } from '../db/supabase';
-import { requireAuth } from '../auth/middleware';
+import { requireAuth, attachAuth } from '../auth/middleware';
+import { LLMGateway } from '../llm/llm-gateway';
 
 const router = Router();
 
@@ -1177,5 +1178,135 @@ router.delete('/education/:id', requireAuth, async (req: Request, res: Response)
 
 router.post('/import-resume', requireAuth, handleImportResume);
 router.post('/bootstrap-from-resume', requireAuth, handleImportResume);
+
+function generateFallbackSummary(params: {
+  headline?: string;
+  skills?: string[];
+  companies?: string[];
+  userPrompt?: string;
+}): string {
+  const role = params.headline || 'Software Engineer';
+  const skillsStr = params.skills && params.skills.length > 0
+    ? params.skills.slice(0, 5).join(', ')
+    : 'distributed systems, modern APIs, and cloud infrastructure';
+  const compStr = params.companies?.[0] ? ` across organizations including ${params.companies[0]}` : '';
+
+  const promptLower = (params.userPrompt || '').toLowerCase();
+
+  if (promptLower.includes('lead') || promptLower.includes('architect') || promptLower.includes('staff')) {
+    return `Lead ${role} with extensive experience architecting dependable distributed systems and high-throughput services${compStr}. Proficient across ${skillsStr}, with a strong focus on technical leadership, scalable architecture trade-offs, and shipping mission-critical infrastructure under real-world constraints.`;
+  }
+  if (promptLower.includes('scale') || promptLower.includes('distributed') || promptLower.includes('backend')) {
+    return `${role} specializing in distributed backend architectures, high-concurrency microservices, and high-availability systems${compStr}. Proven expertise spanning ${skillsStr}, with rigorous attention to low-latency performance, operational resilience, and automated zero-downtime delivery.`;
+  }
+  if (promptLower.includes('frontend') || promptLower.includes('full-stack') || promptLower.includes('full stack') || promptLower.includes('web')) {
+    return `Full-stack ${role} experienced in designing resilient end-to-end architectures, high-performance web applications, and real-time streaming services${compStr}. Hands-on across ${skillsStr}, delivering dependable user experiences backed by robust API contracts and reliable asynchronous processing.`;
+  }
+  if (promptLower.includes('cloud') || promptLower.includes('aws') || promptLower.includes('devops') || promptLower.includes('infra')) {
+    return `Systems & Cloud ${role} experienced in provisioning resilient cloud infrastructure, CI/CD pipelines, and high-throughput containerized services${compStr}. Hands-on across ${skillsStr}, with deep focus on reliability, automated disaster recovery, and operational dependability.`;
+  }
+
+  return `${role} experienced in building robust software systems, high-throughput microservices, and reliable cloud workflows${compStr}. Hands-on technical background spanning ${skillsStr}, with deep commitment to operational dependability, clean architectural boundaries, and solving complex production problems.`;
+}
+
+// ---------------------------------------------------------------------------
+// 10. POST /api/portfolio/synthesize-summary — AI Career Narrative Generator
+// ---------------------------------------------------------------------------
+router.post('/synthesize-summary', attachAuth, async (req: Request, res: Response) => {
+  const { prompt: userCustomPrompt, portfolioContext } = req.body || {};
+
+  let headline = portfolioContext?.identity?.headline || '';
+  let candidateName = portfolioContext?.identity?.full_name || '';
+  let topSkills: string[] = [];
+  let topCompanies: string[] = [];
+  let topBullets: string[] = [];
+
+  if (Array.isArray(portfolioContext?.skills)) {
+    for (const cat of portfolioContext.skills) {
+      if (Array.isArray(cat.items)) {
+        topSkills.push(...cat.items);
+      }
+    }
+  }
+
+  if (Array.isArray(portfolioContext?.companies)) {
+    for (const comp of portfolioContext.companies) {
+      if (comp.name) {
+        topCompanies.push(comp.role_title ? `${comp.role_title} at ${comp.name}` : comp.name);
+      }
+      if (Array.isArray(comp.products)) {
+        for (const prod of comp.products) {
+          if (Array.isArray(prod.tech_stack)) topSkills.push(...prod.tech_stack);
+          if (Array.isArray(prod.bullets)) {
+            for (const b of prod.bullets) {
+              if (b.bullet_text) topBullets.push(b.bullet_text);
+            }
+          }
+        }
+      }
+    }
+  }
+
+  topSkills = Array.from(new Set(topSkills.filter(Boolean))).slice(0, 15);
+
+  const contextData = {
+    candidateName: candidateName || undefined,
+    targetHeadline: headline || 'Software Engineer',
+    topCompanies: topCompanies.slice(0, 4),
+    topSkills,
+    notableAccomplishments: topBullets.slice(0, 6),
+  };
+
+  const systemPrompt = `You are GitGrill's Principal Engineering Career Architect.
+Your task is to write a high-density, authoritative 50–75 word professional executive summary for a software engineer's master resume and portfolio.
+
+CRITICAL INSTRUCTIONS:
+1. Target length: EXACTLY 45 to 80 words.
+2. ABSOLUTELY NO empty buzzwords, filler, or clichés. DO NOT use words like "results-driven", "passionate team player", "proven track record", "dynamic", "hardworking", "demonstrated history", or "skilled professional".
+3. Structure in a tight 3-beat rhythm:
+   - Beat 1: Core technical archetype and system scope (e.g. distributed microservices, full-stack systems, low-latency streaming, cloud infrastructure).
+   - Beat 2: Concrete technical challenges mastered with specific technologies and tools from their portfolio (mention key stacks like AWS, C++, Python, TypeScript, Docker, etc.).
+   - Beat 3: Production dependability, scale, and operational rigor.
+4. Custom User Direction/Vibe:
+   ${userCustomPrompt && typeof userCustomPrompt === 'string' && userCustomPrompt.trim()
+     ? `The developer has provided this custom vibe/focus: "${userCustomPrompt.trim()}". Prioritize and incorporate this angle seamlessly while remaining strictly grounded in their real portfolio facts.`
+     : 'Standard authoritative engineering positioning calibrated to their highest-leverage skills and experience.'}
+5. Return ONLY the plain text paragraph. Do NOT add quotes, markdown formatting, or conversational preambles like "Here is your summary:".`;
+
+  let synthesizedSummary = '';
+  try {
+    const gateway = new LLMGateway();
+    const completion = await gateway.complete(
+      {
+        messages: [
+          { role: 'system', content: systemPrompt },
+          {
+            role: 'user',
+            content: `Please synthesize the executive summary using the following candidate context:\n${JSON.stringify(contextData, null, 2)}`,
+          },
+        ],
+        max_tokens: 280,
+      },
+      () => {}
+    );
+    const rawContent = completion.choices?.[0]?.message?.content?.trim();
+    if (rawContent) {
+      synthesizedSummary = rawContent.replace(/^["']|["']$/g, '').trim();
+    }
+  } catch (llmErr: any) {
+    console.warn('[portfolio] Upstream LLM gateway synthesis failed or unconfigured, using deterministic generator:', llmErr?.message);
+  }
+
+  if (!synthesizedSummary) {
+    synthesizedSummary = generateFallbackSummary({
+      headline,
+      skills: topSkills,
+      companies: topCompanies,
+      userPrompt: userCustomPrompt,
+    });
+  }
+
+  res.json({ ok: true, summary: synthesizedSummary });
+});
 
 export default router;
