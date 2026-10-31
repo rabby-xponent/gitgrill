@@ -808,6 +808,28 @@ pie title Roadmap Milestone Status
 * **7. Interactive Multi-Resume Leaderboard:**
   - Full leaderboard ranking all vault resumes against the target JD with instant `Set A` and `Compare B` 1-click benchmarking triggers.
 
+---
+
+### Milestone 40 — Reusable Icon-Based Checkbox Component & Universal Design System Migration 🟢
+
+* **Current Status:** Fully implemented and verified across frontend (`next build` 16/16 static routes 0 errors) and backend (`tsc` 0 errors).
+* **1. Common Checkbox Component ([`checkbox.tsx`](file:///e:/rabby-xponent/Projects/devscope/frontend/components/common/checkbox.tsx)):**
+  - Built reusable, icon-based checkbox powered by `lucide-react` (`Square`, `CheckSquare`, `MinusSquare`).
+  - Supports `checked`, `indeterminate` (for partial/mixed selection), `disabled`, `size` (`sm`, `md`, `lg`), `title`, and optional `label` / `description` slots.
+  - Calibrated with app brand tokens:
+    * `checkedColor`: defaults to `text-signal` (brand accent).
+    * `uncheckedColor`: defaults to `text-muted/50 group-hover:text-muted`.
+    * Hover background: `hover:bg-well/80` with dark-mode calibration.
+* **2. UI Design System Layer Alignment ([`ui.tsx`](file:///e:/rabby-xponent/Projects/devscope/frontend/components/ui.tsx)):**
+  - Re-exported `Checkbox` and `CheckboxProps` from `@/components/common/checkbox` through `@/components/ui`.
+  - Automatically upgraded existing pages (`/admin/billing`, `/recruiter`, `JobCandidatePipelineModal`, `PortfolioDrawer`, `ResumeVault`).
+* **3. Complete Elimination of Primitive Browser Inputs:**
+  - Upgraded [`ResumeSSOTAssemblerModal.tsx`](file:///e:/rabby-xponent/Projects/devscope/frontend/components/ResumeSSOTAssemblerModal.tsx):
+    * Replaced native inputs across Summary toggle, Skill Categories, Company bulk selection (with `indeterminate` state), Master Bullets, Standalone Projects, and Academic Credentials.
+  - Upgraded [`PortfolioHub.tsx`](file:///e:/rabby-xponent/Projects/devscope/frontend/components/PortfolioHub.tsx) import modal "clean slate" option.
+  - Zero raw `<input type="checkbox">` elements remaining in the codebase.
+
+
 
 
 

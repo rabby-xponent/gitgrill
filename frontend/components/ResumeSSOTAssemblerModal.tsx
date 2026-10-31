@@ -16,7 +16,7 @@ import {
   assembleResumeFromPortfolioSSOT,
   saveResume,
 } from '@/lib/resumes';
-import { FormField, TextInput, TextArea, Select, type SelectOption } from '@/components/ui';
+import { FormField, TextInput, TextArea, Select, Checkbox, type SelectOption } from '@/components/ui';
 
 interface ResumeSSOTAssemblerModalProps {
   isOpen: boolean;
@@ -331,15 +331,11 @@ export function ResumeSSOTAssemblerModal({
                     <span className="text-signal">02</span>
                     <span>Identity Header & Professional Summary</span>
                   </div>
-                  <label className="flex items-center gap-2 cursor-pointer text-xs font-mono text-muted">
-                    <input
-                      type="checkbox"
-                      checked={includeSummary}
-                      onChange={(e) => setIncludeSummary(e.target.checked)}
-                      className="rounded border-edge text-signal focus:ring-signal"
-                    />
-                    <span>Include Summary</span>
-                  </label>
+                  <Checkbox
+                    checked={includeSummary}
+                    onChange={setIncludeSummary}
+                    label="Include Summary"
+                  />
                 </div>
 
                 <div className="text-xs font-mono text-muted flex items-center gap-3 flex-wrap">
@@ -387,12 +383,10 @@ export function ResumeSSOTAssemblerModal({
                               : 'border-edge/50 bg-card/40 opacity-50'
                           }`}
                         >
-                          <div className="flex items-center gap-2.5">
-                            <input
-                              type="checkbox"
+                          <div className="flex items-center gap-2">
+                            <Checkbox
                               checked={isSelected}
                               onChange={() => handleToggleCategory(cat.category)}
-                              className="rounded border-edge text-signal focus:ring-signal pointer-events-none"
                             />
                             <span className="font-mono text-xs font-bold text-content">
                               {cat.category}:
@@ -465,7 +459,13 @@ export function ResumeSSOTAssemblerModal({
                         className="rounded-xl border border-edge/80 bg-card p-4 space-y-3 shadow-xs"
                       >
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-edge/30">
-                          <div className="flex items-baseline gap-2 flex-wrap">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <Checkbox
+                              checked={selectedInComp === compBullets.length && compBullets.length > 0}
+                              indeterminate={selectedInComp > 0 && selectedInComp < compBullets.length}
+                              onChange={() => handleToggleCompanyBullets(comp)}
+                              title={selectedInComp === compBullets.length ? 'Deselect company' : 'Select all in company'}
+                            />
                             <span className="font-mono font-bold text-sm text-content">
                               {comp.name}
                             </span>
@@ -502,11 +502,10 @@ export function ResumeSSOTAssemblerModal({
                                     : 'border-edge/50 bg-surface/20 opacity-45'
                                 }`}
                               >
-                                <input
-                                  type="checkbox"
+                                <Checkbox
                                   checked={isChecked}
                                   onChange={() => handleToggleBullet(bullet.id)}
-                                  className="mt-0.5 rounded border-edge text-signal focus:ring-signal pointer-events-none"
+                                  className="mt-0.5"
                                 />
 
                                 <div className="space-y-1 min-w-0 flex-1">
@@ -543,26 +542,29 @@ export function ResumeSSOTAssemblerModal({
                     <span className="font-mono text-xs font-bold text-content uppercase tracking-wider">
                       Standalone Projects ({portfolio.standalone_projects.length})
                     </span>
-                    <label className="flex items-center gap-1.5 cursor-pointer text-xs font-mono text-muted">
-                      <input
-                        type="checkbox"
-                        checked={includeProjects}
-                        onChange={(e) => setIncludeProjects(e.target.checked)}
-                        className="rounded border-edge text-signal"
-                      />
-                      <span>Include</span>
-                    </label>
+                    <Checkbox
+                      checked={includeProjects}
+                      onChange={setIncludeProjects}
+                      label="Include"
+                    />
                   </div>
 
                   {includeProjects && (
                     <div className="space-y-2">
                       {portfolio.standalone_projects.map((pr) => (
-                        <label
+                        <div
                           key={pr.id}
-                          className="flex items-start gap-2 p-2 rounded-lg border border-edge bg-card text-xs cursor-pointer"
+                          onClick={() => {
+                            setSelectedProjectIds((prev) => {
+                              const next = new Set(prev);
+                              if (next.has(pr.id)) next.delete(pr.id);
+                              else next.add(pr.id);
+                              return next;
+                            });
+                          }}
+                          className="flex items-start gap-2 p-2 rounded-lg border border-edge bg-card text-xs cursor-pointer hover:border-signal/40 transition-colors"
                         >
-                          <input
-                            type="checkbox"
+                          <Checkbox
                             checked={selectedProjectIds.has(pr.id)}
                             onChange={() => {
                               setSelectedProjectIds((prev) => {
@@ -572,13 +574,13 @@ export function ResumeSSOTAssemblerModal({
                                 return next;
                               });
                             }}
-                            className="mt-0.5 rounded border-edge text-signal"
+                            className="mt-0.5"
                           />
                           <div className="min-w-0">
                             <span className="font-mono font-bold text-content block">{pr.name}</span>
                             {pr.headline && <span className="font-sans text-[11px] text-muted block truncate">{pr.headline}</span>}
                           </div>
-                        </label>
+                        </div>
                       ))}
                     </div>
                   )}
@@ -590,26 +592,29 @@ export function ResumeSSOTAssemblerModal({
                     <span className="font-mono text-xs font-bold text-content uppercase tracking-wider">
                       Academic Credentials ({portfolio.education?.length || 0})
                     </span>
-                    <label className="flex items-center gap-1.5 cursor-pointer text-xs font-mono text-muted">
-                      <input
-                        type="checkbox"
-                        checked={includeEducation}
-                        onChange={(e) => setIncludeEducation(e.target.checked)}
-                        className="rounded border-edge text-signal"
-                      />
-                      <span>Include</span>
-                    </label>
+                    <Checkbox
+                      checked={includeEducation}
+                      onChange={setIncludeEducation}
+                      label="Include"
+                    />
                   </div>
 
                   {includeEducation && (
                     <div className="space-y-2">
                       {(portfolio.education || []).map((edu) => (
-                        <label
+                        <div
                           key={edu.id}
-                          className="flex items-start gap-2 p-2 rounded-lg border border-edge bg-card text-xs cursor-pointer"
+                          onClick={() => {
+                            setSelectedEducationIds((prev) => {
+                              const next = new Set(prev);
+                              if (next.has(edu.id)) next.delete(edu.id);
+                              else next.add(edu.id);
+                              return next;
+                            });
+                          }}
+                          className="flex items-start gap-2 p-2 rounded-lg border border-edge bg-card text-xs cursor-pointer hover:border-signal/40 transition-colors"
                         >
-                          <input
-                            type="checkbox"
+                          <Checkbox
                             checked={selectedEducationIds.has(edu.id)}
                             onChange={() => {
                               setSelectedEducationIds((prev) => {
@@ -619,13 +624,13 @@ export function ResumeSSOTAssemblerModal({
                                 return next;
                               });
                             }}
-                            className="mt-0.5 rounded border-edge text-signal"
+                            className="mt-0.5"
                           />
                           <div className="min-w-0">
                             <span className="font-mono font-bold text-content block">{edu.degree}</span>
                             <span className="font-mono text-[11px] text-signal block">{edu.institution}</span>
                           </div>
-                        </label>
+                        </div>
                       ))}
                     </div>
                   )}

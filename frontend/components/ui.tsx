@@ -296,77 +296,10 @@ export function Select({
 }
 
 /* ==========================================================================
-   Checkbox — premium square check with motion
+   Checkbox — Unified Icon-Based Checkbox (lucide Square, CheckSquare, MinusSquare)
    ========================================================================== */
 
-export interface CheckboxProps {
-  checked: boolean;
-  onChange: (checked: boolean) => void;
-  label?: React.ReactNode;
-  description?: React.ReactNode;
-  disabled?: boolean;
-  className?: string;
-  ariaLabel?: string;
-}
-
-export function Checkbox({
-  checked,
-  onChange,
-  label,
-  description,
-  disabled = false,
-  className = '',
-  ariaLabel,
-}: CheckboxProps) {
-  const button = (
-    <button
-      type="button"
-      role="checkbox"
-      aria-checked={checked}
-      aria-label={ariaLabel || (typeof label === 'string' ? label : undefined)}
-      disabled={disabled}
-      onClick={(e) => {
-        e.stopPropagation();
-        onChange(!checked);
-      }}
-      className={`flex h-[18px] w-[18px] flex-none items-center justify-center rounded-[5px] border transition-all duration-150 outline-none cursor-pointer
-        focus-visible:ring-2 focus-visible:ring-signal/40 focus-visible:ring-offset-1 focus-visible:ring-offset-card
-        disabled:cursor-not-allowed disabled:opacity-40
-        ${
-          checked
-            ? 'border-signal bg-signal text-white shadow-xs'
-            : 'border-edge bg-card hover:border-signal/60'
-        } ${className}`}
-    >
-      <Icon.Check
-        className={`h-3 w-3 text-white transition-all duration-150 ${checked ? 'scale-100 opacity-100' : 'scale-50 opacity-0'}`}
-        strokeWidth={3}
-      />
-    </button>
-  );
-
-  if (!label && !description) return button;
-
-  return (
-    <label
-      onClick={(e) => {
-        if (!disabled) {
-          e.preventDefault();
-          onChange(!checked);
-        }
-      }}
-      className={`inline-flex items-start gap-2.5 cursor-pointer select-none ${
-        disabled ? 'cursor-not-allowed opacity-50' : ''
-      }`}
-    >
-      <div className="pt-0.5">{button}</div>
-      <div className="space-y-0.5">
-        {label && <span className="font-mono text-xs font-medium text-content block">{label}</span>}
-        {description && <p className="font-sans text-[11px] text-muted leading-tight">{description}</p>}
-      </div>
-    </label>
-  );
-}
+export { Checkbox, default as DefaultCheckbox, type CheckboxProps } from '@/components/common/checkbox';
 
 /* ==========================================================================
    Tooltip — sleek floating context popover

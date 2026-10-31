@@ -3553,17 +3553,13 @@ function ResumeImportModal({
               </div>
             )}
 
-            <label className="flex items-center gap-2.5 rounded-xl border border-edge bg-surface/60 px-3.5 py-2.5 cursor-pointer select-none">
-              <input
-                type="checkbox"
+            <div className="flex items-center gap-2.5 rounded-xl border border-edge bg-surface/60 px-3.5 py-2.5">
+              <Checkbox
                 checked={replaceExisting}
-                onChange={(e) => setReplaceExisting(e.target.checked)}
-                className="h-3.5 w-3.5 rounded border-edge accent-signal cursor-pointer"
+                onChange={setReplaceExisting}
+                label="Clean slate: replace existing SSOT records with this import"
               />
-              <span className="font-sans text-xs text-content">
-                Clean slate: replace existing SSOT records with this import
-              </span>
-            </label>
+            </div>
 
             <div className="flex items-center justify-end gap-2.5 pt-4 border-t border-edge">
               <button
