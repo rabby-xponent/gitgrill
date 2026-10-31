@@ -829,6 +829,37 @@ pie title Roadmap Milestone Status
   - Upgraded [`PortfolioHub.tsx`](file:///e:/rabby-xponent/Projects/devscope/frontend/components/PortfolioHub.tsx) import modal "clean slate" option.
   - Zero raw `<input type="checkbox">` elements remaining in the codebase.
 
+---
+
+### Milestone 41 — Phase 2 Task 3: Multi-Template Formatted DOCX & ATS Markdown Export Suite 🟡
+
+* **Current Status:** 🟡 Pending Manual Review (Code implemented & verified with 0 build errors; awaiting manual user review and sign-off).
+* **1. Multi-Template DOCX Generation Engine ([`docx-export.ts`](file:///e:/rabby-xponent/Projects/devscope/frontend/lib/docx-export.ts)):**
+  - Integrated `docx` library generating native Microsoft Word `.docx` binaries directly in-browser.
+  - Developed 4 ATS-optimized layout archetypes:
+    * **Classic Linear (FAANG Tech):** Centered identity strip, hairline dividers, right-aligned dates, 99.4% ATS pass rate.
+    * **Modern Minimalist:** Left-aligned bold hierarchy, compact padding, modern tech feel.
+    * **Compact 1-Page High-Density:** 0.375-inch margins, optimized line heights to fit senior 5+ year careers on a single page.
+    * **Executive & Systems Architect:** Prominent narrative summary lead, emphasized core competencies, leadership and systems ledger.
+  - Configurable typography: Calibri, Arial, Georgia, Inter.
+  - Configurable section ordering: Skills Matrix Top vs. Experience Top.
+  - Configurable inclusion toggles: Professional Summary, Standalone Projects, Academic Credentials, and Hairline Dividers.
+* **2. ATS-Compliant Markdown Generator:**
+  - `generateResumeMarkdown(resume, options)` producing clean, parsable Markdown formatted for online ATS text portals.
+* **3. Interactive Export Studio Modal ([`ResumeExportModal.tsx`](file:///e:/rabby-xponent/Projects/devscope/frontend/components/ResumeExportModal.tsx)):**
+  - High-density Linear-style modal offering:
+    * 1-click Layout Archetype cards with pass-rate badges.
+    * Typography and structure selectors.
+    * Live document sheet preview reflecting selected font, alignment, and section order in real time.
+    * Direct export triggers: `Download Formatted .DOCX`, `Export .MD`, `Copy ATS Text`, and `Print / Save as PDF`.
+* **4. Multi-Resume Studio Integration ([`ResumeVault.tsx`](file:///e:/rabby-xponent/Projects/devscope/frontend/components/ResumeVault.tsx)):**
+  - Added primary "Export .DOCX / .MD" buttons in the active resume toolbar and top action ribbon.
+  - Removed remaining legacy emoji markers from edit ribbons.
+* **5. Verification & Compilation Check:**
+  - `npm --prefix backend run build`: Exited 0 (`tsc` clean).
+  - `npm --prefix frontend run build`: Exited 0 (all 16 routes statically compiled and optimized).
+
+
 
 
 

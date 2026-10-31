@@ -43,6 +43,7 @@ import { useEntitlements } from '@/hooks/useEntitlements';
 import { useSession } from '@/components/SessionProvider';
 import { isAdmin } from '@/lib/admin';
 import { ResumeSSOTAssemblerModal } from '@/components/ResumeSSOTAssemblerModal';
+import { ResumeExportModal } from '@/components/ResumeExportModal';
 
 type ViewMode = 'preview' | 'matchmaker' | 'diagnostics' | 'defense' | 'inmail';
 
@@ -73,6 +74,7 @@ export function ResumeVault() {
   const [isDragging, setIsDragging] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [rawPasteText, setRawPasteText] = useState('');
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Premium Modal states
@@ -1295,6 +1297,16 @@ export function ResumeVault() {
 
                     <button
                       type="button"
+                      onClick={() => setIsExportModalOpen(true)}
+                      className="inline-flex items-center gap-1.5 rounded-xl border border-signal/40 bg-signal/10 px-3 py-1.5 font-mono text-xs font-bold text-signal hover:bg-signal/20 transition-colors shadow-xs cursor-pointer"
+                      title="Export formatted Word (.docx) or ATS Markdown"
+                    >
+                      <Icon.Download className="h-3.5 w-3.5" />
+                      <span>Export .DOCX / .MD</span>
+                    </button>
+
+                    <button
+                      type="button"
                       onClick={handleDownloadMarkdown}
                       className="inline-flex items-center gap-1.5 rounded-xl border border-edge bg-well px-3 py-1.5 font-mono text-xs font-semibold text-content hover:border-signal/50 hover:text-signal transition-colors shadow-xs"
                       title="Download clean Markdown"
@@ -1526,28 +1538,28 @@ export function ResumeVault() {
                               className="inline-flex items-center gap-1.5 rounded-xl border border-edge bg-card px-3.5 py-2 font-mono text-xs font-bold text-content shadow-xs hover:border-signal/50 hover:text-signal transition-all cursor-pointer"
                             >
                               <Icon.Pencil className="h-3.5 w-3.5" />
-                              <span>✏️ Edit Sections</span>
+                              <span>Edit Sections</span>
                             </button>
                           </div>
 
                           <div className="flex items-center gap-2">
                             <button
                               type="button"
+                              onClick={() => setIsExportModalOpen(true)}
+                              className="inline-flex items-center gap-1.5 rounded-xl bg-signal px-3.5 py-2 font-mono text-xs font-bold text-white shadow-xs hover:bg-signal/90 transition-all cursor-pointer"
+                              title="Export formatted Word (.docx), ATS Markdown, or PDF with custom templates"
+                            >
+                              <Icon.Download className="h-3.5 w-3.5" />
+                              <span>Export .DOCX / .MD</span>
+                            </button>
+                            <button
+                              type="button"
                               onClick={handlePrintResume}
                               className="inline-flex items-center gap-1.5 rounded-xl border border-edge bg-card px-3.5 py-2 font-mono text-xs font-semibold text-content hover:border-signal/50 hover:text-signal shadow-xs transition-colors cursor-pointer"
                               title="Print directly or save clean PDF with pure layout"
                             >
-                              <Icon.Download className="h-3.5 w-3.5 text-signal" />
-                              <span>Export / Print PDF</span>
-                            </button>
-                            <button
-                              type="button"
-                              onClick={handleDownloadMarkdown}
-                              className="inline-flex items-center gap-1.5 rounded-xl border border-edge bg-card px-3 py-2 font-mono text-xs text-muted hover:text-content hover:border-signal/50 transition-colors cursor-pointer"
-                              title="Export .MD"
-                            >
-                              <Icon.FileText className="h-3.5 w-3.5" />
-                              <span>.MD</span>
+                              <Icon.Printer className="h-3.5 w-3.5 text-muted" />
+                              <span>Print / PDF</span>
                             </button>
                           </div>
                         </div>
@@ -2932,6 +2944,13 @@ export function ResumeVault() {
           setActiveId(saved.id);
           setActiveResumeId(saved.id);
         }}
+      />
+
+      {/* Multi-Template ATS Document Export Modal */}
+      <ResumeExportModal
+        isOpen={isExportModalOpen}
+        onClose={() => setIsExportModalOpen(false)}
+        resume={activeResume}
       />
 
       {/* Global CSS for Flawless Native Print to PDF */}
